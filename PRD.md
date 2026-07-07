@@ -2,8 +2,8 @@
 
 | 항목 | 내용 |
 |---|---|
-| 문서 버전 | v1.5 |
-| 작성일 | 2026-07-06 (v1.5 갱신: 2026-07-07 — 정체성 전환: 1인 다프로젝트 운영) |
+| 문서 버전 | v1.6 |
+| 작성일 | 2026-07-06 (v1.6 갱신: 2026-07-07 — process 문서를 `91_project_process/`로 분리) |
 | 상태 | M1~M5 구현 완료 · M6(실전 검증) 대기 |
 
 ---
@@ -49,9 +49,9 @@
 | 총괄자 | 메인 폴더 루트의 CLAUDE.md가 규정하는 최상위 관리 역할 |
 | 팀 관리자 | `00_Team/ProjectTeam_{팀명}/CLAUDE.md`가 규정하는 팀 단위 관리 역할 — 구현(Builder) 역할 겸임 |
 | 역할 작업 공간 | 팀 폴더 내 하위 폴더 — 표준 `01_planner`(기획·디자인) / `02_developer`(프로그램 개발 과정) / `03_package`(배포·최종 선정). 각각 CLAUDE.md + `handover_{역할}.md` + `.claude/settings.json`(공유 폴더 접근)을 가진다 |
-| 공유 폴더 | 역할 세션 전원이 접근하는 팀 내 폴더 — `00_Project`(작업물) / `11_team_doc`(문서 취합) / `90_result_output`(완료 백업, 읽기). 타 역할 폴더·`10_Dashboard`는 비공유 |
-| 프로젝트 | 기획→개발→패키지를 관통하는 작업 단위. `00_Project/NN_{프로젝트명}/`에서 팀 직속으로 관리 (독립 git 저장소 연결 가능) |
-| process.md | 프로젝트의 **유일한 상태 문서** — 목표/완료 조건·현재 단계·진행 기록·다음 할 일·블로커. **갱신은 팀 관리자 전담** (팀원 handover의 `[NN_프로젝트명]` 태그를 취합해 반영). 대시보드 파싱 소스를 겸한다 |
+| 공유 폴더 | 역할 세션 전원이 접근하는 팀 내 폴더 — `00_Project`(작업물) / `11_team_doc`(문서 취합) / `90_result_output`(완료 백업, 읽기) / `91_project_process`(process 문서, 읽기). 타 역할 폴더·`10_Dashboard`는 비공유 |
+| 프로젝트 | 기획→개발→패키지를 관통하는 작업 단위. 작업물은 `00_Project/NN_{프로젝트명}/`(독립 git 저장소 연결 가능 — 템플릿 저장소 미추적), 상태는 `91_project_process/NN_{프로젝트명}.md` |
+| process 문서 | 프로젝트의 **유일한 상태 문서** `91_project_process/NN_{프로젝트명}.md` — 목표/완료 조건·현재 단계·진행 기록·다음 할 일·블로커. 프로젝트 폴더 밖에 두어 독립 git 저장소와 충돌하지 않는다 (중첩 저장소 안 파일은 상위가 추적 불가). **갱신은 팀 관리자 전담** (팀원 handover의 `[NN_프로젝트명]` 태그를 취합해 반영). 대시보드 파싱 소스를 겸한다 |
 | 팀 구조 양식 | `00_Team/_ProjectTeam_Template/` — `/new_team`이 복사하는 팀 폴더 구조의 원본 (언더스코어 접두 = 팀 스캔에서 자연 제외) |
 | handover | 다음 세션/담당자를 위한 인수인계 문서. **컨텍스트를 비웠을 때 다시 읽어 맥락을 복원하는 용도** — 작업 시작 시 읽고, 종료 시 갱신한다 |
 | report | 대시보드 갱신을 위한 정기 현황 보고 문서 |
@@ -73,10 +73,9 @@
 │   └── ProjectTeam_{팀명}/
 │       ├── CLAUDE.md              # 팀 관리자 (Builder 겸임·process 전담)  [필수]
 │       ├── handover.md            # 팀 인수인계 (역할·프로젝트 취합)
-│       ├── 00_Project/            # 진행 중 프로젝트 작업물 (공유)          [필수]
+│       ├── 00_Project/            # 진행 중 프로젝트 작업물 (공유·git 미추적) [필수]
 │       │   ├── README.md          #   규칙 안내
 │       │   └── NN_{프로젝트명}/    #   /new_project로 생성 · 독립 git 저장소 가능
-│       │       └── process.md     #   유일한 상태 문서 (팀 관리자 전담 갱신)
 │       ├── 01_planner/            # 기획·디자인 담당
 │       │   ├── CLAUDE.md · handover_planner.md
 │       │   └── .claude/settings.json  # 공유 폴더 접근 허용
@@ -89,7 +88,9 @@
 │       ├── NN_{커스텀역할}/        # (선택) 커스텀 역할 — CLAUDE.md + handover_{역할}.md 필수
 │       ├── 10_Dashboard/          # 팀 현황판 DASHBOARD.md (관리자 전용)    [필수]
 │       ├── 11_team_doc/           # 문서 취합 (공유) — 보고서·회의록        [필수]
-│       └── 90_result_output/      # 완료 후 백업 (보관)                    [필수]
+│       ├── 90_result_output/      # 완료 후 백업 (보관)                    [필수]
+│       └── 91_project_process/    # 프로젝트 상태 문서 (process 문서)       [필수]
+│           └── NN_{프로젝트명}.md  #   유일한 상태 문서 (팀 관리자 전담 갱신)
 │
 ├── 01_Explorer/                   # 역할: 내부 코드 탐색 (읽기 전용)
 ├── 02_Educator/                   # 역할: 정확하고 이해하기 쉬운 설명
@@ -156,32 +157,33 @@
 
 ### 6.2 00_Team — 팀 작업 공간
 - 팀 폴더 명명: `ProjectTeam_{팀명}` (팀명은 **영문만** — 한글은 특이 경우에 한해 최대한 짧게).
-- 팀 구조 양식: `00_Team/_ProjectTeam_Template/`이 원본. `/new_team`이 이를 복사하고 예시 프로젝트(`01_Project01`)를 삭제한 뒤 `{팀명}`·`{YYYY-MM-DD}`를 치환한다.
+- 팀 구조 양식: `00_Team/_ProjectTeam_Template/`이 원본. `/new_team`이 이를 복사하고 예시 프로젝트(`00_Project/01_Project01/` + `91_project_process/01_Project01.md`)를 삭제한 뒤 `{팀명}`·`{YYYY-MM-DD}`를 치환한다.
 - **필수 구성** (모든 팀 공통 — 삭제·개명 금지):
 
 | 구성 | 성격 | 용도 |
 |---|---|---|
-| `00_Project/` | 공유 | **진행 중 프로젝트 작업물** — `NN_{프로젝트명}/` (독립 git 저장소 가능) + `process.md` |
+| `00_Project/` | 공유 | **진행 중 프로젝트 작업물** — `NN_{프로젝트명}/` (독립 git 저장소 가능 — 템플릿 저장소 미추적) |
 | `10_Dashboard/` | 관리 | 팀 현황판 `DASHBOARD.md` — `/report`가 갱신, 루트가 수거 |
 | `11_team_doc/` | 공유 | **문서 취합** — 회의록·공유 문서·팀 보고서(`report_{날짜}.md`)·파이프라인 결과 |
 | `90_result_output/` | 보관 | **완료 후 백업** — 패키지 역할이 최종 선정한 작업물 (90번대 = 보관) |
-| `CLAUDE.md` | 관리 | 팀 관리자 정의 (Builder 겸임 · process.md 전담) |
+| `91_project_process/` | 관리 | **프로젝트 상태 문서(process 문서)** — `NN_{프로젝트명}.md`, 프로젝트 폴더명과 1:1 대응 |
+| `CLAUDE.md` | 관리 | 팀 관리자 정의 (Builder 겸임 · process 문서 전담) |
 
 - **접근 권한 매트릭스 (팀 내 상호 호환)** — 역할 세션은 자기 역할 폴더에서 시작하되, 각 역할 폴더의 `.claude/settings.json`(additionalDirectories)이 공유 폴더 접근을 허용한다:
 
 | 폴더 | planner | developer | package | 팀 관리자 |
 |---|---|---|---|---|
 | `00_Project/` 작업물 | ✅ | ✅ (코드) | ✅ (검증) | ✅ |
-| `00_Project/*/process.md` | 읽기 | 읽기 | 읽기 | ✅ **전담 갱신** |
+| `91_project_process/` (process 문서) | 읽기 | 읽기 | 읽기 | ✅ **전담 갱신** |
 | `11_team_doc/` | ✅ | ✅ | ✅ | ✅ |
 | `90_result_output/` | 읽기 | 읽기 | ✅ **쓰기 주체** | ✅ |
 | 타 역할 폴더 / `10_Dashboard` | ❌ | ❌ | ❌ | ✅ |
 
-- **프로젝트 관리 (00_Project)**:
-  - 생성: 팀 폴더에서 `/new_project` → `00_Project/NN_{프로젝트명}/process.md` (번호 = 생성순 고정).
-  - `process.md`가 프로젝트의 **유일한 상태 문서** (CLAUDE.md·handover.md 없음). **갱신은 팀 관리자 전담** — 팀원은 `handover_{역할}.md`에 `[NN_프로젝트명]` 태그로 기록하고, 팀 관리자가 팀 `/handover`로 취합하며 반영한다. 수명주기(단계 전환·우선순위·목표일·`[보류]`/`[종료]`)도 팀 관리자 전담이며 변경 시 진행 기록에 `[팀 관리자]` 표기.
+- **프로젝트 관리 (00_Project + 91_project_process)**:
+  - 생성: 팀 폴더에서 `/new_project` → `00_Project/NN_{프로젝트명}/`(작업 폴더) + `91_project_process/NN_{프로젝트명}.md`(process 문서) 한 쌍 (번호 = 생성순 고정).
+  - process 문서가 프로젝트의 **유일한 상태 문서** (프로젝트 폴더 안에 CLAUDE.md·handover.md·process.md 없음). **갱신은 팀 관리자 전담** — 팀원은 `handover_{역할}.md`에 `[NN_프로젝트명]` 태그로 기록하고, 팀 관리자가 팀 `/handover`로 취합하며 반영한다. 수명주기(단계 전환·우선순위·목표일·`[보류]`/`[종료]`)도 팀 관리자 전담이며 변경 시 진행 기록에 `[팀 관리자]` 표기.
   - **프로젝트 폴더 직접 세션은 없다** — 팀원은 역할 세션의 공유 접근으로, 구현은 팀 관리자(Builder 겸임)가 수행.
-  - git 연결: 프로젝트 폴더는 독립 git 저장소일 수 있고, 템플릿 저장소는 process.md만 추적한다 (루트 .gitignore).
+  - git 연결: 프로젝트 폴더는 독립 git 저장소일 수 있고, 템플릿 저장소는 `00_Project`를 추적하지 않는다 (루트 .gitignore) — 상태 문서를 프로젝트 폴더 밖(`91_project_process/`)에 두는 이유: 중첩 git 저장소 안의 파일은 상위 저장소가 추적할 수 없다.
   - 종료: 패키지가 `90_result_output/` 백업 → `[종료]` 표기 → 아카이브 후보.
 
 - 역할 작업 공간 (표준 양식 3개, 각각 CLAUDE.md + `handover_{역할}.md` + `.claude/settings.json`):
@@ -193,8 +195,8 @@
 | `03_package/` | 패키지 | **배포·최종 선정 담당** — 검증·패키징, `90_result_output/` 백업 주체 |
 
 - **커스텀 역할**: `NN_{역할}` 권장. **세션을 주는 폴더에는 `CLAUDE.md` + `handover_{역할}.md` 필수**, 공유 접근이 필요하면 settings.json 복사.
-- 작업 흐름: 기획 → 개발 → 패키지. 역할 간 전달은 `handover_{역할}.md`(프로젝트 태그 포함), 프로젝트 진행은 팀 관리자가 `process.md`로 통합 기록.
-- **격리**: 역할 세션은 자기 역할 폴더 + 공유 3폴더만 — 타 역할·타 팀·루트는 보지 못한다.
+- 작업 흐름: 기획 → 개발 → 패키지. 역할 간 전달은 `handover_{역할}.md`(프로젝트 태그 포함), 프로젝트 진행은 팀 관리자가 process 문서로 통합 기록.
+- **격리**: 역할 세션은 자기 역할 폴더 + 공유 4폴더만 — 타 역할·타 팀·루트는 보지 못한다.
 
 ### 6.3 01~04 역할 폴더
 각 역할은 두 가지로 구현된다:
@@ -269,8 +271,8 @@
 | 항목 | 내용 |
 |---|---|
 | 실행 위치 | 역할 폴더 또는 팀 폴더 (프로젝트 직접 세션 폐지 — v1.4) |
-| 동작 | 역할 모드: 이번 세션 작업을 `[NN_프로젝트명]` 태그와 함께 기록. **팀 모드(팀 관리자): ① 역할 handover들의 태그 항목을 각 `process.md`에 반영·수명주기 갱신 ② 팀 `handover.md` 취합** |
-| 산출물 | 역할 폴더 → `handover_{역할}.md`. 팀 폴더 → 갱신된 `process.md`들 + `handover.md` |
+| 동작 | 역할 모드: 이번 세션 작업을 `[NN_프로젝트명]` 태그와 함께 기록. **팀 모드(팀 관리자): ① 역할 handover들의 태그 항목을 각 process 문서(`91_project_process/`)에 반영·수명주기 갱신 ② 팀 `handover.md` 취합** |
+| 산출물 | 역할 폴더 → `handover_{역할}.md`. 팀 폴더 → 갱신된 process 문서들 + `handover.md` |
 | 갱신 방식 | 덮어쓰기 (이력은 git이 보존) |
 
 ### 7.2 `/handover_root`
@@ -285,7 +287,7 @@
 | 항목 | 내용 |
 |---|---|
 | 실행 위치 | 팀 폴더 |
-| 동작 | `00_Project/*/process.md`(프로젝트 현황)와 역할별 handover를 근거로 팀 상태를 report 템플릿 양식으로 정리 + **팀 대시보드(`10_Dashboard/DASHBOARD.md`) 갱신** |
+| 동작 | `91_project_process/NN_*.md`(프로젝트 현황 — process 문서)와 역할별 handover를 근거로 팀 상태를 report 템플릿 양식으로 정리 + **팀 대시보드(`10_Dashboard/DASHBOARD.md`) 갱신** |
 | 산출물 | 팀 `11_team_doc/report_{날짜}.md` + 갱신된 팀 대시보드 (팀 세션은 루트 접근 불가 — 루트의 `/report_root`가 수거) |
 
 ### 7.4 `/report_root`
@@ -314,7 +316,7 @@
 | 항목 | 내용 |
 |---|---|
 | 실행 위치 | `/new_team`은 루트, `/new_project`는 팀 폴더 |
-| 동작 | `/new_team`: **역할 구성(표준 3역할 또는 커스텀)·팀 목표 확인** → 팀 구조 양식 `00_Team/_ProjectTeam_Template/`을 `ProjectTeam_{팀명}/`으로 복사, 예시 프로젝트 삭제, (커스텀이면) 역할별 3종 자동 생성(CLAUDE.md는 `90_Templates/CLAUDE.role.template.md`) + 팀 CLAUDE.md 역할 표·매트릭스 갱신, **팀 CLAUDE.md 「팀 목표」 기입**, `{팀명}`·날짜 치환. `/new_project`: `00_Project/NN_{프로젝트명}/process.md` 스캐폴딩 (번호 자동 증가, 내장 양식) |
+| 동작 | `/new_team`: **역할 구성(표준 3역할 또는 커스텀)·팀 목표 확인** → 팀 구조 양식 `00_Team/_ProjectTeam_Template/`을 `ProjectTeam_{팀명}/`으로 복사, 예시 프로젝트 삭제(작업 폴더+process 문서), (커스텀이면) 역할별 3종 자동 생성(CLAUDE.md는 `90_Templates/CLAUDE.role.template.md`) + 팀 CLAUDE.md 역할 표·매트릭스 갱신, **팀 CLAUDE.md 「팀 목표」 기입**, `{팀명}`·날짜 치환. `/new_project`: `00_Project/NN_{프로젝트명}/`(작업 폴더) + `91_project_process/NN_{프로젝트명}.md`(process 문서) 스캐폴딩 (번호 자동 증가, 내장 양식) |
 | 목적 | 수동 생성으로 표준이 깨지는 것을 방지 |
 
 ### 7.8 `/dashboard` (스텁)
@@ -324,8 +326,8 @@
 | 항목 | 내용 |
 |---|---|
 | 실행 위치 | 팀 폴더 |
-| 동작 | 외부·구버전에서 가져온 프로젝트가 데이터 계약과 호환되는지 8항목 점검(폴더명 · process.md 존재/구조 · 파싱 앵커 · 불변식(CLAUDE/handover 잔존) · git 경계(process.md만 추적) · 명명 · 태그 연동) → ✅/⚠/❌ 표 보고 → 사용자 승인 항목만 보정(process.md 생성·보완, 개명, 통합). **git 상태는 자동 변경하지 않음** |
-| 산출물 | 점검 보고 (+ 승인 시 보정된 process.md 등) |
+| 동작 | 외부·구버전에서 가져온 프로젝트가 데이터 계약과 호환되는지 8항목 점검(폴더명 · process 문서 존재/구조(`91_project_process/`) · 파싱 앵커 · 불변식(폴더 내 CLAUDE/handover/process.md 잔존) · git 경계(00_Project 미추적·process 문서만 추적) · 명명 · 태그 연동) → ✅/⚠/❌ 표 보고 → 사용자 승인 항목만 보정(process 문서 생성·보완, 개명, 통합·이전). **git 상태는 자동 변경하지 않음** |
+| 산출물 | 점검 보고 (+ 승인 시 보정된 process 문서 등) |
 | 목적 | 외부 프로젝트 반입·템플릿 버전 업그레이드 시 데이터 호환성 보장 |
 
 ## 8. 문서 표준
@@ -352,9 +354,9 @@
 | 날짜 | `YYYY-MM-DD` 고정 | 2026-07-06 |
 | 결과물 | `YYYY-MM-DD_{팀명}_{제목}.md` | 2026-07-06_TeamA_성능분석.md |
 | 팀 폴더 | `ProjectTeam_{팀명}` | ProjectTeam_TeamA |
-| 팀 필수 폴더 | `00_Project` / `10_Dashboard` / `11_team_doc` / `90_result_output` 고정 | — |
-| 프로젝트 폴더 | `00_Project/NN_{프로젝트명}` (번호 = 생성순 고정, 우선순위는 process.md에) | 00_Project/01_login-system |
-| 프로젝트 상태 문서 | `process.md` (프로젝트당 1개, 유일 — 팀 관리자 전담 갱신) | — |
+| 팀 필수 폴더 | `00_Project` / `10_Dashboard` / `11_team_doc` / `90_result_output` / `91_project_process` 고정 | — |
+| 프로젝트 폴더 | `00_Project/NN_{프로젝트명}` (번호 = 생성순 고정, 우선순위는 process 문서에) | 00_Project/01_login-system |
+| 프로젝트 상태 문서 | `91_project_process/NN_{프로젝트명}.md` (프로젝트당 1개, 유일 — 팀 관리자 전담 갱신, 폴더명과 1:1) | 91_project_process/01_login-system.md |
 | 프로젝트 태그 | handover 항목 앞 `[NN_프로젝트명]` | [01_login-system] 로그인 UI 완료 |
 | 역할 폴더 | 표준 `01_planner` / `02_developer` / `03_package`, 커스텀은 `NN_{역할}` | 04_designer |
 | 팀 handover | `handover.md` (팀 폴더 직속) | — |
@@ -365,7 +367,7 @@
 
 ### 9.1 접근 범위 (격리 + 팀 내 공유)
 - 하위 폴더 세션은 상위 폴더 파일에 접근하지 않는다 (Claude Code 기본 권한 동작에 의해 강제됨).
-- **팀 내 공유 예외**: 역할 세션은 자기 팀의 공유 폴더(`00_Project`/`11_team_doc`/`90_result_output`)에 접근할 수 있다 — 각 역할 폴더의 `.claude/settings.json`(`permissions.additionalDirectories`)이 허용한다. 미지원 환경에서는 `claude --add-dir` 또는 프롬프트 승인으로 동일 범위를 허용한다 (매트릭스가 규칙).
+- **팀 내 공유 예외**: 역할 세션은 자기 팀의 공유 폴더(`00_Project`/`11_team_doc`/`90_result_output`/`91_project_process`)에 접근할 수 있다 — 각 역할 폴더의 `.claude/settings.json`(`permissions.additionalDirectories`)이 허용한다. 미지원 환경에서는 `claude --add-dir` 또는 프롬프트 승인으로 동일 범위를 허용한다 (매트릭스가 규칙 — `91_project_process`는 읽기만).
 - 타 역할 폴더·`10_Dashboard`·타 팀·루트는 여전히 금지.
 - 단, 상위 CLAUDE.md의 **규칙은 자동 상속**된다 — 각 CLAUDE.md는 이를 전제로 작성한다.
 - 루트 세션은 모든 하위 폴더에 접근 가능하다 (하향 접근은 허용).
@@ -373,7 +375,7 @@
 ### 9.2 역할 권한
 - Explorer·Critic은 코드를 **수정하지 않는다**. Educator·Advisor는 문서만 생성한다.
 - 실제 코드 수정은 `00_Project/{프로젝트}/` 안에서만 — 수행 주체는 **개발 역할 세션(공유 접근)** 또는 **Builder를 겸임하는 팀 관리자**.
-- `process.md` 갱신은 **팀 관리자 전담** — 팀원은 handover에 태그로 기록만 한다.
+- process 문서(`91_project_process/`) 갱신은 **팀 관리자 전담** — 팀원은 handover에 태그로 기록만 한다.
 - 기획(`01_planner`)은 기획·디자인 문서, 패키지(`03_package`)는 검증·패키징·`90_result_output` 백업 — 소스 결함은 handover 태그로 개발에 되돌린다.
 
 ### 9.3 갱신 주기 (권장)
@@ -425,6 +427,7 @@
 
 | 버전 | 날짜 | 변경 내용 |
 |---|---|---|
+| v1.6 | 2026-07-07 | **process 문서 분리**: 프로젝트 상태 문서를 `00_Project/NN_{프로젝트명}/process.md`에서 팀 필수 폴더 `91_project_process/NN_{프로젝트명}.md`로 이동 (파일명 = 프로젝트 폴더명, 1:1 대응). 근거: 프로젝트 폴더가 독립 git 저장소일 때 중첩 저장소 안의 process.md를 템플릿 저장소가 추적할 수 없는 결함 해소 + 앱 저장소에 템플릿 소유 파일 미혼입. `.gitignore`를 화이트리스트 방식에서 `00_Team/*/00_Project/` 전체 무시로 단순화 (양식 폴더만 예외), `/new_project`가 작업 폴더+process 문서 한 쌍 생성, 역할 settings.json에 `../91_project_process` 추가(읽기), `/compatibility_test`에 폴더 내 process.md 잔존 검사·이전 보정 추가. 필수 폴더 4→5 |
 | v1.5 | 2026-07-07 | **정체성 전환**: 템플릿 목적을 "1인 다프로젝트 운영 (멀티팀 협업 구조 차용)"으로 재정의 — 팀=사업 영역 분류 · 역할=작업 모드 · 루트=포트폴리오 리뷰의 2축 모델. main_manual §8 「기본 사용 모델 — 1인 회사 모드」 신설(사이클·경량화 표·가드레일 5), 격리 규칙 근거 재서술(컨텍스트 오염 방지·사고 모드 분리), 다인 협업은 확장으로 명시. 근거: 사용성 테스트(`interview.csv` · `interview_priority.md`) |
 | v1.4 | 2026-07-07 | 팀 내 상호 호환 권한 도입: 역할 세션이 공유 폴더(`00_Project`/`11_team_doc`/`90_result_output`)에 접근 (역할별 `.claude/settings.json`), `process.md` 갱신을 팀 관리자 전담으로 일원화(팀원은 handover에 `[NN_프로젝트명]` 태그 기록, 팀 `/handover`가 process 반영+취합), 프로젝트 직접 세션 폐지, 역할 재정의(기획·디자인/개발 과정/배포·최종 선정), 팀 보고서·파이프라인 결과를 `11_team_doc`으로 이동, `90_result_output`을 완료 백업 전용화(패키지 쓰기 주체), 00_Project 프로젝트의 독립 git 저장소 연결(.gitignore로 process.md만 추적) |
 | v1.3 | 2026-07-07 | 프로젝트 관리 개편: 진행 중 프로젝트를 팀 직속 `00_Project/NN_{프로젝트명}/`에서 관리, `process.md`를 프로젝트의 유일한 상태 문서로 도입(프로젝트 CLAUDE.md·handover.md 폐지), `00_result_output` → `90_result_output` 개명(90번대=보관), `/new_project` 실행 위치를 팀 폴더로 변경, 코드 수정 위치를 00_Project 프로젝트 작업 세션으로 변경 |

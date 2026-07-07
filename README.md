@@ -37,7 +37,7 @@
 ```
 1. 루트 폴더에서 claude 실행       → 당신은 총괄자입니다
 2. /new_team MyTeam               → 팀(사업 영역) 생성
-3. 팀 폴더에서 /new_project my-app → 프로젝트 생성 (process.md)
+3. 팀 폴더에서 /new_project my-app → 프로젝트 생성 (작업 폴더 + process 문서)
 4. 역할 폴더에서 작업 → 끝나면 /handover
 ```
 

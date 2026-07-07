@@ -164,7 +164,7 @@ function teamView(t){
     kpi("블로커", `<span style="font-size:16px">${t.blockers.length? t.blockers.length+"건":"없음"}</span>`)+
     kpi("최근 갱신", `<span style="font-size:16px">${esc(t.updated||"—")}</span>`)+`</div>`;
 
-  html += `<h2>진행 중 프로젝트 (00_Project — process.md 기반)</h2>`;
+  html += `<h2>진행 중 프로젝트 (00_Project — process 문서 기반)</h2>`;
   const act = t.projects.filter(p=>!p.missing && !p.closed);
   if(!act.length) html += `<div class="panel"><div class="empty">진행 중 프로젝트 없음 — 팀 폴더에서 /new_project</div></div>`;
   act.forEach(p=>{

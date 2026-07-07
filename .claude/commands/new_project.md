@@ -1,23 +1,25 @@
 ---
-description: 새 프로젝트 스캐폴딩 — 00_Project/NN_{프로젝트명}/process.md 생성 (팀 폴더에서 실행)
+description: 새 프로젝트 스캐폴딩 — 00_Project/NN_{프로젝트명}/(작업 폴더) + 91_project_process/NN_{프로젝트명}.md(process 문서) 생성 (팀 폴더에서 실행)
 argument-hint: {프로젝트명}
 ---
 
 프로젝트명: $ARGUMENTS
 (비어 있으면 프로젝트명을 물어본다.)
 
-팀의 `00_Project/`에 새 프로젝트를 표준 구조로 생성한다.
+팀에 새 프로젝트를 표준 구조로 생성한다 — **작업 폴더와 process 문서 한 쌍**.
 
 ## 1. 검증 (팀 폴더 전용)
-- `pwd` 경로가 `.../00_Team/{팀폴더}`로 끝나고 `./00_Project/`가 있는지 확인. 아니면 팀 폴더에서 실행하라고 안내하고 중단.
+- `pwd` 경로가 `.../00_Team/{팀폴더}`로 끝나고 `./00_Project/`와 `./91_project_process/`가 있는지 확인. 아니면 팀 폴더에서 실행하라고 안내하고 중단.
 - 프로젝트명: **영문/숫자/하이픈만** (한글은 특이 경우, 최대한 짧게 — 리스크 안내 후 사용자 확인).
-- 폴더명은 `NN_{프로젝트명}` — `NN`은 `00_Project/` 내 기존 최대 번호 +1 (2자리, 01부터).
+- 번호 `NN`은 `00_Project/`의 폴더 번호와 `91_project_process/`의 문서 번호 중 **최대값 +1** (2자리, 01부터).
 - 같은 프로젝트명이 이미 존재하면 거부하고 중단.
 
-## 2. 생성 — `00_Project/NN_{프로젝트명}/process.md`
+## 2. 생성 — 두 가지를 한 쌍으로
 
-process.md가 프로젝트의 **유일한 상태 문서**다 (CLAUDE.md·handover.md를 따로 만들지 않는다).
-표준 양식 (원본: `00_Team/_ProjectTeam_Template/00_Project/01_Project01/process.md` — 여기 내장):
+1. **작업 폴더** `00_Project/NN_{프로젝트명}/` — 빈 폴더로 생성. 작업물(기획·코드·검증 자료)이 여기 쌓이며, 독립 git 저장소 연결이 가능하다 (템플릿 저장소는 이 폴더를 추적하지 않음 — 루트 .gitignore).
+2. **process 문서** `91_project_process/NN_{프로젝트명}.md` — 프로젝트의 **유일한 상태 문서** (프로젝트 폴더 안에 CLAUDE.md·handover.md·process.md를 만들지 않는다).
+
+표준 양식 (원본: `00_Team/_ProjectTeam_Template/91_project_process/01_Project01.md` — 여기 내장):
 
 ```markdown
 # Process — {프로젝트명} (갱신: {YYYY-MM-DD})
@@ -46,7 +48,8 @@ process.md가 프로젝트의 **유일한 상태 문서**다 (CLAUDE.md·handove
 ## 블로커
 - 없음
 
-<!-- 규칙: process.md는 프로젝트의 유일한 상태 문서다 (CLAUDE.md·handover.md를 따로 두지 않는다).
+<!-- 규칙: 이 문서(91_project_process/NN_{프로젝트명}.md)가 프로젝트의 유일한 상태 문서다
+     (프로젝트 폴더 00_Project/NN_{프로젝트명}/ 안에는 CLAUDE.md·handover.md·process.md를 두지 않는다).
      갱신은 팀 관리자 전담 — 팀원은 handover_{역할}.md에 [NN_프로젝트명] 태그로 기록하고,
      팀 관리자가 팀 /handover 취합 시 여기에 반영한다 (수명주기 변경은 [팀 관리자] 표기).
      종료 시 제목 앞에 [종료], 보류 시 [보류]를 붙인다. 이력은 git이 보존한다. -->
@@ -56,8 +59,8 @@ process.md가 프로젝트의 **유일한 상태 문서**다 (CLAUDE.md·handove
 
 ## 3. 마무리
 - 사용자에게 안내:
-  - process.md의 목표·완료 조건을 작성한 뒤 작업을 시작할 것.
-  - 팀원은 자기 역할 폴더 세션에서 공유 접근으로 이 프로젝트 폴더에 작업하고, 기록은 `handover_{역할}.md`에 `[NN_{프로젝트명}]` 태그로 남길 것.
-  - process.md 갱신은 팀 관리자가 팀 `/handover`로 수행. 코드 수정은 프로젝트 폴더 안에서만 (개발 역할·팀 관리자).
-  - 이 폴더를 독립 git 저장소로 쓸 경우 템플릿 저장소는 process.md만 추적함 (.gitignore).
+  - process 문서의 목표·완료 조건을 작성한 뒤 작업을 시작할 것.
+  - 팀원은 자기 역할 폴더 세션에서 공유 접근으로 `00_Project/NN_{프로젝트명}/`에 작업하고, 기록은 `handover_{역할}.md`에 `[NN_{프로젝트명}]` 태그로 남길 것.
+  - process 문서 갱신은 팀 관리자가 팀 `/handover`로 수행. 코드 수정은 프로젝트 폴더 안에서만 (개발 역할·팀 관리자).
+  - 작업 폴더를 독립 git 저장소로 쓸 경우: 템플릿 저장소는 `00_Project`를 추적하지 않으며, 프로젝트 상태는 `91_project_process/`의 process 문서가 담는다 (.gitignore).
 - 커밋을 제안한다: `chore(project): {팀명}/{프로젝트명} 생성`

@@ -1,7 +1,7 @@
-# 00_Project의 프로젝트 폴더는 독립 git 저장소(실제 앱/게임 리포)로 운영될 수 있다.
-# 템플릿 저장소는 프로젝트 상태 문서(process.md)만 추적한다.
-00_Team/*/00_Project/*/*
-!00_Team/*/00_Project/*/process.md
+# 팀의 00_Project는 템플릿 저장소가 추적하지 않는다.
+# 프로젝트 폴더는 독립 git 저장소(실제 앱/게임 리포)로 운영될 수 있고 (중첩 저장소는 상위에서 추적 불가),
+# 프로젝트 상태 문서(process 문서)는 00_Project 밖의 91_project_process/에서 추적한다.
+00_Team/*/00_Project/
 
-# 양식 폴더는 전체 추적 (프로젝트 양식 예시 포함)
-!00_Team/_ProjectTeam_Template/00_Project/**
+# 양식 폴더의 00_Project는 예외 — 구조 예시 포함 전체 추적
+!00_Team/_ProjectTeam_Template/00_Project/

@@ -15,8 +15,8 @@ HTML 대시보드를 갱신한다. md가 진실의 원천이며 이 명령은 **
 
 - **팀 열거**: `00_Team/ProjectTeam_*` — 양식 폴더(`_ProjectTeam_Template`)는 언더스코어 접두라 패턴에 걸리지 않는다 (**혹시 걸려도 제외**).
 - 팀마다:
-  - 역할 폴더 열거(필수 폴더 `00_Project`/`10_Dashboard`/`11_team_doc`/`90_result_output` 제외) → 각 `handover_{역할}.md` 파싱: 갱신일(제목의 `(갱신: YYYY-MM-DD)`), 현재 상태 첫 문단(2줄 절삭), 다음 할 일 상위 3건, 진행 중 목록. 파일 없으면 missing.
-  - `00_Project/NN_*/process.md` 파싱: 갱신일, 제목의 `[종료]`/`[보류]`, 현재 단계(굵게), 상태 요약 표(상태등·진행률·담당·목표일), 진행 기록 상단 1~2건, 다음 할 일 상위 3건, 블로커.
+  - 역할 폴더 열거(필수 폴더 `00_Project`/`10_Dashboard`/`11_team_doc`/`90_result_output`/`91_project_process` 제외) → 각 `handover_{역할}.md` 파싱: 갱신일(제목의 `(갱신: YYYY-MM-DD)`), 현재 상태 첫 문단(2줄 절삭), 다음 할 일 상위 3건, 진행 중 목록. 파일 없으면 missing.
+  - `91_project_process/NN_*.md`(process 문서) 파싱: 갱신일, 제목의 `[종료]`/`[보류]`, 현재 단계(굵게), 상태 요약 표(상태등·진행률·담당·목표일), 진행 기록 상단 1~2건, 다음 할 일 상위 3건, 블로커. (대응 작업 폴더: `00_Project/NN_*` — 폴더만 있고 process 문서가 없으면 missing)
   - 팀 상태등·진행률·마일스톤: 팀 `10_Dashboard/DASHBOARD.md`·최신 `11_team_doc/report_*.md`에서. 없으면 `reported:false`(미보고), 상태등은 idle.
   - **휴면 판정**: 팀 `handover.md`의 「현재 상태」에 `휴면` 선언이 있으면 `dormant:true` (기한 `휴면 ~YYYY-MM-DD` 또는 `until` 표기 시 `dormantUntil`). 휴면 팀은 STALE로 치지 않는다.
   - **STALE**: 갱신일이 오늘 기준 7일 초과. 갱신일 파싱 실패 시 `git log -1 --format=%as -- {경로}`로 대체.
@@ -48,7 +48,7 @@ Team = { "name":str, "st":"good|warn|crit|idle", "pct":int|null, "milestone":str
 2. **팀 페이지** (각 팀마다): 팀 `10_Dashboard/dashboard.html`이 없거나 셸 버전이 다르면 **루트 파일을 통째로 복사**한 뒤, 마커 사이만 교체 — DATA는 `teams`에 **해당 팀 1개만**, CFG는 `{"brand":"{팀명}","generated":"{오늘}","isTeamPage":true,"backHref":"../../../10_Dashboard/dashboard.html"}`.
 
 ## 5. 마무리
-- 요약 보고: 팀 수, 상태 분포, STALE/휴면 팀, 경고(handover 미작성·process 없음 — 해당 팀 조치 안내).
+- 요약 보고: 팀 수, 상태 분포, STALE/휴면 팀, 경고(handover 미작성·process 문서 없음 — 해당 팀 조치 안내).
 - 커밋을 제안한다: `docs(dashboard): HTML 갱신 {YYYY-MM-DD}`
 
 ※ `/report_root`(6단계)·`/handover_root`(마지막 단계)가 이 절차를 그대로 수행한다 — md 갱신 후 HTML 갱신 순서.

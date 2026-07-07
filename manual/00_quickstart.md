@@ -31,13 +31,13 @@
 
 ```
 0. (팀 관리자) 팀 폴더에서 /new_project my-feature
-   → 00_Project/01_my-feature/process.md 생성
+   → 00_Project/01_my-feature/(작업 폴더) + 91_project_process/01_my-feature.md(process 문서) 생성
 1. 자기 역할 폴더(01_planner / 02_developer / 03_package)에서 claude 실행
    → 공유 폴더(../00_Project 등)는 settings.json이 접근을 허용한다
 2. handover_{역할}.md 를 읽고 작업 — 작업물은 ../00_Project/01_my-feature/ 에
 3. 세션 종료 전 /handover → handover_{역할}.md 갱신
    ★ 프로젝트 관련 항목엔 [01_my-feature] 태그
-4. (팀 관리자) 팀 폴더에서 /handover → 태그가 process.md에 반영 + 팀 취합
+4. (팀 관리자) 팀 폴더에서 /handover → 태그가 process 문서에 반영 + 팀 취합
 ```
 
 ## 시나리오 3 — 주간 보고 (총괄자)
@@ -58,6 +58,6 @@
 ```
 
 ## 꼭 지킬 것 3가지
-1. 팀원은 **자기 역할 폴더에서 세션을 연다** (작업물은 공유 `00_Project/`에). 코드 수정은 `00_Project/{프로젝트}` 안에서만, process.md 갱신은 팀 관리자만.
+1. 팀원은 **자기 역할 폴더에서 세션을 연다** (작업물은 공유 `00_Project/`에). 코드 수정은 `00_Project/{프로젝트}` 안에서만, process 문서(`91_project_process/`) 갱신은 팀 관리자만.
 2. 의미 있는 세션을 마치면 **`/handover`** — 문서가 곧 상태다.
 3. 문서 갱신 후 **커밋** — 이력은 git이 보존한다.

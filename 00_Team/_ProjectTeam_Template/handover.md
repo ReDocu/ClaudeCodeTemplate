@@ -18,7 +18,7 @@
 3. `01_planner/`에서 기획 세션 시작
 
 ## 프로젝트별 요약 (00_Project)
-- (없음 — `/new_project`로 생성. 프로젝트마다 단계/상태 한 줄 + `[process](./00_Project/NN_{프로젝트명}/process.md)` 링크)
+- (없음 — `/new_project`로 생성. 프로젝트마다 단계/상태 한 줄 + `[process](./91_project_process/NN_{프로젝트명}.md)` 링크)
 
 ## 역할별 요약
 ### 기획 (01_planner)
@@ -37,4 +37,4 @@
 ## 핵심 파일 경로
 - `경로` — 역할 한 줄
 
-<!-- 규칙: 이 문서는 팀 폴더의 /handover가 역할 handover들과 프로젝트 process.md들을 취합해 덮어쓰기로 갱신한다. 이력은 git이 보존한다. -->
+<!-- 규칙: 이 문서는 팀 폴더의 /handover가 역할 handover들과 프로젝트 process 문서들(91_project_process/)을 취합해 덮어쓰기로 갱신한다. 이력은 git이 보존한다. -->

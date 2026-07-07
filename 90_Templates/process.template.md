@@ -1,4 +1,4 @@
-<!-- 원본 안내: 프로젝트 process 양식의 원본은 00_Team/_ProjectTeam_Template/00_Project/01_Project01/process.md 이다.
+<!-- 원본 안내: 프로젝트 process 양식의 원본은 00_Team/_ProjectTeam_Template/91_project_process/01_Project01.md 이다.
      /new_project 명령 파일에도 사본이 내장되어 있다. 수정 시 세 곳을 함께 갱신한다. -->
 
 # Process — {프로젝트명} (갱신: {YYYY-MM-DD})
@@ -27,7 +27,8 @@
 ## 블로커
 - (막힌 것 — 누가/무엇이 필요한지, 언제부터. 없으면 "없음")
 
-<!-- 규칙: process.md는 프로젝트의 유일한 상태 문서다 (CLAUDE.md·handover.md를 따로 두지 않는다).
+<!-- 규칙: 이 문서(91_project_process/NN_{프로젝트명}.md)가 프로젝트의 유일한 상태 문서다
+     (프로젝트 폴더 00_Project/NN_{프로젝트명}/ 안에는 CLAUDE.md·handover.md·process.md를 두지 않는다).
      갱신은 팀 관리자 전담 — 팀원은 handover_{역할}.md에 [NN_프로젝트명] 태그로 기록하고,
      팀 관리자가 팀 /handover 취합 시 여기에 반영한다 (수명주기 변경은 [팀 관리자] 표기).
      종료 시 제목 앞에 [종료], 보류 시 [보류]를 붙인다. 이력은 git이 보존한다. -->
