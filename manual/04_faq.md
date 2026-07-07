@@ -1,5 +1,20 @@
 # FAQ
 
+## Q. 팀 폴더 안의 01_planner / 02_developer / 03_package는 뭔가요?
+팀의 **역할 작업 공간**입니다. 기획(01_planner) → 개발(02_developer) → 패키지(03_package) 순으로 작업이 흐르고,
+각 역할 폴더에서 세션을 열어 작업한 뒤 `/handover`로 `handover_{역할}.md`를 갱신합니다.
+코드 수정은 `02_developer`에서만 합니다. 역할 간 전달은 handover의 「다음 할 일」로 합니다.
+상세: [07_individual_manager.md](07_individual_manager.md)
+
+## Q. 표준 역할(planner/developer/package)과 다른 구성이 필요해요.
+커스텀 역할 폴더를 추가할 수 있습니다 (`NN_{역할}` 권장, 예: `04_designer`).
+단, **직접 명령(세션)을 주는 폴더에는 반드시 `CLAUDE.md`(역할 정의)와 `handover_{역할}.md`를 만들어야** 합니다.
+필수 폴더(`00_result_output`/`10_Dashboard`/`11_team_doc`)와 팀 `CLAUDE.md`는 삭제·개명하면 안 됩니다.
+
+## Q. 구현(Builder)은 누가 하나요?
+별도 Builder 에이전트는 없습니다. **팀 관리자가 Builder 역할을 겸임**하며, 구현 작업은 `02_developer/` 공간에서 수행합니다.
+분석 4역할(Explorer 등)은 분석 전용을 유지합니다.
+
 ## Q. 팀 폴더에서 세션을 열었는데 슬래시 명령어(/handover 등)가 안 보여요.
 명령어는 루트 `.claude/commands/`에 정의되어 있고, 이 저장소가 하나의 git 저장소이므로 하위 폴더 세션에서도 인식되는 것이 기대 동작입니다.
 만약 인식되지 않으면 (환경에 따라 다를 수 있음):
@@ -11,7 +26,7 @@
 총괄자(루트 세션)에게 요청해 `handover_root.md`나 해당 팀 handover의 내용을 전달받으세요.
 
 ## Q. 팀명을 한글로 써도 되나요?
-동작은 하지만 파일명·링크 호환성 리스크가 있어 **영문/숫자/하이픈을 권장**합니다.
+**영문만 사용하는 것이 규칙**입니다 (팀명·폴더·파일명 공통). 한글은 특이 경우에 한해 허용하되 **최대한 짧게** 씁니다.
 `/new_team`이 한글 팀명 입력 시 리스크를 안내하고 확인을 받습니다.
 
 ## Q. handover가 자꾸 길어져요.
@@ -28,8 +43,10 @@ handover는 "다음 사람이 5분 안에 이어받게 하는 문서"입니다. 
 반영하고 싶은 내용이 있으면 팀 handover/report에 쓰세요 — 다음 `/report_root` 때 반영됩니다.
 
 ## Q. 표준 양식을 바꾸고 싶어요.
-`90_Templates/`의 원본을 수정하고, **같은 양식이 내장된 `.claude/commands/*.md`도 함께** 수정하세요.
-(하위 세션은 90_Templates에 접근할 수 없어 명령어 파일에 사본이 내장되어 있습니다.)
+- **문서 양식**(handover·report·result): `90_Templates/`의 원본을 수정하고, **같은 양식이 내장된 `.claude/commands/*.md`도 함께** 수정하세요.
+  (하위 세션은 90_Templates에 접근할 수 없어 명령어 파일에 사본이 내장되어 있습니다.)
+- **팀 폴더 구조**: 원본은 `00_Team/ProjectTeam_양식[팀명]/`입니다. 이 폴더를 수정하면 이후 `/new_team`이 만드는 팀에 반영됩니다.
+  (예비 사본인 `90_Templates/CLAUDE.team.template.md`도 함께 갱신하세요.)
 
 ## Q. 프로젝트가 끝났어요. 어떻게 정리하나요?
 1. 프로젝트 세션에서 마지막 `/handover` 실행, handover.md 상단에 `[종료]` 표기.
