@@ -14,6 +14,7 @@
 | `/pipeline {주제}` | 어디서나 | Explorer→Educator→Critic→Advisor 4단계 분석 | 결과물 md + 중간 산출물 |
 | `/new_team {팀명}` | 루트 | **역할 구성(표준 3역할/커스텀) 확인 후** 팀 스캐폴딩 — 커스텀이면 역할별 3종(CLAUDE.md·handover·settings.json) 자동 생성 | `ProjectTeam_{팀명}/` 전체 구조 |
 | `/new_project {이름}` | 팀 폴더 | 프로젝트 스캐폴딩 (번호 자동 증가) | `00_Project/NN_{이름}/process.md` |
+| `/compatibility_test {이름}` | 팀 폴더 | 외부·구버전에서 가져온 프로젝트의 호환성 점검 (process.md 계약·불변식·git 경계) — 보정은 승인 후 | 점검 보고 (+ 보정) |
 
 ## 위치 규칙
 - 각 명령은 실행 전 위치를 판별하고, 허용되지 않는 위치에서는 이유와 함께 거부한다.

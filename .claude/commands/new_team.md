@@ -69,6 +69,7 @@ ProjectTeam_{팀명}/
 
 ## 4. 역할 사후 추가·변경 (생성 후 구성을 바꿀 때 — 안내용)
 - 역할 폴더는 생성 후에도 추가·변경할 수 있다 (`NN_{역할}` 권장, 예: `04_designer`).
+- **역할 작업 공간은 자기완결 모듈이다** (3종: CLAUDE.md·handover·settings.json) — **표준 역할을 추가할 때는 양식 폴더에서 해당 역할 폴더만 통째로 복사**하면 된다 (예: `00_Team/_ProjectTeam_Template/01_planner/` → 팀 폴더). 복사 후 `{팀명}`·`{YYYY-MM-DD}` 치환만 잊지 말 것.
 - **직접 명령(세션)을 주는 폴더에는 반드시 3종을 만든다**: `CLAUDE.md`(역할 정의 — `90_Templates/CLAUDE.role.template.md`에서 출발) + `handover_{역할}.md` + 공유 접근이 필요하면 `.claude/settings.json`(기존 역할 폴더에서 복사).
 - 역할을 바꾸면 팀 `CLAUDE.md`의 역할 표·매트릭스·작업 흐름도 함께 갱신한다.
 - 필수 폴더(`00_Project`/`10_Dashboard`/`11_team_doc`/`90_result_output`)와 팀 `CLAUDE.md`는 삭제·개명하지 않는다.

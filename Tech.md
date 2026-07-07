@@ -56,7 +56,7 @@
 ├── main_manual.md                처음 사용자용 안내서 (진입점)
 ├── manual/                       00~04 공통 + 05~07 맥락별 매뉴얼
 └── .claude/
-    ├── commands/                 명령 8종
+    ├── commands/                 명령 10종
     ├── agents/                   분석 에이전트 4종
     └── settings.json             읽기 명령 allowlist
 ```
@@ -103,6 +103,7 @@
 | `/status` | 루트/팀 | 해당 위치 `DASHBOARD.md` | 없음 (조회 전용) |
 | `/pipeline` | 어디서나 | 분석 대상 | 결과물 md (루트→`11_doc_result`, 팀→`11_team_doc`, 역할→현재 폴더) |
 | `/dashboard` | 루트 | 전 팀 md 스캔 (읽기 전용) | HTML 재생성: 루트 + 전 팀 `dashboard.html` |
+| `/compatibility_test` | 팀 폴더 | 대상 프로젝트 폴더 + .gitignore | 호환성 점검 보고 (보정은 사용자 승인 후) |
 
 위치 판별 규칙: 루트 = `00_Team/` 보유 · 팀 = `.../00_Team/{팀폴더}` · 역할 = 팀 직속 중 필수 4폴더 제외. **프로젝트 폴더 직접 세션은 폐지** (v1.4) — 팀원은 역할 세션의 공유 접근으로 작업한다. (팀에도 `10_Dashboard`가 있으므로 **루트 판별에 10_Dashboard를 쓰지 않는다**.)
 
@@ -122,7 +123,7 @@
 | # | 점검 항목 | 확인 방법 |
 |---|---|---|
 | 1 | 루트 필수 파일 존재 | `CLAUDE.md` `PRD.md` `handover_root.md` `10_Dashboard/DASHBOARD.md` `11_doc_result/INDEX.md` 존재 확인 |
-| 2 | 명령 9종·에이전트 4종 | `.claude/commands/` 9개 · `.claude/agents/` 4개 파일 수 확인 |
+| 2 | 명령 10종·에이전트 4종 | `.claude/commands/` 10개 · `.claude/agents/` 4개 파일 수 확인 |
 | 3 | 양식 폴더 무결성 | 양식 폴더에 필수 4폴더 + CLAUDE.md + handover.md + 역할 3공간(각 CLAUDE.md·handover·`.claude/settings.json`) + `00_Project/01_Project01/process.md` |
 | 4 | 각 팀 구조 준수 | 팀마다 필수 4폴더 존재, 역할 폴더에 CLAUDE.md+handover+settings.json, `00_Project/NN_*`마다 process.md 단독 |
 | 5 | 구식 참조 없음 | `00_result_output` · `handover_{팀명}` · `{메인폴더명}_` 검색 → PRD 변경 이력 외 0건 |

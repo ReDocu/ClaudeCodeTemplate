@@ -317,6 +317,17 @@
 | 동작 | `/new_team`: **역할 구성(표준 3역할 또는 커스텀)·팀 목표 확인** → 팀 구조 양식 `00_Team/_ProjectTeam_Template/`을 `ProjectTeam_{팀명}/`으로 복사, 예시 프로젝트 삭제, (커스텀이면) 역할별 3종 자동 생성(CLAUDE.md는 `90_Templates/CLAUDE.role.template.md`) + 팀 CLAUDE.md 역할 표·매트릭스 갱신, **팀 CLAUDE.md 「팀 목표」 기입**, `{팀명}`·날짜 치환. `/new_project`: `00_Project/NN_{프로젝트명}/process.md` 스캐폴딩 (번호 자동 증가, 내장 양식) |
 | 목적 | 수동 생성으로 표준이 깨지는 것을 방지 |
 
+### 7.8 `/dashboard` (스텁)
+사양은 [PRD_dashboard.md](PRD_dashboard.md)에 분리 — HTML 대시보드 셸의 DATA 블록 교체 절차의 정본. `/report_root`·`/handover_root`가 이 절차를 참조한다.
+
+### 7.9 `/compatibility_test {프로젝트명}`
+| 항목 | 내용 |
+|---|---|
+| 실행 위치 | 팀 폴더 |
+| 동작 | 외부·구버전에서 가져온 프로젝트가 데이터 계약과 호환되는지 8항목 점검(폴더명 · process.md 존재/구조 · 파싱 앵커 · 불변식(CLAUDE/handover 잔존) · git 경계(process.md만 추적) · 명명 · 태그 연동) → ✅/⚠/❌ 표 보고 → 사용자 승인 항목만 보정(process.md 생성·보완, 개명, 통합). **git 상태는 자동 변경하지 않음** |
+| 산출물 | 점검 보고 (+ 승인 시 보정된 process.md 등) |
+| 목적 | 외부 프로젝트 반입·템플릿 버전 업그레이드 시 데이터 호환성 보장 |
+
 ## 8. 문서 표준
 
 ### 8.1 handover 표준 양식 (`90_Templates/handover.template.md`)
