@@ -14,6 +14,24 @@
 
 **1인 사용 기본 모델 (2축)**: 팀 = 사업 영역 분류(예: WebDev / Creative / DataOps) · 역할 = 작업 모드(기획 → 개발 → 패키지) · 루트 = 주간 포트폴리오 리뷰. 상세: main_manual 8장.
 
+## 미리보기
+
+**HTML 대시보드** — `/report_root` 한 번이면 전 팀 현황이 단일 HTML 파일로 갱신됩니다. 외부 도구·네트워크 없이 브라우저로 열기만 하면 됩니다 (아래는 샘플 데이터 화면):
+
+![관리자 대시보드 — 전 팀 KPI·팀 목록·크로스팀 블로커](img/dashboard_admin.png)
+
+팀을 클릭하면 드릴다운 — 역할별 현황과 handover 요약이 펼쳐집니다:
+
+![팀 대시보드 — 역할별 현황·다음 할 일](img/dashboard_team.png)
+
+**폴더가 곧 역할** — 같은 팀이라도 어느 폴더에서 세션을 여는지에 따라 팀 관리 / 기획 / 개발 / 패키지 모드로 나뉩니다:
+
+![팀·역할별 세션 운영 — 팀 관리·Planner·Developer·package 4분할](img/team_role_sessions.png)
+
+**루트 = 총괄자** — `/status`로 전체 현황을 조회하고 `/new_team`으로 팀을 만듭니다:
+
+![루트 세션 — /status 조회 후 /new_team 실행](img/root_session.png)
+
 ## 빠른 시작
 
 ```
@@ -33,6 +51,7 @@
 ├── 11_doc_result/     최종 결과물
 ├── 90_Templates/      표준 양식 원본
 ├── 99_Archive/        종료 프로젝트·구버전 보관
+├── img/               README 이미지
 └── manual/            상세 매뉴얼 (00~07)
 ```
 
