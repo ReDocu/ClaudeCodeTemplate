@@ -17,7 +17,7 @@ argument-hint: {프로젝트명}
 ## 2. 생성 — `00_Project/NN_{프로젝트명}/process.md`
 
 process.md가 프로젝트의 **유일한 상태 문서**다 (CLAUDE.md·handover.md를 따로 만들지 않는다).
-표준 양식 (원본: `00_Team/ProjectTeam_양식[팀명]/00_Project/01_Project01/process.md` — 여기 내장):
+표준 양식 (원본: `00_Team/_ProjectTeam_Template/00_Project/01_Project01/process.md` — 여기 내장):
 
 ```markdown
 # Process — {프로젝트명} (갱신: {YYYY-MM-DD})
@@ -46,9 +46,10 @@ process.md가 프로젝트의 **유일한 상태 문서**다 (CLAUDE.md·handove
 ## 블로커
 - 없음
 
-<!-- 규칙: process.md는 프로젝트의 유일한 상태 문서다. 갱신은 팀 관리자 전담 —
-     팀원은 handover_{역할}.md에 [NN_프로젝트명] 태그로 기록하고, 팀 관리자가 팀 /handover 취합 시 반영한다.
-     종료 시 제목 앞에 [종료], 보류 시 [보류] → 아카이브 후보. -->
+<!-- 규칙: process.md는 프로젝트의 유일한 상태 문서다 (CLAUDE.md·handover.md를 따로 두지 않는다).
+     갱신은 팀 관리자 전담 — 팀원은 handover_{역할}.md에 [NN_프로젝트명] 태그로 기록하고,
+     팀 관리자가 팀 /handover 취합 시 여기에 반영한다 (수명주기 변경은 [팀 관리자] 표기).
+     종료 시 제목 앞에 [종료], 보류 시 [보류]를 붙인다. 이력은 git이 보존한다. -->
 ```
 
 생성 시 `{프로젝트명}`·`{YYYY-MM-DD}`(오늘)를 치환하고, 현재 상태를 "프로젝트 생성 직후 — 작업 전" 맥락으로 채운다.

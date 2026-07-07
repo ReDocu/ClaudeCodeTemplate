@@ -18,8 +18,7 @@
 3. `01_planner/`에서 기획 세션 시작
 
 ## 프로젝트별 요약 (00_Project)
-### 01_{프로젝트명}
-- 단계/상태: 미작성 — [process](./00_Project/01_Project01/process.md)
+- (없음 — `/new_project`로 생성. 프로젝트마다 단계/상태 한 줄 + `[process](./00_Project/NN_{프로젝트명}/process.md)` 링크)
 
 ## 역할별 요약
 ### 기획 (01_planner)
@@ -28,6 +27,9 @@
 - 요약: 미작성 — [handover](./02_developer/handover_developer.md)
 ### 패키지 (03_package)
 - 요약: 미작성 — [handover](./03_package/handover_package.md)
+
+## 미분류 (보류함)
+- (태그 미확정 항목 보관 — 요약 + 출처(역할·날짜). 이후 취합에서 분류되면 제거. 항목이 없으면 이 섹션 생략)
 
 ## 주의사항 / 함정
 - (다음 사람이 반드시 알아야 할 것 — 이유 포함)

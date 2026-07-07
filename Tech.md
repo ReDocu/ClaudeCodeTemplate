@@ -27,7 +27,7 @@
 | 영역 | 상태 |
 |---|---|
 | 구조·명령·문서 (M1~M5) | ✅ 구현 완료 (v1.3 구조 반영) |
-| 팀 | 0개 — `00_Team/`에 양식 폴더(`ProjectTeam_양식[팀명]`)만 존재 |
+| 팀 | 0개 — `00_Team/`에 양식 폴더(`_ProjectTeam_Template`)만 존재 |
 | 대시보드 | 루트 `DASHBOARD.md` 초기 상태 (팀 없음) |
 | HTML 대시보드 | ✅ **구현됨** (C안 · v1.1 셸+DATA) — 셸 `10_Dashboard/dashboard.html`(단일 원본)의 `DASHBOARD-DATA` 블록을 `/dashboard`·`/report_root`·`/handover_root`가 교체. **파이썬 불필요** (구 생성기: `99_Archive/2026-07-07_dashboard_generator/`). D4(실전 검증)만 대기 |
 | 실전 검증 (M6) | ⏳ 대기 |
@@ -43,7 +43,7 @@
 ├── handover_root.md          전체 인수인계 취합본                [필수]
 ├── 00_Team/
 │   ├── README.md
-│   └── ProjectTeam_양식[팀명]/   팀 구조 양식 원본 (/new_team이 복사)
+│   └── _ProjectTeam_Template/    팀 구조 양식 원본 (/new_team이 복사)
 │       ├── CLAUDE.md · handover.md
 │       ├── 00_Project/README.md + 01_Project01/process.md
 │       ├── 01_planner · 02_developer · 03_package/  (각 CLAUDE.md + handover_{역할}.md)
@@ -114,7 +114,7 @@
 4. 쓰기 주체 단일화: 팀 대시보드=`/report`, 루트 대시보드=`/report_root`, `90_result_output`=패키지 역할. 손 편집 금지.
 5. 명명: 영문만(한글은 특이 경우·최단), 날짜 `YYYY-MM-DD`, 결과물 `YYYY-MM-DD_{팀명}_{제목}.md`.
 6. 분석 4역할(Explorer/Educator/Critic/Advisor)은 분석 전용 — 파일 수정 금지. 별도 Builder 에이전트 없음.
-7. 양식 폴더(`ProjectTeam_양식[팀명]`)는 팀이 아니다 — 보고·취합·대시보드 집계에서 제외.
+7. 양식 폴더(`_ProjectTeam_Template`)는 팀이 아니다 — 언더스코어 접두로 팀 스캔 패턴(`ProjectTeam_*`)에서 자연 제외되며, 보고·취합·대시보드 집계 대상이 아니다.
 8. md가 진실의 원천 — HTML(예정)은 열람용 뷰.
 
 ## 7. 상태 점검 체크리스트 (루트 세션에서)
@@ -134,7 +134,7 @@
 
 | 원본 | 함께 갱신할 사본 |
 |---|---|
-| 양식 `ProjectTeam_양식[팀명]/CLAUDE.md` | `90_Templates/CLAUDE.team.template.md` |
+| 양식 `_ProjectTeam_Template/CLAUDE.md` | `90_Templates/CLAUDE.team.template.md` |
 | 양식 `00_Project/01_Project01/process.md` | `90_Templates/process.template.md` + `/new_project` 내장본 |
 | 양식 역할 `.claude/settings.json` (공유 접근) | 3개 역할 폴더에 동일 내용 — 한쪽 수정 시 셋 다 |
 | `90_Templates/handover.template.md` | `/handover` 내장본 |

@@ -10,7 +10,7 @@ description: 전체 인수인계 문서 갱신 — 모든 팀의 handover를 취
 현재 폴더에 `00_Team/`과 `10_Dashboard/`가 있는지 확인한다. 없으면 이 명령은 루트 전용이며 하위 세션은 상위에 접근할 수 없다고 안내하고 **중단**한다. (팀/프로젝트 폴더에서는 `/handover`를 사용.)
 
 ## 2. 수집
-- `00_Team/` 아래 모든 팀 폴더를 열거한다 (`ProjectTeam_{팀명}`). 양식 폴더(`ProjectTeam_양식[팀명]`)는 제외한다.
+- `00_Team/` 아래 모든 팀 폴더를 열거한다 (`ProjectTeam_{팀명}`). 양식 폴더(`_ProjectTeam_Template`)는 언더스코어 접두라 패턴에 걸리지 않지만 혹시 걸려도 제외한다.
 - 각 팀의 `handover.md`(팀 인수인계)를 읽는다. 없으면 역할 폴더들(`01_planner`/`02_developer`/`03_package`)의 `handover_{역할}.md`라도 확인하고, 팀 handover는 "미작성"으로 기록한다.
 
 ## 3. `handover_root.md` 작성 (덮어쓰기)

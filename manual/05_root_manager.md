@@ -53,9 +53,9 @@
 - 팀·역할 폴더의 작업 파일 직접 수정 (조율이 필요하면 해당 팀 세션에 지시를 전달).
 - 대시보드 수동 편집 — `/report_root`가 덮어쓴다. 반영할 내용은 팀 handover/report에 쓰게 한다.
 - 사용자 확인 없는 아카이브 이동·팀 폴더 삭제.
-- 양식 폴더(`ProjectTeam_양식[팀명]`)를 팀으로 취급하는 것 — 보고·취합 대상이 아니다.
+- 양식 폴더(`_ProjectTeam_Template`)를 팀으로 취급하는 것 — 보고·취합 대상이 아니다.
 
 ## 6. 표준 양식을 바꾸고 싶을 때
 
-- 팀 구조: `00_Team/ProjectTeam_양식[팀명]/`을 수정 → 이후 `/new_team`에 반영. 예비 사본 `90_Templates/CLAUDE.team.template.md`도 함께 갱신.
+- 팀 구조: `00_Team/_ProjectTeam_Template/`을 수정 → 이후 `/new_team`에 반영. 예비 사본 `90_Templates/CLAUDE.team.template.md`도 함께 갱신.
 - 문서 양식: `90_Templates/` 원본 + 같은 양식이 내장된 `.claude/commands/*.md`를 함께 수정.

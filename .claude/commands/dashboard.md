@@ -13,7 +13,7 @@ HTML 대시보드를 갱신한다. md가 진실의 원천이며 이 명령은 **
 
 ## 2. 스캔·파싱 (읽기 전용 — PRD_dashboard.md 5장 규칙)
 
-- **팀 열거**: `00_Team/ProjectTeam_*` — **양식 폴더(`ProjectTeam_양식[팀명]`) 제외.**
+- **팀 열거**: `00_Team/ProjectTeam_*` — 양식 폴더(`_ProjectTeam_Template`)는 언더스코어 접두라 패턴에 걸리지 않는다 (**혹시 걸려도 제외**).
 - 팀마다:
   - 역할 폴더 열거(필수 폴더 `00_Project`/`10_Dashboard`/`11_team_doc`/`90_result_output` 제외) → 각 `handover_{역할}.md` 파싱: 갱신일(제목의 `(갱신: YYYY-MM-DD)`), 현재 상태 첫 문단(2줄 절삭), 다음 할 일 상위 3건, 진행 중 목록. 파일 없으면 missing.
   - `00_Project/NN_*/process.md` 파싱: 갱신일, 제목의 `[종료]`/`[보류]`, 현재 단계(굵게), 상태 요약 표(상태등·진행률·담당·목표일), 진행 기록 상단 1~2건, 다음 할 일 상위 3건, 블로커.

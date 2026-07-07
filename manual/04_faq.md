@@ -54,9 +54,12 @@ handover는 "다음 사람이 5분 안에 이어받게 하는 문서"입니다. 
 ## Q. 표준 양식을 바꾸고 싶어요.
 - **문서 양식**(handover·report·result): `90_Templates/`의 원본을 수정하고, **같은 양식이 내장된 `.claude/commands/*.md`도 함께** 수정하세요.
   (하위 세션은 90_Templates에 접근할 수 없어 명령어 파일에 사본이 내장되어 있습니다.)
-- **팀 폴더 구조**: 원본은 `00_Team/ProjectTeam_양식[팀명]/`입니다. 이 폴더를 수정하면 이후 `/new_team`이 만드는 팀에 반영됩니다.
+- **팀 폴더 구조**: 원본은 `00_Team/_ProjectTeam_Template/`입니다. 이 폴더를 수정하면 이후 `/new_team`이 만드는 팀에 반영됩니다.
   (예비 사본인 `90_Templates/CLAUDE.team.template.md`도 함께 갱신하세요.)
 
 ## Q. 프로젝트가 끝났어요. 어떻게 정리하나요?
-1. 프로젝트 세션에서 마지막 `/handover` 실행, `process.md` 제목 앞에 `[종료]` 표기.
-2. 다음 `/report_root`가 아카이브 후보로 제안 → 사용자 확인 후 `99_Archive/teams/`로 이동.
+1. **팀 관리자**(팀 폴더 세션)가 process.md의 완료 조건 충족을 확인합니다.
+2. **패키지 역할**이 최종 작업물을 `90_result_output/`에 백업합니다 (무엇을 넣는지는 해당 폴더 README의 권장 3종 참조).
+3. 팀 관리자가 process.md **제목 앞에 `[종료]`** 표기 + 진행 기록에 `[팀 관리자]` 한 줄을 남깁니다.
+4. 다음 `/report_root`가 아카이브 후보로 제안 → 사용자 확인 후 `99_Archive/` 규칙대로 이동합니다.
+   **주의**: 작업물 전체가 아니라 **process.md·최종 문서만** 이동합니다 — 이동 전 처리는 `99_Archive/README.md` 참조.

@@ -52,7 +52,7 @@
 | 공유 폴더 | 역할 세션 전원이 접근하는 팀 내 폴더 — `00_Project`(작업물) / `11_team_doc`(문서 취합) / `90_result_output`(완료 백업, 읽기). 타 역할 폴더·`10_Dashboard`는 비공유 |
 | 프로젝트 | 기획→개발→패키지를 관통하는 작업 단위. `00_Project/NN_{프로젝트명}/`에서 팀 직속으로 관리 (독립 git 저장소 연결 가능) |
 | process.md | 프로젝트의 **유일한 상태 문서** — 목표/완료 조건·현재 단계·진행 기록·다음 할 일·블로커. **갱신은 팀 관리자 전담** (팀원 handover의 `[NN_프로젝트명]` 태그를 취합해 반영). 대시보드 파싱 소스를 겸한다 |
-| 팀 구조 양식 | `00_Team/ProjectTeam_양식[팀명]/` — `/new_team`이 복사하는 팀 폴더 구조의 원본 |
+| 팀 구조 양식 | `00_Team/_ProjectTeam_Template/` — `/new_team`이 복사하는 팀 폴더 구조의 원본 (언더스코어 접두 = 팀 스캔에서 자연 제외) |
 | handover | 다음 세션/담당자를 위한 인수인계 문서. **컨텍스트를 비웠을 때 다시 읽어 맥락을 복원하는 용도** — 작업 시작 시 읽고, 종료 시 갱신한다 |
 | report | 대시보드 갱신을 위한 정기 현황 보고 문서 |
 | 결과물 | `11_doc_result`에 저장되는 최종 산출 문서 |
@@ -69,7 +69,7 @@
 ├── Tech.md                        # 기술 문서 — 템플릿 상태 점검 가이드
 │
 ├── 00_Team/                       # 팀별 작업 공간
-│   ├── ProjectTeam_양식[팀명]/     # 팀 구조 양식 원본 (/new_team이 복사)
+│   ├── _ProjectTeam_Template/      # 팀 구조 양식 원본 (/new_team이 복사)
 │   └── ProjectTeam_{팀명}/
 │       ├── CLAUDE.md              # 팀 관리자 (Builder 겸임·process 전담)  [필수]
 │       ├── handover.md            # 팀 인수인계 (역할·프로젝트 취합)
@@ -156,7 +156,7 @@
 
 ### 6.2 00_Team — 팀 작업 공간
 - 팀 폴더 명명: `ProjectTeam_{팀명}` (팀명은 **영문만** — 한글은 특이 경우에 한해 최대한 짧게).
-- 팀 구조 양식: `00_Team/ProjectTeam_양식[팀명]/`이 원본. `/new_team`이 이를 복사하고 `{팀명}`·`{YYYY-MM-DD}`를 치환한다.
+- 팀 구조 양식: `00_Team/_ProjectTeam_Template/`이 원본. `/new_team`이 이를 복사하고 예시 프로젝트(`01_Project01`)를 삭제한 뒤 `{팀명}`·`{YYYY-MM-DD}`를 치환한다.
 - **필수 구성** (모든 팀 공통 — 삭제·개명 금지):
 
 | 구성 | 성격 | 용도 |
@@ -241,7 +241,7 @@
 
 ### 6.6 90_Templates [추가 제안]
 - 문서 양식(handover·report·result)의 원본. 명령어들은 문서 생성 시 반드시 이 템플릿에서 출발한다.
-- 팀 폴더 구조의 원본은 `00_Team/ProjectTeam_양식[팀명]/`이다 — `/new_team`이 이를 복사·치환하여 스캐폴딩한다. `90_Templates`의 CLAUDE 템플릿은 양식 폴더 유실 시의 예비 사본으로 함께 갱신한다.
+- 팀 폴더 구조의 원본은 `00_Team/_ProjectTeam_Template/`이다 — `/new_team`이 이를 복사·치환하여 스캐폴딩한다. `90_Templates`의 CLAUDE 템플릿은 양식 폴더 유실 시의 예비 사본으로 함께 갱신한다.
 - `/new_project`는 명령어 파일에 내장된 양식으로 스캐폴딩한다 (역할 세션은 `90_Templates` 접근 불가).
 
 ### 6.7 99_Archive [추가 제안]
@@ -314,7 +314,7 @@
 | 항목 | 내용 |
 |---|---|
 | 실행 위치 | `/new_team`은 루트, `/new_project`는 팀 폴더 |
-| 동작 | `/new_team`: 팀 구조 양식 `00_Team/ProjectTeam_양식[팀명]/`을 `ProjectTeam_{팀명}/`으로 복사하고 `{팀명}`·날짜 치환. `/new_project`: `00_Project/NN_{프로젝트명}/process.md` 스캐폴딩 (번호 자동 증가, 내장 양식) |
+| 동작 | `/new_team`: 팀 구조 양식 `00_Team/_ProjectTeam_Template/`을 `ProjectTeam_{팀명}/`으로 복사하고 예시 프로젝트 삭제 후 `{팀명}`·날짜 치환. `/new_project`: `00_Project/NN_{프로젝트명}/process.md` 스캐폴딩 (번호 자동 증가, 내장 양식) |
 | 목적 | 수동 생성으로 표준이 깨지는 것을 방지 |
 
 ## 8. 문서 표준

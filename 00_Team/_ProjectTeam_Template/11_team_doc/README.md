@@ -14,7 +14,7 @@
 
 ## 명령 산출물 (폴더 바로 아래 — 이동 금지)
 
-- **팀 보고서 `report_{YYYY-MM-DD}.md`** — `/report`가 생성, `/report_root`가 수거. 수명 폴더에 넣지 않는다 (명령이 이 위치를 파싱).
+- **팀 보고서 `report_{날짜}.md`** (날짜는 YYYY-MM-DD) — `/report`가 생성, `/report_root`가 수거. 수명 폴더에 넣지 않는다 (명령이 이 위치를 파싱).
 - `/pipeline` 분석 결과.
 
 ## 규칙

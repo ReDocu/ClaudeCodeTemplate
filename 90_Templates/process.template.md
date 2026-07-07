@@ -1,4 +1,4 @@
-<!-- 원본 안내: 프로젝트 process 양식의 원본은 00_Team/ProjectTeam_양식[팀명]/00_Project/01_Project01/process.md 이다.
+<!-- 원본 안내: 프로젝트 process 양식의 원본은 00_Team/_ProjectTeam_Template/00_Project/01_Project01/process.md 이다.
      /new_project 명령 파일에도 사본이 내장되어 있다. 수정 시 세 곳을 함께 갱신한다. -->
 
 # Process — {프로젝트명} (갱신: {YYYY-MM-DD})

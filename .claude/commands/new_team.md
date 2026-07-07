@@ -16,7 +16,7 @@ argument-hint: {팀명}
 
 ## 2. 생성 — 양식 폴더 복사
 
-팀 구조의 원본은 `00_Team/ProjectTeam_양식[팀명]/`이다.
+팀 구조의 원본은 `00_Team/_ProjectTeam_Template/`이다. (언더스코어 접두 — 팀 스캔 패턴 `ProjectTeam_*`에 걸리지 않는 양식 폴더)
 
 1. 양식 폴더 전체를 `00_Team/ProjectTeam_{팀명}/`으로 복사한다. 표준 구조:
 
@@ -26,7 +26,7 @@ ProjectTeam_{팀명}/
 ├── handover.md                   # 팀 인수인계 (역할·프로젝트 취합)
 ├── 00_Project/                   # 진행 중 프로젝트 작업물 (공유)              [필수]
 │   ├── README.md                 #   규칙: NN_{프로젝트명}/process.md · git 연결
-│   └── 01_Project01/process.md   #   양식 예시 (실제 팀에선 /new_project로 생성)
+│   └── 01_Project01/process.md   #   양식 예시 — 복사 후 삭제 (아래 2단계)
 ├── 01_planner/                   # 기획·디자인 담당
 │   ├── CLAUDE.md · handover_planner.md
 │   └── .claude/settings.json     #   공유 폴더 접근 허용 (00_Project·11_team_doc·90_result_output)
@@ -42,8 +42,9 @@ ProjectTeam_{팀명}/
 └── 90_result_output/             # 완료 후 백업 (패키지 역할 쓰기 주체)         [필수]
 ```
 
-2. 복사된 모든 파일에서 플레이스홀더를 치환한다: `{팀명}` → 팀명, `{YYYY-MM-DD}` → 오늘 날짜.
-3. 양식 폴더가 없으면(삭제·이동된 경우) 위 구조를 직접 생성하되, CLAUDE.md·handover 내용은 `90_Templates/CLAUDE.team.template.md`·`handover.template.md`·`process.template.md`에서 출발한다.
+2. **복사한 새 팀에서 양식 예시 프로젝트 `00_Project/01_Project01/`을 삭제한다** — 첫 실제 프로젝트가 01번을 갖고, 플레이스홀더 예시가 보고·대시보드에 유령 프로젝트로 잡히지 않도록. (예시 원본은 양식 폴더에만 유지 — process 양식의 동기화 지점이다.)
+3. 복사된 모든 파일에서 플레이스홀더를 치환한다: `{팀명}` → 팀명, `{YYYY-MM-DD}` → 오늘 날짜. (반드시 2단계 삭제 **후에** 치환한다.)
+4. 양식 폴더가 없으면(삭제·이동된 경우) **git 이력에서 복원하는 것을 우선 안내**한다: `git checkout {최근 커밋} -- 00_Team/_ProjectTeam_Template`. 복원이 불가능할 때만 위 구조를 직접 생성하되, CLAUDE.md·handover·process 내용은 `90_Templates/CLAUDE.team.template.md`·`handover.template.md`·`process.template.md`에서 출발한다 (역할 문서·settings.json은 이 템플릿들로 재구성할 수 없으므로 git 복원이 우선이다).
 
 ## 3. 커스텀 역할 안내 (표준 양식과 다른 구성이 필요할 때)
 - 역할 폴더는 팀에 맞게 추가·변경할 수 있다 (`NN_{역할}` 권장, 예: `04_designer`).

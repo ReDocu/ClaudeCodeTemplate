@@ -14,7 +14,7 @@
 
 ## 팀 폴더 내부 구조
 
-팀 폴더는 `/new_team`이 양식 원본 `00_Team/ProjectTeam_양식[팀명]/`을 복사해 만든다:
+팀 폴더는 `/new_team`이 양식 원본 `00_Team/_ProjectTeam_Template/`을 복사해 만든다:
 
 ```
 00_Team/ProjectTeam_{팀명}/

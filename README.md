@@ -27,7 +27,7 @@
 
 ```
 (루트)
-├── 00_Team/           팀 작업 공간 (ProjectTeam_{팀명} · 양식: ProjectTeam_양식[팀명])
+├── 00_Team/           팀 작업 공간 (ProjectTeam_{팀명} · 양식: _ProjectTeam_Template)
 ├── 01~04_*/           분석 역할 (Explorer·Educator·Critic·Advisor — /pipeline)
 ├── 10_Dashboard/      전체 현황판 (dashboard.html — 자동 생성, 직접 수정 금지)
 ├── 11_doc_result/     최종 결과물
