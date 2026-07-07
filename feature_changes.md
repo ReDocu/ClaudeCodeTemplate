@@ -1,7 +1,7 @@
 # 기능 변경 리스트 — v1.5 정체성(1인 다프로젝트 운영) 기준 (2026-07-07)
 
-> 근거: 사용성 테스트 2회 — `interview.csv`(P1~P5, 구조 전반) + `interview01.csv`(P6~P10, 1인 모드 검증), 총 10명·80건.
-> 우선순위 산정은 `interview_priority.md`와 동기화. ID는 `F##`(기능), 근거의 `#N`은 우선순위표 이슈 번호.
+> 근거: 사용성 테스트 2회 — interview.csv(P1~P5, 구조 전반) + interview01.csv(P6~P10, 1인 모드 검증), 총 10명·80건.
+> 원자료·이슈 원장(interview_priority.md)은 `99_Archive/2026-07-07_usability_test/`에 백업됨. ID는 `F##`(기능), 근거의 `#N`은 이슈 원장의 이슈 번호.
 > **원칙**: 1인 시나리오가 기본 가정. 조용한 데이터 유실 > 온보딩 이탈 > 운영 마찰 > 편의성.
 
 ---
@@ -65,4 +65,4 @@
 - **F15 (공용 자산 위치)**: 신규 P1 — 사용자가 격리 규칙을 자가 위반하기 시작한 유일한 항목. 구현보다 설계 결정(신규 폴더 vs 규칙 확장)이 선행.
 - **F11 (프로젝트 플랫 뷰)**: P3 보류 → P1 — 정체성 전환으로 1인 다작 사용자의 멘탈 모델(프로젝트 중심)이 기본이 됨.
 
-<!-- 근거 데이터: interview.csv · interview01.csv · interview_priority.md (2026-07-07) -->
+<!-- 근거 데이터: 99_Archive/2026-07-07_usability_test/ (interview.csv · interview01.csv · interview_priority.md) -->
