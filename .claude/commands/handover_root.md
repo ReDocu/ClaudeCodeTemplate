@@ -33,6 +33,9 @@ description: 전체 인수인계 문서 갱신 — 모든 팀의 handover를 취
 
 원문을 통째로 복사하지 말고 **요약 + 링크**만 넣는다.
 
-## 4. 마무리
-- 전체 요약을 사용자에게 보여준다.
+## 4. HTML 대시보드 갱신
+`/dashboard`의 절차(스캔 → DATA 블록 교체 — 파이썬 불필요, `.claude/commands/dashboard.md` 참조)를 수행해 루트·팀 dashboard.html을 최신화한다. 2단계에서 이미 읽은 문서는 재활용한다.
+
+## 5. 마무리
+- 전체 요약을 사용자에게 보여준다 (대시보드 갱신 결과 포함).
 - 커밋을 제안한다: `docs(handover): root 취합 {YYYY-MM-DD}`
