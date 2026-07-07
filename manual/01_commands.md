@@ -12,7 +12,7 @@
 | `/status` | 루트/팀 폴더 | 해당 위치의 대시보드 요약 조회 (**갱신 안 함**) | 없음 (출력만) |
 | `/dashboard` | 루트 | HTML 대시보드 재생성 (전 팀 스캔, md 수정 없음) — /report_root가 자동 실행 | 루트 + 전 팀 `dashboard.html` |
 | `/pipeline {주제}` | 어디서나 | Explorer→Educator→Critic→Advisor 4단계 분석 | 결과물 md + 중간 산출물 |
-| `/new_team {팀명}` | 루트 | 양식 폴더 복사로 팀 스캐폴딩 (필수 4폴더 + 역할 3공간) | `ProjectTeam_{팀명}/` 전체 구조 |
+| `/new_team {팀명}` | 루트 | **역할 구성(표준 3역할/커스텀) 확인 후** 팀 스캐폴딩 — 커스텀이면 역할별 3종(CLAUDE.md·handover·settings.json) 자동 생성 | `ProjectTeam_{팀명}/` 전체 구조 |
 | `/new_project {이름}` | 팀 폴더 | 프로젝트 스캐폴딩 (번호 자동 증가) | `00_Project/NN_{이름}/process.md` |
 
 ## 위치 규칙

@@ -314,7 +314,7 @@
 | 항목 | 내용 |
 |---|---|
 | 실행 위치 | `/new_team`은 루트, `/new_project`는 팀 폴더 |
-| 동작 | `/new_team`: 팀 구조 양식 `00_Team/_ProjectTeam_Template/`을 `ProjectTeam_{팀명}/`으로 복사하고 예시 프로젝트 삭제 후 `{팀명}`·날짜 치환. `/new_project`: `00_Project/NN_{프로젝트명}/process.md` 스캐폴딩 (번호 자동 증가, 내장 양식) |
+| 동작 | `/new_team`: **역할 구성(표준 3역할 또는 커스텀)·팀 목표 확인** → 팀 구조 양식 `00_Team/_ProjectTeam_Template/`을 `ProjectTeam_{팀명}/`으로 복사, 예시 프로젝트 삭제, (커스텀이면) 역할별 3종 자동 생성(CLAUDE.md는 `90_Templates/CLAUDE.role.template.md`) + 팀 CLAUDE.md 역할 표·매트릭스 갱신, **팀 CLAUDE.md 「팀 목표」 기입**, `{팀명}`·날짜 치환. `/new_project`: `00_Project/NN_{프로젝트명}/process.md` 스캐폴딩 (번호 자동 증가, 내장 양식) |
 | 목적 | 수동 생성으로 표준이 깨지는 것을 방지 |
 
 ## 8. 문서 표준

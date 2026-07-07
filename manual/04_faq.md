@@ -16,8 +16,8 @@
 **타 역할 폴더·`10_Dashboard`·상위/타 팀은 금지**입니다. 필요한 정보는 사용자(또는 팀 관리자)에게 요청하세요.
 
 ## Q. 표준 역할(planner/developer/package)과 다른 구성이 필요해요.
-커스텀 역할 폴더를 추가할 수 있습니다 (`NN_{역할}` 권장, 예: `04_designer`).
-단, **직접 명령(세션)을 주는 폴더에는 반드시 `CLAUDE.md`(역할 정의)와 `handover_{역할}.md`를 만들어야** 하고, 공유 폴더 접근이 필요하면 표준 역할 폴더의 `.claude/settings.json`을 복사합니다.
+**팀을 새로 만드는 시점이라면** `/new_team`이 역할 구성(표준/커스텀)을 물어봅니다 — 역할 목록·임무·백업 주체만 답하면 역할별 3종 파일이 자동 생성됩니다 (예: 창작 팀 `01_writer`/`02_editor`/`03_publisher`).
+**이미 만든 팀에 추가할 때는** 직접 만듭니다 (`NN_{역할}` 권장, 예: `04_designer`) — 세션을 주는 폴더에 반드시 `CLAUDE.md`(역할 정의)와 `handover_{역할}.md`, 공유 접근이 필요하면 기존 역할 폴더의 `.claude/settings.json`을 복사하고, 팀 CLAUDE.md의 역할 표도 갱신합니다.
 필수 폴더(`00_Project`/`10_Dashboard`/`11_team_doc`/`90_result_output`)와 팀 `CLAUDE.md`는 삭제·개명하면 안 됩니다.
 
 ## Q. 구현(Builder)은 누가 하나요?

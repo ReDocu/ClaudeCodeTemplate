@@ -51,7 +51,7 @@
 ├── 01_Explorer ~ 04_Advisor/     분석 역할 (각 CLAUDE.md + output/)
 ├── 10_Dashboard/DASHBOARD.md     전체 현황판 + design/ (HTML 예시안 3종)
 ├── 11_doc_result/INDEX.md        결과물 색인
-├── 90_Templates/                 문서 양식 원본 5종 + 폐지 스텁 1종
+├── 90_Templates/                 문서 양식 원본 6종 + 폐지 스텁 1종
 ├── 99_Archive/                   teams/ + doc_result/
 ├── main_manual.md                처음 사용자용 안내서 (진입점)
 ├── manual/                       00~04 공통 + 05~07 맥락별 매뉴얼
@@ -93,7 +93,7 @@
 
 | 명령 | 실행 위치 | 읽기 (근거) | 쓰기 (산출물) |
 |---|---|---|---|
-| `/new_team` | 루트 | 양식 폴더 전체 | `00_Team/ProjectTeam_{팀명}/` (복사+치환) |
+| `/new_team` | 루트 | 양식 폴더 전체 + `CLAUDE.role.template.md`(커스텀 시) | `00_Team/ProjectTeam_{팀명}/` (역할 구성 확인 → 복사+치환, 커스텀이면 역할 3종 자동 생성) |
 | `/new_project` | 팀 폴더 | `00_Project/` 기존 번호 | `00_Project/NN_{이름}/process.md` |
 | `/handover` (역할) | 역할 폴더 | 이번 세션 작업 + git log | `handover_{역할}.md` (`[NN_프로젝트명]` 태그 기록) |
 | `/handover` (팀) | 팀 폴더 | 역할 handover 3개 + 기존 process | **각 `process.md` 갱신** + `handover.md` 취합 |

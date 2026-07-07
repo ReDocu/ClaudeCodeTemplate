@@ -21,9 +21,9 @@
 
 ```
 1. 루트에서 claude 실행
-2. /new_team TeamA          → 양식 폴더 복사로 팀 스캐폴딩
-                              (01_planner / 02_developer / 03_package 포함)
-3. 00_Team/ProjectTeam_TeamA/CLAUDE.md 의 「팀 목표」 작성
+2. /new_team TeamA          → 역할 구성(표준/커스텀)·팀 목표 확인 후 팀 스캐폴딩
+                              (표준: 01_planner / 02_developer / 03_package)
+3. 팀 목표는 생성 시 입력한 내용으로 채워짐 — "미정"으로 뒀다면 지금 작성
 4. 커밋
 ```
 
