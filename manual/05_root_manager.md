@@ -20,7 +20,8 @@
 |---|---|---|
 | `/status` | 전체 대시보드 요약 조회 (갱신 안 함) | 출력만 |
 | `/new_team {팀명}` | 양식 폴더 복사로 팀 스캐폴딩 | `00_Team/ProjectTeam_{팀명}/` |
-| `/report_root` | 전 팀 보고 일괄 생성 → 루트 대시보드·색인 갱신 + 아카이브 후보 제안 | `11_doc_result/`, `DASHBOARD.md`, `INDEX.md` |
+| `/report_root` | 전 팀 보고 일괄 생성 → 루트 대시보드·색인 갱신 + 아카이브 후보 제안 + HTML 재생성 | `11_doc_result/`, `DASHBOARD.md`, `INDEX.md`, `dashboard.html` |
+| `/dashboard` | HTML 대시보드만 재생성 (md 수정 없음) | 루트 + 전 팀 `dashboard.html` |
 | `/handover_root` | 전 팀 handover 취합 (요약+링크) | `handover_root.md` |
 | `/pipeline {주제}` | 4단계 분석 (Explorer→Educator→Critic→Advisor) | `11_doc_result/` + INDEX |
 

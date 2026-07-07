@@ -11,10 +11,10 @@
 |---|---|---|
 | 전체 현황 파악·관리 (총괄자) | 루트 | `/status` |
 | 팀 만들기 | 루트 | `/new_team TeamA` |
-| 기획 작업 | `00_Team/{팀폴더}/01_planner/` | (그냥 작업) → 끝나면 `/handover` |
-| 개발(코드) 작업 | `00_Team/{팀폴더}/02_developer/` | (그냥 작업) → 끝나면 `/handover` |
-| 패키지·빌드·배포 작업 | `00_Team/{팀폴더}/03_package/` | (그냥 작업) → 끝나면 `/handover` |
-| 팀 현황 정리·구현 조율 (팀 관리자) | `00_Team/{팀폴더}/` | `/handover` 또는 `/report` |
+| 기획·디자인 작업 | `00_Team/{팀폴더}/01_planner/` | (그냥 작업) → 끝나면 `/handover` |
+| 개발(코드) 작업 | `00_Team/{팀폴더}/02_developer/` (코드는 공유 `00_Project/`에) | (그냥 작업) → 끝나면 `/handover` |
+| 배포·최종 선정 작업 | `00_Team/{팀폴더}/03_package/` | (그냥 작업) → 끝나면 `/handover` |
+| 팀 현황 정리·process 갱신·프로젝트 생성 (팀 관리자) | `00_Team/{팀폴더}/` | `/handover` / `/new_project` / `/report` |
 | 심층 분석 (탐색→설명→검증→권고) | 분석 대상이 보이는 위치 | `/pipeline {주제}` |
 
 ## 시나리오 1 — 처음 세팅 (총괄자)
@@ -27,15 +27,17 @@
 4. 커밋
 ```
 
-## 시나리오 2 — 역할 작업 (팀원)
+## 시나리오 2 — 팀 작업 (팀원)
 
 ```
-1. 00_Team/{팀폴더}/{역할폴더}/ 에서 claude 실행
-   (기획은 01_planner, 코드 작업은 02_developer, 빌드·배포는 03_package)
-2. handover_{역할}.md 를 읽고 작업 수행
-   (개발 작업이 커지면 02_developer에서 /new_project my-feature)
-3. 세션 종료 전 /handover    → handover_{역할}.md 갱신
-4. 다음 역할로 넘길 것은 「다음 할 일」에 남긴다 (기획 → 개발 → 패키지)
+0. (팀 관리자) 팀 폴더에서 /new_project my-feature
+   → 00_Project/01_my-feature/process.md 생성
+1. 자기 역할 폴더(01_planner / 02_developer / 03_package)에서 claude 실행
+   → 공유 폴더(../00_Project 등)는 settings.json이 접근을 허용한다
+2. handover_{역할}.md 를 읽고 작업 — 작업물은 ../00_Project/01_my-feature/ 에
+3. 세션 종료 전 /handover → handover_{역할}.md 갱신
+   ★ 프로젝트 관련 항목엔 [01_my-feature] 태그
+4. (팀 관리자) 팀 폴더에서 /handover → 태그가 process.md에 반영 + 팀 취합
 ```
 
 ## 시나리오 3 — 주간 보고 (총괄자)
@@ -56,6 +58,6 @@
 ```
 
 ## 꼭 지킬 것 3가지
-1. 팀 작업은 반드시 **자기 역할 폴더(또는 팀 폴더)에서 세션을 연다** — 그래야 격리가 유지된다. 코드 수정은 `02_developer`에서만.
+1. 팀원은 **자기 역할 폴더에서 세션을 연다** (작업물은 공유 `00_Project/`에). 코드 수정은 `00_Project/{프로젝트}` 안에서만, process.md 갱신은 팀 관리자만.
 2. 의미 있는 세션을 마치면 **`/handover`** — 문서가 곧 상태다.
 3. 문서 갱신 후 **커밋** — 이력은 git이 보존한다.

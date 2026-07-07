@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "additionalDirectories": [
+      "../00_Project",
+      "../11_team_doc",
+      "../90_result_output"
+    ]
+  }
+}

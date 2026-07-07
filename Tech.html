@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tech — 템플릿 상태 점검 가이드</title>
+<style>
+  :root{
+    --page:#f9f9f7; --surface:#fcfcfb; --ink:#0b0b0b; --ink-2:#52514e; --muted:#898781;
+    --grid:#e1e0d9; --border:rgba(11,11,11,.10);
+    --blue:#2a78d6; --blue-soft:#cde2fb; --hover:rgba(42,120,214,.08);
+    --good:#0ca30c; --warn:#fab219; --serious:#ec835a; --crit:#d03b3b; --idle:#898781;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --page:#0d0d0d; --surface:#1a1a19; --ink:#ffffff; --ink-2:#c3c2b7; --muted:#898781;
+      --grid:#2c2c2a; --border:rgba(255,255,255,.10);
+      --blue:#3987e5; --blue-soft:#0d366b; --hover:rgba(57,135,229,.12);
+    }
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{scroll-behavior:smooth}
+  body{background:var(--page);color:var(--ink);font-family:system-ui,-apple-system,"Segoe UI",sans-serif;font-size:14px;line-height:1.6}
+  .layout{display:flex;max-width:1180px;margin:0 auto;gap:32px;padding:28px 24px}
+
+  /* ── TOC ── */
+  nav.toc{width:210px;flex:none;position:sticky;top:24px;align-self:flex-start}
+  nav.toc .t{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin:0 0 6px 10px}
+  nav.toc a{display:block;font-size:12.5px;color:var(--ink-2);text-decoration:none;padding:5px 10px;border-radius:7px;border-left:2px solid transparent}
+  nav.toc a:hover{background:var(--hover)}
+  nav.toc a.on{color:var(--blue);border-left-color:var(--blue);font-weight:600}
+  @media (max-width:860px){ .layout{flex-direction:column} nav.toc{position:static;width:100%;display:flex;flex-wrap:wrap;gap:2px} nav.toc .t{display:none} }
+
+  main{flex:1;min-width:0;max-width:860px}
+  .note{font-size:12px;color:var(--muted);border:1px solid var(--border);border-radius:6px;padding:5px 10px;display:inline-block;margin-bottom:14px}
+  header.doc h1{font-size:24px;font-weight:700;letter-spacing:-.01em}
+  header.doc .sub{color:var(--ink-2);margin-top:4px}
+  .badges{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0 8px}
+  .badge{font-size:11.5px;font-weight:600;border:1px solid var(--border);background:var(--surface);border-radius:20px;padding:3px 11px;color:var(--ink-2)}
+  .badge.blue{background:var(--blue);border-color:var(--blue);color:#fff}
+
+  section{margin-top:38px;scroll-margin-top:20px}
+  h2{font-size:17px;font-weight:700;padding-bottom:8px;border-bottom:1px solid var(--grid);margin-bottom:14px}
+  h2 .no{color:var(--blue);margin-right:8px;font-variant-numeric:tabular-nums}
+  h3{font-size:13px;font-weight:650;color:var(--ink-2);margin:16px 0 8px}
+  p.lead{color:var(--ink-2)}
+
+  /* 카드/타일 */
+  .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:11px;padding:14px 16px}
+  .card b.t{display:block;font-size:13.5px;margin-bottom:4px}
+  .card p{font-size:12.5px;color:var(--ink-2)}
+  .card .k{display:inline-block;font-size:11px;font-weight:700;color:var(--blue);margin-bottom:6px;letter-spacing:.03em}
+
+  /* 상태 도트 */
+  .st{display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
+  .dot{width:8px;height:8px;border-radius:50%;flex:none;box-shadow:0 0 0 2px var(--surface)}
+  .dot.good{background:var(--good)} .dot.warn{background:var(--warn)} .dot.crit{background:var(--crit)} .dot.idle{background:var(--idle)} .dot.blue{background:var(--blue)}
+
+  /* 표 */
+  table{width:100%;border-collapse:collapse;background:var(--surface);border:1px solid var(--border);border-radius:10px;overflow:hidden;font-size:12.5px}
+  th{font-size:11px;font-weight:650;color:var(--muted);text-align:left;padding:8px 12px;border-bottom:1px solid var(--grid);text-transform:uppercase;letter-spacing:.04em;white-space:nowrap}
+  td{padding:9px 12px;border-bottom:1px solid var(--grid);vertical-align:top;color:var(--ink-2)}
+  td:first-child{color:var(--ink);font-weight:550;white-space:nowrap}
+  tr:last-child td{border-bottom:0}
+  .tblwrap{overflow-x:auto;border-radius:10px}
+  code{font-family:ui-monospace,Consolas,monospace;font-size:11.5px;background:var(--hover);border-radius:4px;padding:1px 5px;color:var(--ink)}
+
+  /* 트리 */
+  pre.tree{background:var(--surface);border:1px solid var(--border);border-radius:11px;padding:16px 18px;font-family:ui-monospace,Consolas,monospace;font-size:12px;line-height:1.75;overflow-x:auto;color:var(--ink-2)}
+  pre.tree b{color:var(--ink);font-weight:650}
+  pre.tree .c{color:var(--muted)}
+  pre.tree .req{color:var(--blue);font-weight:700}
+
+  /* 흐름도 */
+  .flow{background:var(--surface);border:1px solid var(--border);border-radius:11px;padding:18px;overflow-x:auto}
+  .frow{display:flex;align-items:center;gap:8px;flex-wrap:nowrap;min-width:640px;margin:6px 0}
+  .fbox{border:1px solid var(--border);border-radius:8px;padding:7px 12px;font-size:12px;background:var(--page);white-space:nowrap}
+  .fbox b{display:block;font-size:11px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.04em}
+  .fbox.src{border-left:3px solid var(--good)}
+  .fbox.mid{border-left:3px solid var(--blue)}
+  .fbox.dst{border-left:3px solid var(--serious)}
+  .arr{color:var(--muted);font-size:14px;flex:none}
+  .fcmd{font-size:10.5px;color:var(--blue);font-weight:600;white-space:nowrap}
+
+  /* 불변식 */
+  .inv{display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:10px}
+  .inv .card{display:flex;gap:12px;align-items:flex-start}
+  .inv .n{flex:none;width:26px;height:26px;border-radius:50%;background:var(--blue);color:#fff;font-size:12.5px;font-weight:700;display:flex;align-items:center;justify-content:center;margin-top:1px}
+
+  /* 체크리스트 */
+  .check{background:var(--surface);border:1px solid var(--border);border-radius:11px;padding:6px 16px}
+  .check label{display:flex;gap:12px;align-items:flex-start;padding:11px 0;border-bottom:1px solid var(--grid);cursor:pointer}
+  .check label:last-child{border-bottom:0}
+  .check input{width:16px;height:16px;margin-top:2px;accent-color:var(--blue);flex:none}
+  .check .how{display:block;font-size:12px;color:var(--muted);margin-top:2px}
+  .check label.done .what{text-decoration:line-through;color:var(--muted)}
+  .progress{display:flex;align-items:center;gap:12px;margin-bottom:10px}
+  .meter{flex:1;height:8px;border-radius:4px;background:var(--blue-soft);overflow:hidden}
+  .meter i{display:block;height:100%;background:var(--blue);border-radius:4px 0 0 4px;transition:width .2s}
+  .progress .pct{font-size:12.5px;color:var(--ink-2);font-variant-numeric:tabular-nums;white-space:nowrap}
+
+  ul.plain{margin-left:18px;color:var(--ink-2);font-size:13px}
+  ul.plain li{margin:4px 0}
+  footer{margin:44px 0 10px;font-size:11px;color:var(--muted)}
+</style>
+</head>
+<body>
+<div class="layout">
+
+  <nav class="toc" id="toc">
+    <div class="t">목차</div>
+    <a href="#s1">1 시스템 개요</a>
+    <a href="#s2">2 현재 상태 스냅샷</a>
+    <a href="#s3">3 폴더 구조</a>
+    <a href="#s4">4 상태 문서 모델</a>
+    <a href="#s5">5 명령어 배선표</a>
+    <a href="#s6">6 불변식 8</a>
+    <a href="#s7">7 점검 체크리스트</a>
+    <a href="#s8">8 동기화 지점</a>
+    <a href="#s9">9 제약·예정</a>
+    <a href="#s10">10 변경 이력</a>
+  </nav>
+
+  <main>
+    <div class="note">열람용 뷰 — 원본은 <code>Tech.md</code> (md가 진실의 원천)</div>
+    <header class="doc">
+      <h1>Tech — 템플릿 상태 점검 가이드</h1>
+      <div class="sub">Claude Code 멀티팀 협업 템플릿의 기술 상태를 확인하고, 표준 이탈 여부를 점검하는 기준 문서</div>
+      <div class="badges">
+        <span class="badge blue">PRD v1.3</span>
+        <span class="badge">PRD_dashboard v0.1</span>
+        <span class="badge">기준일 2026-07-07</span>
+        <span class="badge">브랜치 manager</span>
+      </div>
+    </header>
+
+    <!-- 1 -->
+    <section id="s1">
+      <h2><span class="no">1</span>시스템 개요</h2>
+      <p class="lead">이 템플릿은 <b>폴더 = 권한, 문서 = 상태</b>로 동작한다.</p>
+      <div class="cards" style="margin-top:12px">
+        <div class="card"><span class="k">격리 + 팀 내 공유</span><b class="t">역할 세션은 공유 3폴더까지</b><p>기본은 시작 폴더 하위만. 역할 폴더의 <code>.claude/settings.json</code>이 <code>00_Project</code>·<code>11_team_doc</code>·<code>90_result_output</code> 접근을 허용. 타 역할·타 팀·루트는 금지</p></div>
+        <div class="card"><span class="k">상속 INHERITANCE</span><b class="t">규칙은 내려오고, 데이터는 격리</b><p>CLAUDE.md가 상위→하위 자동 로드. 루트 「전 세션 공통 규칙」이 전 세션에 적용</p></div>
+        <div class="card"><span class="k">문서가 곧 상태 DOCS AS STATE</span><b class="t">컨텍스트는 휘발된다</b><p>팀원은 <code>handover_{역할}.md</code>에 <code>[NN_프로젝트명]</code> 태그로 기록 → <b>팀 관리자가 <code>process.md</code>에 취합·반영 (전담)</b></p></div>
+      </div>
+      <p style="margin-top:12px;font-size:13px;color:var(--ink-2)"><b style="color:var(--ink)">root 명령 원칙</b> — <code>*_root</code> 명령은 전 팀 <b>일괄 작업</b> 후, 결과를 최종 관리자(루트) 문서 기준으로 취합·관리한다.</p>
+    </section>
+
+    <!-- 2 -->
+    <section id="s2">
+      <h2><span class="no">2</span>현재 상태 스냅샷 <span style="font-size:12px;color:var(--muted);font-weight:400">2026-07-07</span></h2>
+      <div class="tblwrap"><table>
+        <thead><tr><th>영역</th><th>상태</th></tr></thead>
+        <tbody>
+          <tr><td>구조·명령·문서 (M1~M5)</td><td><span class="st"><i class="dot good"></i>구현 완료 — v1.3 구조 반영</span></td></tr>
+          <tr><td>팀</td><td><span class="st"><i class="dot idle"></i>0개 — <code>00_Team/</code>에 양식 폴더만 존재</span></td></tr>
+          <tr><td>대시보드</td><td><span class="st"><i class="dot idle"></i>루트 DASHBOARD.md 초기 상태 (팀 없음)</span></td></tr>
+          <tr><td>HTML 대시보드</td><td><span class="st"><i class="dot good"></i>구현됨 (C안) — 생성기 + /dashboard 명령 + /report_root 연동 · D4 검증만 대기</span></td></tr>
+          <tr><td>실전 검증 (M6)</td><td><span class="st"><i class="dot idle"></i>대기</span></td></tr>
+          <tr><td>git</td><td><span class="st"><i class="dot blue"></i><code>manager</code> 브랜치 · github.com/ReDocu/ClaudeCodeTemplate</span></td></tr>
+        </tbody>
+      </table></div>
+    </section>
+
+    <!-- 3 -->
+    <section id="s3">
+      <h2><span class="no">3</span>폴더 구조와 필수 파일</h2>
+      <pre class="tree">(루트)
+├── <b>CLAUDE.md</b>                 <span class="c">총괄자 거버넌스 (전 세션 상속)</span>      <span class="req">[필수]</span>
+├── PRD.md / PRD_dashboard.md <span class="c">사양 문서</span>
+├── Tech.md / Tech.html       <span class="c">본 문서 (md 원본 / html 뷰)</span>
+├── <b>handover_root.md</b>          <span class="c">전체 인수인계 취합본</span>                <span class="req">[필수]</span>
+├── 00_Team/
+│   └── ProjectTeam_양식[팀명]/   <span class="c">팀 구조 양식 원본 (/new_team이 복사)</span>
+│       ├── CLAUDE.md · handover.md
+│       ├── <b>00_Project/</b>README.md + 01_Project01/<b>process.md</b>  <span class="c">공유 · git 연결 가능</span>
+│       ├── 01_planner · 02_developer · 03_package/  <span class="c">(각 CLAUDE.md + handover + .claude/settings.json)</span>
+│       └── <b>10_Dashboard/</b>(관리) · <b>11_team_doc/</b>(공유) · <b>90_result_output/</b>(백업)
+├── 01_Explorer ~ 04_Advisor/ <span class="c">분석 역할 (각 CLAUDE.md + output/)</span>
+├── 10_Dashboard/DASHBOARD.md <span class="c">전체 현황판 + design/ (HTML 예시안 3종)</span>
+├── 11_doc_result/INDEX.md    <span class="c">결과물 색인</span>
+├── 90_Templates/             <span class="c">문서 양식 원본 5종 + 폐지 스텁 1종</span>
+├── 99_Archive/               <span class="c">teams/ + doc_result/</span>
+├── main_manual.md            <span class="c">처음 사용자용 안내서 (진입점)</span>
+├── manual/                   <span class="c">00~04 공통 + 05~07 맥락별 매뉴얼</span>
+└── .claude/                  <span class="c">commands 8종 · agents 4종 · settings.json</span></pre>
+      <p style="font-size:13px;color:var(--ink-2);margin-top:10px"><b style="color:var(--ink)">팀 폴더 표준</b> — 필수 4폴더(<code>00_Project</code>/<code>10_Dashboard</code>/<code>11_team_doc</code>/<code>90_result_output</code>) + CLAUDE.md + handover.md + 역할 3공간. 번호 의미: <b>00 진행 작업 · 01~0N 역할 · 10~11 현황 · 90 보관</b>.</p>
+    </section>
+
+    <!-- 4 -->
+    <section id="s4">
+      <h2><span class="no">4</span>상태 문서 모델 (데이터 흐름)</h2>
+      <p class="lead">하위 문서가 항상 진실의 원천 — 위로 갈수록 취합본이다.</p>
+      <div class="flow" style="margin-top:12px">
+        <div class="frow">
+          <div class="fbox src"><b>팀원 (역할 세션)</b>handover_{역할}.md — [NN_프로젝트명] 태그 기록</div>
+          <span class="arr">─</span><span class="fcmd">팀 관리자 /handover</span><span class="arr">→</span>
+          <div class="fbox mid"><b>팀 (전담)</b>① process.md 갱신 (태그 반영·수명주기)<br>② handover.md 취합</div>
+          <span class="arr">─</span><span class="fcmd">/handover_root</span><span class="arr">→</span>
+          <div class="fbox dst"><b>루트</b>handover_root.md</div>
+        </div>
+        <div class="frow" style="margin-top:14px">
+          <div class="fbox src"><b>process + 역할 handover</b>팀 현황 근거</div>
+          <span class="arr">─</span><span class="fcmd">팀 /report</span><span class="arr">→</span>
+          <div class="fbox mid"><b>팀</b>11_team_doc/report_*.md<br>+ 10_Dashboard/DASHBOARD.md</div>
+          <span class="arr">─</span><span class="fcmd">/report_root</span><span class="arr">→</span>
+          <div class="fbox dst"><b>루트</b>DASHBOARD.md + 11_doc_result + INDEX</div>
+        </div>
+      </div>
+      <h3>문서별 쓰기 주체</h3>
+      <div class="tblwrap"><table>
+        <thead><tr><th>문서</th><th>위치</th><th>쓰기 주체</th><th>역할</th></tr></thead>
+        <tbody>
+          <tr><td><code>handover_{역할}.md</code></td><td>역할 폴더</td><td>역할 세션 (/handover)</td><td>팀원의 1차 기록 (<code>[NN_프로젝트명]</code> 태그) · 역할 간 전달</td></tr>
+          <tr><td><code>process.md</code></td><td>프로젝트 폴더</td><td><b>팀 관리자 전담</b> (팀 /handover)</td><td>프로젝트의 <b>유일한</b> 상태 문서 (단계·기록·블로커·수명주기)</td></tr>
+          <tr><td><code>handover.md</code></td><td>팀 폴더</td><td>팀 세션 (/handover)</td><td>역할·프로젝트 취합</td></tr>
+          <tr><td><code>90_result_output/</code></td><td>팀</td><td><b>패키지 역할</b></td><td>완료 후 백업 — 최종 선정 작업물 보관</td></tr>
+          <tr><td>팀 <code>DASHBOARD.md</code></td><td>팀 10_Dashboard</td><td>팀 /report <b>만</b></td><td>팀 현황판</td></tr>
+          <tr><td>루트 <code>DASHBOARD.md</code></td><td>루트 10_Dashboard</td><td>/report_root <b>만</b></td><td>전체 현황판</td></tr>
+          <tr><td><code>handover_root.md</code></td><td>루트</td><td>/handover_root</td><td>전체 인수인계</td></tr>
+        </tbody>
+      </table></div>
+    </section>
+
+    <!-- 5 -->
+    <section id="s5">
+      <h2><span class="no">5</span>명령어 배선표</h2>
+      <div class="tblwrap"><table>
+        <thead><tr><th>명령</th><th>실행 위치</th><th>읽기 (근거)</th><th>쓰기 (산출물)</th></tr></thead>
+        <tbody>
+          <tr><td><code>/new_team</code></td><td>루트</td><td>양식 폴더 전체</td><td><code>ProjectTeam_{팀명}/</code> 복사+치환</td></tr>
+          <tr><td><code>/new_project</code></td><td>팀 폴더</td><td>00_Project/ 기존 번호</td><td><code>00_Project/NN_{이름}/process.md</code></td></tr>
+          <tr><td><code>/handover</code> (역할)</td><td>역할 폴더</td><td>이번 세션 작업 + git log</td><td>handover_{역할}.md (태그 기록)</td></tr>
+          <tr><td><code>/handover</code> (팀)</td><td>팀 폴더</td><td>역할 handover 3개 + 기존 process</td><td><b>각 process.md 갱신</b> + handover.md 취합</td></tr>
+          <tr><td><code>/handover_root</code></td><td>루트</td><td>전 팀 handover.md</td><td>handover_root.md</td></tr>
+          <tr><td><code>/report</code></td><td>팀 폴더</td><td>process.md 전체 + 역할 handover</td><td>11_team_doc/report_*.md + 팀 DASHBOARD.md</td></tr>
+          <tr><td><code>/report_root</code></td><td>루트</td><td>팀 보고서(7일 캐시)·대시보드·process</td><td>11_doc_result/* + 루트 DASHBOARD.md + INDEX.md</td></tr>
+          <tr><td><code>/status</code></td><td>루트/팀</td><td>해당 위치 DASHBOARD.md</td><td>없음 (조회 전용)</td></tr>
+          <tr><td><code>/pipeline</code></td><td>어디서나</td><td>분석 대상</td><td>루트→11_doc_result · 팀→11_team_doc · 역할→현재 폴더</td></tr>
+        </tbody>
+      </table></div>
+      <p style="font-size:12.5px;color:var(--ink-2);margin-top:10px">위치 판별: 루트 = <code>00_Team/</code> 보유 · 팀 = <code>.../00_Team/{팀폴더}</code> · 역할 = 팀 직속 중 필수 4폴더 제외. <b>프로젝트 폴더 직접 세션은 폐지</b> (팀원은 역할 세션의 공유 접근으로 작업). <b>팀에도 10_Dashboard가 있으므로 루트 판별에 10_Dashboard를 쓰지 않는다.</b></p>
+    </section>
+
+    <!-- 6 -->
+    <section id="s6">
+      <h2><span class="no">6</span>불변식 — 깨지면 비표준 상태</h2>
+      <div class="inv">
+        <div class="card"><span class="n">1</span><p><b style="color:var(--ink)">팀 폴더명 <code>ProjectTeam_{팀명}</code></b> — 필수 4폴더 + CLAUDE.md 삭제·개명 금지</p></div>
+        <div class="card"><span class="n">2</span><p><b style="color:var(--ink)">세션 폴더의 문서 요건</b> — 역할: CLAUDE.md+handover_{역할}.md+settings.json / 프로젝트 폴더엔 세션을 열지 않는다 (process.md 단독)</p></div>
+        <div class="card"><span class="n">3</span><p><b style="color:var(--ink)">코드는 00_Project, process는 팀 관리자</b> — 코드 수정은 개발 역할·팀 관리자만, process.md 갱신은 팀 관리자 전담 (팀원은 [태그] 기록)</p></div>
+        <div class="card"><span class="n">4</span><p><b style="color:var(--ink)">쓰기 주체 단일화</b> — 팀 대시보드=/report, 루트=/report_root, 90_result_output=패키지 역할. 손 편집 금지</p></div>
+        <div class="card"><span class="n">5</span><p><b style="color:var(--ink)">명명</b> — 영문만(한글은 특이 경우·최단) · 날짜 YYYY-MM-DD · 결과물 YYYY-MM-DD_{팀명}_{제목}.md</p></div>
+        <div class="card"><span class="n">6</span><p><b style="color:var(--ink)">분석 4역할은 분석 전용</b> — 파일 수정 금지. 별도 Builder 에이전트 없음 (팀 관리자 겸임)</p></div>
+        <div class="card"><span class="n">7</span><p><b style="color:var(--ink)">양식 폴더는 팀이 아니다</b> — 보고·취합·대시보드 집계에서 제외</p></div>
+        <div class="card"><span class="n">8</span><p><b style="color:var(--ink)">md가 진실의 원천</b> — HTML은 열람용 뷰. 반영할 내용은 handover/process/report에 쓴다</p></div>
+      </div>
+    </section>
+
+    <!-- 7 -->
+    <section id="s7">
+      <h2><span class="no">7</span>상태 점검 체크리스트 <span style="font-size:12px;color:var(--muted);font-weight:400">— 루트 세션에서</span></h2>
+      <div class="progress"><div class="meter"><i id="pMeter" style="width:0%"></i></div><span class="pct" id="pTxt">0 / 8</span></div>
+      <div class="check" id="checklist">
+        <label><input type="checkbox"><span><span class="what">루트 필수 파일 존재</span><span class="how">CLAUDE.md · PRD.md · handover_root.md · 10_Dashboard/DASHBOARD.md · 11_doc_result/INDEX.md</span></span></label>
+        <label><input type="checkbox"><span><span class="what">명령 8종 · 에이전트 4종</span><span class="how">.claude/commands/ 8개 · .claude/agents/ 4개 파일 수 확인</span></span></label>
+        <label><input type="checkbox"><span><span class="what">양식 폴더 무결성</span><span class="how">필수 4폴더 + CLAUDE.md + handover.md + 역할 3공간(각 CLAUDE.md·handover·.claude/settings.json) + 00_Project/01_Project01/process.md</span></span></label>
+        <label><input type="checkbox"><span><span class="what">각 팀 구조 준수</span><span class="how">팀마다 필수 4폴더 · 역할 폴더에 CLAUDE.md+handover+settings.json · 00_Project/NN_*마다 process.md 단독</span></span></label>
+        <label><input type="checkbox"><span><span class="what">구식 참조 없음</span><span class="how">"00_result_output" · "handover_{팀명}" 검색 → PRD 변경 이력 외 0건</span></span></label>
+        <label><input type="checkbox"><span><span class="what">신선도</span><span class="how">handover/process 제목의 (갱신: …) 7일 초과 → STALE, /report_root 권고</span></span></label>
+        <label><input type="checkbox"><span><span class="what">아카이브 후보</span><span class="how">process.md 제목 [종료] 검색 → 대시보드에 제안 (이동은 사용자 확인 후)</span></span></label>
+        <label><input type="checkbox"><span><span class="what">양식 ↔ 사본 동기화</span><span class="how">§8 표의 쌍이 같은 내용인지 (수정일 비교)</span></span></label>
+      </div>
+      <p style="font-size:11.5px;color:var(--muted);margin-top:8px">체크 상태는 이 페이지에서만 유지되는 임시 표시입니다 (저장되지 않음).</p>
+    </section>
+
+    <!-- 8 -->
+    <section id="s8">
+      <h2><span class="no">8</span>동기화 지점 — 한쪽 수정 시 함께 갱신</h2>
+      <div class="tblwrap"><table>
+        <thead><tr><th>원본</th><th>함께 갱신할 사본</th></tr></thead>
+        <tbody>
+          <tr><td>양식 <code>ProjectTeam_양식[팀명]/CLAUDE.md</code></td><td><code>90_Templates/CLAUDE.team.template.md</code></td></tr>
+          <tr><td>양식 <code>00_Project/01_Project01/process.md</code></td><td><code>90_Templates/process.template.md</code> + /new_project 내장본</td></tr>
+          <tr><td>양식 역할 <code>.claude/settings.json</code> (공유 접근)</td><td>3개 역할 폴더 동일 내용 — 한쪽 수정 시 셋 다</td></tr>
+          <tr><td><code>90_Templates/handover.template.md</code></td><td>/handover 내장본</td></tr>
+          <tr><td><code>90_Templates/report.template.md</code></td><td>/report 내장본</td></tr>
+          <tr><td><code>90_Templates/result.template.md</code></td><td>/pipeline 내장본</td></tr>
+          <tr><td>PRD 7장 명령 사양</td><td><code>.claude/commands/*.md</code> + <code>manual/01_commands.md</code></td></tr>
+        </tbody>
+      </table></div>
+      <p style="font-size:12.5px;color:var(--ink-2);margin-top:8px">폐지: <code>CLAUDE.project.template.md</code>는 v1.3에서 스텁 전환 (프로젝트 문서 = process.md 단독).</p>
+    </section>
+
+    <!-- 9 -->
+    <section id="s9">
+      <h2><span class="no">9</span>알려진 제약 · 예정 작업</h2>
+      <ul class="plain">
+        <li><b>HTML 대시보드</b> — 디자인 예시안 3종에서 택1 후 생성기(D1~D4) 구현 예정, <code>/dashboard</code> 명령 신설 포함 (PRD_dashboard 9장)</li>
+        <li><b>명령어 인식 범위</b> — 하위 폴더 세션의 슬래시 명령 인식은 M6에서 실측 (대응: manual/04_faq.md)</li>
+        <li><b>settings.json</b> — 읽기 명령만 allowlist. 스캐폴딩(cp/mkdir)은 세션마다 승인 필요</li>
+        <li><b>격리의 한계</b> — Claude Code 권한 + CLAUDE.md 조항의 조합. 사람이 직접 여는 파일까지 막지는 못함</li>
+      </ul>
+    </section>
+
+    <!-- 10 -->
+    <section id="s10">
+      <h2><span class="no">10</span>변경 이력 요약 <span style="font-size:12px;color:var(--muted);font-weight:400">— 상세: PRD 13장</span></h2>
+      <div class="tblwrap"><table>
+        <thead><tr><th>버전</th><th>핵심 변경</th></tr></thead>
+        <tbody>
+          <tr><td>v1.3</td><td>프로젝트를 팀 직속 <code>00_Project/</code>로 이동 · <code>process.md</code> 단일 상태 문서 · <code>90_result_output</code> 개명</td></tr>
+          <tr><td>v1.2</td><td>팀 필수 폴더 · 커스텀 역할 규칙 · 대시보드 2계층 · Builder=팀 관리자 · 영문 명명 · 매뉴얼 3종</td></tr>
+          <tr><td>v1.1</td><td><code>ProjectTeam_{팀명}</code> 명명 · 역할 3공간 · 양식 폴더 복사 방식 /new_team</td></tr>
+          <tr><td>v1.0</td><td>최초 구조 (M1~M5)</td></tr>
+        </tbody>
+      </table></div>
+    </section>
+
+    <footer>Tech.html은 Tech.md의 열람용 뷰입니다 — 내용 수정은 Tech.md에서 하고, 이 파일을 함께 갱신하세요.</footer>
+  </main>
+</div>
+
+<script>
+  // 체크리스트 진행률
+  const boxes = [...document.querySelectorAll('#checklist input')];
+  function refresh(){
+    const done = boxes.filter(b=>b.checked).length;
+    document.getElementById('pMeter').style.width = (done/boxes.length*100)+'%';
+    document.getElementById('pTxt').textContent = done+' / '+boxes.length;
+    boxes.forEach(b=>b.closest('label').classList.toggle('done', b.checked));
+  }
+  boxes.forEach(b=>b.addEventListener('change', refresh));
+
+  // TOC 현재 위치 하이라이트
+  const links = [...document.querySelectorAll('#toc a')];
+  const secs = links.map(a=>document.querySelector(a.getAttribute('href')));
+  const io = new IntersectionObserver(es=>{
+    es.forEach(e=>{
+      if(e.isIntersecting){
+        links.forEach(l=>l.classList.toggle('on', l.getAttribute('href')==='#'+e.target.id));
+      }
+    });
+  },{rootMargin:'-20% 0px -70% 0px'});
+  secs.forEach(s=>io.observe(s));
+</script>
+</body>
+</html>

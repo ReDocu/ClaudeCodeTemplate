@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>대시보드 디자인 C안 — 사이드바 드릴다운형</title>
+<style>
+  :root{
+    --page:#f9f9f7; --surface:#fcfcfb; --ink:#0b0b0b; --ink-2:#52514e; --muted:#898781;
+    --grid:#e1e0d9; --border:rgba(11,11,11,.10);
+    --blue:#2a78d6; --blue-track:#cde2fb; --hover:rgba(42,120,214,.08);
+    --good:#0ca30c; --warn:#fab219; --serious:#ec835a; --crit:#d03b3b; --idle:#898781;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --page:#0d0d0d; --surface:#1a1a19; --ink:#ffffff; --ink-2:#c3c2b7; --muted:#898781;
+      --grid:#2c2c2a; --border:rgba(255,255,255,.10);
+      --blue:#3987e5; --blue-track:#0d366b; --hover:rgba(57,135,229,.12);
+    }
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--page);color:var(--ink);font-family:system-ui,-apple-system,"Segoe UI",sans-serif;font-size:14px;line-height:1.5}
+  .app{display:flex;min-height:100vh}
+
+  /* ── 좌측 사이드바: 팀 탐색 ── */
+  aside{width:230px;flex:none;background:var(--surface);border-right:1px solid var(--grid);padding:20px 12px;display:flex;flex-direction:column;gap:2px}
+  aside .brand{font-size:15px;font-weight:700;padding:0 10px 6px}
+  aside .brand small{display:block;font-weight:400;font-size:11px;color:var(--muted)}
+  aside .sect{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;padding:14px 10px 4px}
+  aside button{display:flex;align-items:center;gap:8px;width:100%;border:0;background:transparent;color:var(--ink-2);font:inherit;font-size:13px;text-align:left;padding:8px 10px;border-radius:8px;cursor:pointer}
+  aside button:hover{background:var(--hover)}
+  aside button.on{background:var(--blue);color:#fff}
+  aside button.on .sub{color:rgba(255,255,255,.75)}
+  aside button .sub{margin-left:auto;font-size:11px;color:var(--muted);font-variant-numeric:tabular-nums}
+  .dot{width:8px;height:8px;border-radius:50%;flex:none;box-shadow:0 0 0 2px var(--surface)}
+  .dot.good{background:var(--good)} .dot.warn{background:var(--warn)} .dot.crit{background:var(--crit)} .dot.idle{background:var(--idle)}
+  aside .foot{margin-top:auto;font-size:11px;color:var(--muted);padding:10px}
+
+  /* ── 우측 콘텐츠 ── */
+  main{flex:1;padding:28px 32px;max-width:900px}
+  .sample-note{font-size:12px;color:var(--muted);border:1px solid var(--border);border-radius:6px;padding:5px 10px;display:inline-block;margin-bottom:16px}
+  .crumb{font-size:12px;color:var(--muted);margin-bottom:4px}
+  h1{font-size:20px;font-weight:650;display:flex;align-items:center;gap:10px;margin-bottom:16px}
+  .st{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--ink-2);white-space:nowrap}
+  .chip{display:inline-block;font-size:11px;font-weight:600;border-radius:5px;padding:1px 7px;color:#7a2e12;background:color-mix(in srgb,var(--serious) 22%,var(--surface))}
+  @media (prefers-color-scheme: dark){ .chip{color:#ffc9b3} }
+
+  .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:22px}
+  .kpi{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px 14px}
+  .kpi .label{font-size:11px;color:var(--muted)}
+  .kpi .value{font-size:24px;font-weight:600}
+  .kpi .value small{font-size:12px;font-weight:400;color:var(--muted)}
+  .meter{height:7px;border-radius:4px;background:var(--blue-track);overflow:hidden;margin-top:8px}
+  .meter i{display:block;height:100%;background:var(--blue);border-radius:4px 0 0 4px}
+
+  h2{font-size:13px;font-weight:650;margin:22px 0 8px}
+  .panel{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:2px 14px;margin-bottom:6px}
+  .row{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--grid);font-size:13px}
+  .row:last-child{border-bottom:0}
+  .row .r{color:var(--muted);font-size:12px;font-variant-numeric:tabular-nums;white-space:nowrap}
+  .row.click{cursor:pointer;margin:0 -14px;padding-left:14px;padding-right:14px}
+  .row.click:hover{background:var(--hover)}
+
+  /* 역할 아코디언 */
+  .role{border:1px solid var(--border);border-radius:10px;background:var(--surface);margin-bottom:8px;overflow:hidden}
+  .role summary{list-style:none;display:flex;align-items:center;gap:10px;padding:12px 14px;cursor:pointer}
+  .role summary::-webkit-details-marker{display:none}
+  .role summary:hover{background:var(--hover)}
+  .role .rn{font-weight:650}
+  .role .path{font-size:11px;color:var(--muted)}
+  .role summary .right{margin-left:auto;display:flex;align-items:center;gap:12px;font-size:12px;color:var(--muted)}
+  .role .body{border-top:1px solid var(--grid);padding:12px 16px;font-size:13px;color:var(--ink-2)}
+  .role .body b{display:block;font-size:12px;color:var(--ink);margin-top:8px}
+  .role .body ol{margin:4px 0 0 18px}
+  footer{margin-top:30px;font-size:11px;color:var(--muted)}
+  .hide{display:none}
+  @media (max-width:720px){ .app{flex-direction:column} aside{width:100%;flex-direction:row;flex-wrap:wrap;border-right:0;border-bottom:1px solid var(--grid)} aside .foot,aside .sect{display:none} aside button{width:auto} }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <aside>
+    <div class="brand">ClaudeTemplate<small>프로젝트 현황 · 생성 07-07 14:00</small></div>
+    <div class="sect">전체</div>
+    <button id="nav-all" class="on" onclick="go('all')">▤ 관리자 대시보드</button>
+    <div class="sect">팀 (00_Team)</div>
+    <button id="nav-a" onclick="go('a')"><i class="dot good"></i>TeamA<span class="sub">70%</span></button>
+    <button id="nav-b" onclick="go('b')"><i class="dot crit"></i>TeamB<span class="sub">40%</span></button>
+    <button id="nav-c" onclick="go('c')"><i class="dot warn"></i>TeamC<span class="sub">55%</span></button>
+    <button id="nav-d" onclick="go('d')"><i class="dot idle"></i>TeamD<span class="sub">10%</span></button>
+    <div class="foot">md가 진실의 원천<br>/dashboard 로 재생성</div>
+  </aside>
+
+  <main>
+    <div class="sample-note">디자인 예시안 C — 사이드바 드릴다운형 · 샘플 데이터 · 사양: PRD_dashboard.md</div>
+
+    <!-- ===== 관리자(전체) 뷰 ===== -->
+    <section id="view-all">
+      <div class="crumb">전체</div>
+      <h1>관리자 대시보드 — 팀들의 현황</h1>
+      <div class="kpis">
+        <div class="kpi"><div class="label">전체 팀</div><div class="value">4</div></div>
+        <div class="kpi"><div class="label">블로킹</div><div class="value" style="color:var(--crit)">1 <small>TeamB</small></div></div>
+        <div class="kpi"><div class="label">STALE (7일↑)</div><div class="value">1 <small>TeamB 9일</small></div></div>
+        <div class="kpi"><div class="label">크로스팀 블로커</div><div class="value">1 <small>건</small></div></div>
+        <div class="kpi"><div class="label">평균 진행률</div><div class="value">44<small>%</small></div><div class="meter"><i style="width:44%"></i></div></div>
+      </div>
+
+      <h2>팀 목록 — 행 클릭 시 팀 대시보드로 이동</h2>
+      <div class="panel">
+        <div class="row click" onclick="go('a')"><span class="st good"><i class="dot good"></i><b>TeamA</b> 정상 · 70% · 마일스톤 7/15 베타</span><span class="r">갱신 07-06 →</span></div>
+        <div class="row click" onclick="go('b')"><span class="st crit"><i class="dot crit"></i><b>TeamB</b> 블로킹 · 40% · TeamA API 대기 <span class="chip">⚠ STALE 9일</span></span><span class="r">갱신 06-28 →</span></div>
+        <div class="row click" onclick="go('c')"><span class="st warn"><i class="dot warn"></i><b>TeamC</b> 지연 · 55% · 마일스톤 7/22 시연</span><span class="r">갱신 07-03 →</span></div>
+        <div class="row click" onclick="go('d')"><span class="st idle"><i class="dot idle"></i><b>TeamD</b> 대기 · 10% · 7/20 킥오프</span><span class="r">갱신 07-07 →</span></div>
+      </div>
+
+      <h2>크로스팀 이슈 / 블로커</h2>
+      <div class="panel"><div class="row"><span><i class="dot crit" style="display:inline-block;vertical-align:middle;margin-right:6px"></i>TeamB가 TeamA의 API 스펙 확정을 대기 중</span><span class="r">since 06-25</span></div></div>
+
+      <h2>최근 결과물 (11_doc_result)</h2>
+      <div class="panel">
+        <div class="row"><span>2026-07-07_TeamA_perf-analysis.md</span><span class="r">분석</span></div>
+        <div class="row"><span>2026-07-06_TeamC_regular-report.md</span><span class="r">정기보고</span></div>
+        <div class="row"><span>2026-07-06_TeamA_regular-report.md</span><span class="r">정기보고</span></div>
+      </div>
+    </section>
+
+    <!-- ===== 팀 뷰 (TeamA 샘플 — 실제 생성 시 팀별 페이지) ===== -->
+    <section id="view-team" class="hide">
+      <div class="crumb"><a style="color:var(--blue);cursor:pointer" onclick="go('all')">전체</a> / <span id="tCrumb">TeamA</span></div>
+      <h1 id="tTitle">TeamA <span class="st good"><i class="dot good"></i>정상</span></h1>
+      <div class="kpis">
+        <div class="kpi"><div class="label">전체 진행률</div><div class="value" id="tPct">70<small>%</small></div><div class="meter"><i id="tMeter" style="width:70%"></i></div></div>
+        <div class="kpi"><div class="label">다음 마일스톤</div><div class="value" style="font-size:16px" id="tMile">7/15 베타</div></div>
+        <div class="kpi"><div class="label">블로커</div><div class="value" style="font-size:16px" id="tBlock">없음</div></div>
+        <div class="kpi"><div class="label">최근 갱신</div><div class="value" style="font-size:16px" id="tUpd">2026-07-06</div></div>
+      </div>
+
+      <h2>역할별 현황 — 클릭하면 handover 요약이 펼쳐집니다</h2>
+      <div id="tRoles"><!-- JS 렌더 --></div>
+
+      <h2>진행 중 프로젝트 (00_Project — process.md 기반)</h2>
+      <div class="panel" id="tProjects"><!-- JS 렌더 --></div>
+
+      <h2>최근 결과물 (90_result_output)</h2>
+      <div class="panel">
+        <div class="row"><span>report_2026-07-06.md</span><span class="r">정기보고</span></div>
+        <div class="row"><span>2026-07-04_TeamA_retry-design.md</span><span class="r">분석</span></div>
+      </div>
+    </section>
+
+    <footer>이 페이지는 /dashboard 가 재생성하는 열람용 뷰입니다 — 수정할 내용은 handover / report에 작성하세요.</footer>
+  </main>
+</div>
+
+<script>
+  // 샘플 데이터 — 실제 생성기는 폴더 스캔 + handover 파싱 결과를 내장한다
+  const TEAMS = {
+    a:{name:'TeamA', st:'good', stTxt:'정상', pct:70, mile:'7/15 베타', block:'없음', upd:'2026-07-06',
+       roles:[
+        {n:'기획',p:'01_planner',st:'good',stTxt:'정상',state:'베타 범위 확정, 결제 플로우 기획서 v2 작성 완료.',next:['베타 시나리오 점검표 작성','정산 화면 와이어프레임 초안'],upd:'07-06'},
+        {n:'개발',p:'02_developer',st:'good',stTxt:'정상',state:'결제 재시도 로직 구현 중 (my-feature) — 테스트 12/16 통과.',next:['백오프 상한 처리','실패 케이스 테스트 보강'],upd:'07-05'},
+        {n:'패키지',p:'03_package',st:'idle',stTxt:'대기',state:'개발 결과물 대기 — 빌드 스크립트 골격 준비됨.',next:['베타 빌드','릴리스 노트 초안'],upd:'07-02'}],
+       projects:[['good','00_Project/01_my-feature — 결제 재시도 로직 · 개발 단계 · 70%','갱신 07-05'],['idle','00_Project/02_legacy-fix [종료]','아카이브 후보']]},
+    b:{name:'TeamB', st:'crit', stTxt:'블로킹', pct:40, mile:'미정', block:'TeamA API 스펙 대기', upd:'2026-06-28 (⚠STALE 9일)',
+       roles:[
+        {n:'기획',p:'01_planner',st:'good',stTxt:'정상',state:'로그 스키마 기획 완료.',next:['수집 정책 문서화'],upd:'06-28'},
+        {n:'개발',p:'02_developer',st:'crit',stTxt:'블로킹',state:'TeamA API 스펙 확정 대기로 중단 (since 06-25).',next:['스펙 수신 후 어댑터 구현'],upd:'06-28'},
+        {n:'패키지',p:'03_package',st:'idle',stTxt:'대기',state:'착수 전 — handover 미작성.',next:[],upd:'미작성'}],
+       projects:[['crit','00_Project/01_log-pipeline — 개발 단계 · 중단 (블로킹)','갱신 06-28']]},
+    c:{name:'TeamC', st:'warn', stTxt:'지연', pct:55, mile:'7/22 시연', block:'없음', upd:'2026-07-03',
+       roles:[
+        {n:'기획',p:'01_planner',st:'warn',stTxt:'지연',state:'시연 시나리오 문서 지연 (2일).',next:['시나리오 v1 마감'],upd:'07-03'},
+        {n:'개발',p:'02_developer',st:'good',stTxt:'정상',state:'데모 기능 구현 순항.',next:['데모 데이터 셋 구성'],upd:'07-03'},
+        {n:'패키지',p:'03_package',st:'warn',stTxt:'지연',state:'시연 장비 배포 스크립트 검증 지연.',next:['배포 리허설'],upd:'07-01'}],
+       projects:[['good','00_Project/01_demo-build — 개발 단계 · 시연 빌드','갱신 07-03']]},
+    d:{name:'TeamD', st:'idle', stTxt:'대기', pct:10, mile:'7/20 킥오프', block:'없음', upd:'2026-07-07',
+       roles:[
+        {n:'기획',p:'01_planner',st:'idle',stTxt:'대기',state:'킥오프 전 — 팀 목표 초안만 작성됨.',next:['요구사항 수집'],upd:'07-07'},
+        {n:'개발',p:'02_developer',st:'idle',stTxt:'대기',state:'착수 전 — handover 미작성.',next:[],upd:'미작성'},
+        {n:'패키지',p:'03_package',st:'idle',stTxt:'대기',state:'착수 전 — handover 미작성.',next:[],upd:'미작성'}],
+       projects:[]}
+  };
+
+  function go(key){
+    document.querySelectorAll('aside button').forEach(b=>b.classList.remove('on'));
+    document.getElementById('nav-'+key).classList.add('on');
+    const all = key==='all';
+    document.getElementById('view-all').classList.toggle('hide', !all);
+    document.getElementById('view-team').classList.toggle('hide', all);
+    if(!all) renderTeam(TEAMS[key]);
+    window.scrollTo(0,0);
+  }
+
+  function renderTeam(t){
+    document.getElementById('tCrumb').textContent = t.name;
+    document.getElementById('tTitle').innerHTML =
+      `${t.name} <span class="st ${t.st}"><i class="dot ${t.st}"></i>${t.stTxt}</span>`;
+    document.getElementById('tPct').innerHTML = `${t.pct}<small>%</small>`;
+    document.getElementById('tMeter').style.width = t.pct+'%';
+    document.getElementById('tMile').textContent = t.mile;
+    document.getElementById('tBlock').textContent = t.block;
+    document.getElementById('tUpd').textContent = t.upd;
+    document.getElementById('tRoles').innerHTML = t.roles.map(r=>`
+      <details class="role">
+        <summary><i class="dot ${r.st}"></i><span class="rn">${r.n}</span><span class="path">${r.p}</span>
+          <span class="right"><span>${r.stTxt}</span><span>handover ${r.upd}</span><span>▾</span></span></summary>
+        <div class="body">현재 상태: ${r.state}
+          <b>다음 할 일</b>
+          ${r.next.length ? `<ol>${r.next.map(x=>`<li>${x}</li>`).join('')}</ol>` : '<span style="color:var(--muted)">(없음)</span>'}
+        </div>
+      </details>`).join('');
+    document.getElementById('tProjects').innerHTML = t.projects.length
+      ? t.projects.map(p=>`<div class="row"><span><i class="dot ${p[0]}" style="display:inline-block;vertical-align:middle;margin-right:8px"></i>${p[1]}</span><span class="r">${p[2]}</span></div>`).join('')
+      : '<div class="row"><span style="color:var(--muted)">진행 중 프로젝트 없음</span></div>';
+  }
+</script>
+</body>
+</html>
