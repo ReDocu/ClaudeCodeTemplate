@@ -1,80 +1,117 @@
-# ClaudeCodeTemplate
+# Claude Cockpit
 
-**Claude Code 1인 다프로젝트 운영 템플릿** — 회사의 업무 프로세스(팀·역할 구조)를 빌려, 혼자서 다량의 프로젝트를 분류·운영합니다. 같은 구조 그대로 다인 협업으로 확장할 수 있습니다.
+> 여러 Claude Code 세션을 **프로젝트(팀)별 · 역할별**로 한 대시보드에서 상시 운영·관찰·인수인계하는 관제 도구.
+> 새 mux나 터미널을 만들지 않고, **wmux 위에 얇게 얹는 오케스트레이션 레이어**로 구현한다.
 
-> 처음이신가요? → **[main_manual.md](main_manual.md)** 하나만 읽으면 시작할 수 있습니다 (5분).
+- **상태**: 설계 완료 (planner v0.9 · Tech v0.1) — M0 착수 전
+- **환경**: Windows 11 · wmux 0.13.0 · Claude Code v2.1.205 · Node 20+
 
-## 핵심 아이디어 3가지
+---
 
-| # | 아이디어 | 의미 |
-|---|---|---|
-| 1 | **폴더가 곧 역할** | 어느 폴더에서 `claude`를 켜는지가 역할과 권한을 정합니다 |
-| 2 | **문서가 곧 기억** | 세션 컨텍스트는 휘발됩니다 — 끝날 때 `/handover`로 저장하고, 시작할 때 읽어 복원합니다 |
-| 3 | **대시보드가 곧 현황** | `/report_root` 한 번으로 전 팀 현황이 HTML 대시보드로 갱신됩니다 |
+## 왜 만드는가
 
-**1인 사용 기본 모델 (2축)**: 팀 = 사업 영역 분류(예: WebDev / Creative / DataOps) · 역할 = 작업 모드(기획 → 개발 → 패키지) · 루트 = 주간 포트폴리오 리뷰. 상세: main_manual 8장.
+Claude Code로 여러 작업을 동시에 굴리면 터미널이 흩어지고, 어느 프로젝트의 어떤 세션이 지금 무슨 상태인지 파악할 수 없다. 세션이 끝나면 "무엇을 했는지"도 휘발된다.
 
-## 미리보기
+**타깃**: 여러 프로젝트(또는 여러 클라이언트)를 병렬로 진행하는 1인 개발자·프리랜서.
 
-**HTML 대시보드** — `/report_root` 한 번이면 전 팀 현황이 단일 HTML 파일로 갱신됩니다. 외부 도구·네트워크 없이 브라우저로 열기만 하면 됩니다 (아래는 샘플 데이터 화면):
+**핵심 가치**
+1. **한 눈에 관제** — 운영 중인 모든 팀·역할 세션 상태를 대시보드에서 일괄 확인
+2. **드릴다운** — 팀 선택 → 역할 세션 실시간 관찰, **클릭하면 그 세션으로 점프**
+3. **인수인계 자동화** — 세션 완료 시 인수인계 문서가 관리자 inbox로 자동 축적
 
-![관리자 대시보드 — 전 팀 KPI·팀 목록·크로스팀 블로커](img/dashboard_admin.png)
+## 개념 매핑
 
-팀을 클릭하면 드릴다운 — 역할별 현황과 handover 요약이 펼쳐집니다:
+모든 개념이 wmux 네이티브 프리미티브로 실현된다 (0.13.0 CLI 검증 완료).
 
-![팀 대시보드 — 역할별 현황·다음 할 일](img/dashboard_team.png)
+| 기획 개념 | wmux 실체 |
+|-----------|-----------|
+| 팀 (프로젝트) | workspace |
+| 역할 (세션) | workspace 내 pane의 claude agent |
+| 관리자 | HTML 대시보드 (브라우저 패널) + registry |
+| 인수인계 / 공유 문서 | markdown surface + `manager/inbox/` |
 
-**폴더가 곧 역할** — 같은 팀이라도 어느 폴더에서 세션을 여는지에 따라 팀 관리 / 기획 / 개발 / 패키지 모드로 나뉩니다:
-
-![팀·역할별 세션 운영 — 팀 관리·Planner·Developer·package 4분할](img/team_role_sessions.png)
-
-**루트 = 총괄자** — `/status`로 전체 현황을 조회하고 `/new_team`으로 팀을 만듭니다:
-
-![루트 세션 — /status 조회 후 /new_team 실행](img/root_session.png)
-
-## 빠른 시작
+## 아키텍처
 
 ```
-1. 루트 폴더에서 claude 실행       → 당신은 총괄자입니다
-2. /new_team MyTeam               → 팀(사업 영역) 생성
-3. 팀 폴더에서 /new_project my-app → 프로젝트 생성 (작업 폴더 + process 문서)
-4. 역할 폴더에서 작업 → 끝나면 /handover
+브라우저 패널 HTML 대시보드 (wmux browser)      ← 주 UI, 클릭→점프
+    ↕ fetch (same-origin, 127.0.0.1 + 토큰)
+teamctl (Node, 무프레임워크 · npm 의존성 0 목표)
+    serve │ core │ commands │ capctl │ connectors
+    ↕ wmux CLI (파이프 IPC)
+wmux 0.13.0 — workspace · agent · pane · markdown
+    ↕
+Claude Code 세션들 (역할) — hooks · transcripts
 ```
 
-## 폴더 구조
+## 기능 맵
+
+| # | 기능 | 핵심 | MVP |
+|---|------|------|-----|
+| F1 | 세션 운영 | 팀=workspace · 역할=agent · 생성/제어/인수인계 | ✅ |
+| F2 | 인터랙티브 대시보드 + 브리지 | 로컬 서버 HTML, **세션 클릭→점프** | ✅ |
+| F3 | 역할 세션 라이브 뷰 | "지금 하는 일" — 트랜스크립트 tail 주 소스 | ✅ |
+| F4 | 로컬 포트/서버 감지 | 글로벌 포트맵 + 팀 귀속 | ✅ |
+| F5 | 연결 상태 (git·supabase 등) | core(항상) + optional(팀별 opt-in) 커넥터 | ◐ core만 |
+| F6 | 기능 인벤토리 | 플러그인·스킬·MCP·훅, 글로벌 vs 세션 델타 | ◐ 활성만 |
+| F7 | 격리·병합 (worktree·contract) | — | later (M3) |
+| F8 | 관측·비용·청구 리포트 | — | later (M4) |
+
+## 사용법 (목표 인터페이스)
+
+```bash
+npm i -g .                                      # 설치 (런타임 의존성 0)
+
+teamctl new-team alpha --path "D:\clients\acme-web" --client Acme
+teamctl spawn-role alpha backend
+teamctl serve                                   # → http://127.0.0.1:7420
+wmux browser open http://127.0.0.1:7420/        # 브라우저 패널에 대시보드
+```
 
 ```
-(루트)
-├── 00_Team/           팀 작업 공간 (ProjectTeam_{팀명} · 양식: _ProjectTeam_Template)
-├── 01~04_*/           분석 역할 (Explorer·Educator·Critic·Advisor — /pipeline)
-├── 10_Dashboard/      전체 현황판 (dashboard.html — 자동 생성, 직접 수정 금지)
-├── 11_doc_result/     최종 결과물
-├── 90_Templates/      표준 양식 원본
-├── 99_Archive/        종료 프로젝트·구버전 보관
-├── img/               README 이미지
-└── manual/            상세 매뉴얼 (00~07)
+teamctl new-team <name> [--path <projectPath>] [--client <c>]
+teamctl spawn-role <team> <role> [--prompt <p>] [--worktree]
+teamctl list | status <team>/<role> | attach <team>/<role> | kill <team>/<role>
+teamctl scan <team>            # 능력 인벤토리 + 커넥터 재스캔
+teamctl serve [--port 7420]    # 컨트롤 브리지 + 대시보드
+teamctl dashboard              # 마크다운 폴백 뷰
 ```
 
-## 주요 명령
+## 폴더 구조 — 3층 분리
 
-| 명령 | 위치 | 하는 일 |
-|---|---|---|
-| `/new_team {팀명}` / `/new_project {이름}` | 루트 / 팀 | 팀·프로젝트 스캐폴딩 |
-| `/handover` | 작업한 폴더 | 상태 문서 갱신 (세션 마무리 필수) |
-| `/report` · `/report_root` | 팀 / 루트 | 보고서 + 대시보드 갱신 |
-| `/status` | 루트·팀 | 현황 요약 조회 (읽기 전용) |
-| `/dashboard` | 루트 | HTML 대시보드 갱신 (외부 도구 불필요) |
-| `/pipeline {주제}` | 어디서나 | 탐색→설명→검증→권고 4단계 분석 |
+① 도구 코드(버전관리) · ② 런타임 상태(gitignore) · ③ 실제 프로젝트(외부, `projectPath` 포인터로 참조)
 
-## 문서 지도
+```
+├─ planner.md            # 제품 기획·결정 로그 (D#·F# 정본)
+├─ Tech.md               # 엔지니어링 스펙 (구현자용)
+├─ bin/teamctl.js        # CLI 진입점
+├─ src/                  # core · commands · capabilities · connectors · server · live · hooks
+├─ templates/            # 역할·프로젝트·인수인계 템플릿
+└─ workspace/            # 런타임 상태 (gitignore)
+     manager/            #   registry.json · 대시보드 폴백 · inbox/
+     teams/<team-id>/    #   team.json · project.md · 능력/연결 캐시 · handovers/
+```
+
+## 문서 안내
 
 | 문서 | 내용 |
-|---|---|
-| [main_manual.md](main_manual.md) | 처음 사용자용 안내서 (진입점) |
-| [manual/](manual/) | 역할별 상세 매뉴얼·FAQ |
-| [PRD.md](PRD.md) · [PRD_dashboard.md](PRD_dashboard.md) | 전체 사양 (v1.5) · 대시보드 사양 |
-| [Tech.md](Tech.md) | 상태 점검 가이드 (불변식·동기화 지점) |
+|------|------|
+| [planner.md](planner.md) | 제품 기획서 — 결정 로그(D1~D14), 기능 맵(F1~F8), 마일스톤(M0~M4), 리스크 |
+| [Tech.md](Tech.md) | 기술 설계 — 데이터 모델, wmux 통합, 커넥터/스캐너, API, 시퀀스 |
+| [dashboard-mockup.html](dashboard-mockup.html) | 관제 대시보드 목업 |
+| [role-detail-mockup.html](role-detail-mockup.html) | 역할 세션 상세(라이브 뷰) 목업 |
 
-## 요구사항
+## 로드맵
 
-[Claude Code](https://claude.com/claude-code)만 있으면 됩니다 — 파이썬 등 외부 도구 불필요, 대시보드는 오프라인(`file://`) 동작.
+- **M0** — 뼈대·규약: 폴더 스캐폴딩, registry 스키마, 역할 템플릿, teamctl 골격
+- **M1 ⭐** — 모니터링 + 세션 생성/제어: new-team / spawn-role / serve / 클릭→점프
+  - M1.5 기능 인벤토리 · M1.6 연결 상태+포트 · M1.7 라이브 뷰
+- **M2** — 인수인계 파이프라인 (Stop 훅 → inbox → 리뷰)
+- **M3** — 격리·병합 (worktree · contract · 리뷰 게이트)
+- **M4** — 관측·비용 → **프리랜서 청구 리포트** (차별화 포인트)
+
+## 원칙
+
+- **재발명 금지 (D4·D7)** — PTY·렌더·detach는 wmux가 다 한다. 기존 `wmux-orchestrator` 플러그인의 실행·훅 패턴을 재사용하되, 일회성 웨이브가 아닌 **지속형 멀티프로젝트 관제**로 변형.
+- **의존성 최소** — Node 내장 모듈 + wmux/git/claude CLI만. 런타임 npm 의존성 0 목표.
+- **보안** — 컨트롤 서버는 `127.0.0.1` + 토큰 전용. `.env` 시크릿 값은 절대 저장·표시하지 않음(키 이름·존재만).
+- **우아한 성능 저하** — CLI 부재 시 `tool-missing`, read-screen 실패 시 트랜스크립트 tail, 서버 다운 시 마크다운 폴백.
