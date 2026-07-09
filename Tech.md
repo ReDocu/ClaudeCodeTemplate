@@ -3,7 +3,7 @@
 > **성격**: 엔지니어링 스펙. `planner.md`(제품·결정)와 짝. 결정 근거는 planner의 `D#`, 기능은 `F#` 참조.
 > **대상 독자**: M0~M1 구현자(사람 또는 claude 역할 세션).
 > **검증 환경**: Windows 11 · wmux 0.13.0 · Claude Code v2.1.205 · Node 20 · git 설치됨.
-> **상태**: v0.1 (planner v0.9 기준)
+> **상태**: v0.1 (planner v0.9 기준 · v0.10 D15 MCP 연결 상태 스팟 동기화 반영)
 
 ---
 
@@ -171,7 +171,7 @@ ClaudeTemplate/
   ]
 }
 ```
-`state ∈ connected | degraded | needs-auth | error | disconnected | not-configured | tool-missing`
+`state ∈ connected | degraded | needs-auth | pending-approval | error | disconnected | not-configured | tool-missing` (`pending-approval`: 미승인 `.mcp.json` MCP 서버, D15)
 
 ### 4.4 `capabilities.json` / `globalCapabilities.json` (§10)
 ```jsonc
@@ -307,7 +307,7 @@ export default {
 | ports | core | 상시 | §11 |
 | env | core | `.env*` | 키 존재/누락(`.env.example` 대비) |
 | node | core | `package.json` | `node_modules`·락파일·`npm outdated` |
-| mcp | core | 세션 MCP | `mcp-needs-auth-cache.json` → needs-auth |
+| mcp | core | 5소스 스캔: `settings.json.mcpServers` · `~/.claude.json`(user/`projects[<cwd>]`) · `.mcp.json` · 플러그인/세션 플래그 | 정적: 승인 여부 + `mcp-needs-auth-cache.json` / 동적: cwd `claude mcp list` 파싱(✓/✗/⏸) → connected·needs-auth·pending-approval·error. ⚠️ list는 settings.json 소스 미표시 → 파일+CLI 교차검증 (planner D15·§6.6) |
 | git | optional | `.git/` | `git status --porcelain=v2 --branch` + `remote` |
 | supabase | optional | `supabase/config.toml`·`SUPABASE_URL` | URL+키→핑 `/auth/v1/health` |
 | github | optional | git remote | `gh auth status`·PR·CI (gh 있을 때) |
