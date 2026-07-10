@@ -1,15 +1,30 @@
 // /api/state 페이로드 빌더 — wmux 실측(list-workspaces + agent list)을
 // 트리아지 대시보드가 소비하는 { teams, sessions } 모델로 매핑.
 import { basename } from 'node:path';
+import { homedir } from 'node:os';
 import { getWmuxState } from './wmux.js';
 import { snapshot, maybeRefresh, refreshAll } from '../connectors/index.js';
 
+// 워크스페이스 cwd는 활성 pane을 따라 홈으로 드리프트함(§8 — 스폰 시 새 pane이 홈에서 뜸).
+// 팀=프로젝트 경로는 고정돼야 하므로 워크스페이스별 마지막 non-home cwd를 기억해 반환.
+// 팀 path·세션 cwd(드로어)·커넥터 프로브·spawn --cwd가 모두 이 안정 경로를 공유.
+const HOME = homedir().toLowerCase();
+const _projectCwd = new Map(); // wsId -> 마지막 관측된 non-home cwd
+export function stableCwd(wsId, liveCwd) {
+  const c = liveCwd || '';
+  if (c && c.toLowerCase() !== HOME) { _projectCwd.set(wsId, c); return c; }
+  return _projectCwd.get(wsId) || c;
+}
+
 // wmux 읽기는 getWmuxState 캐시 경유(TTL+single-flight) — 폴링당 5초 왕복을 압축.
 export async function buildState({ forceConnectors = false } = {}) {
-  const { workspaces, agents, live } = await getWmuxState();
+  const st = await getWmuxState();
+  const { agents, live } = st;
   if (!live) {
     return { source: 'offline', live: false, teams: [], sessions: {}, ports: [], generatedAt: Date.now() };
   }
+  // 드리프트 보정: 홈으로 튄 cwd를 고정된 프로젝트 경로로 치환 후 하류 전체가 이를 사용.
+  const workspaces = (st.workspaces || []).map((w) => ({ ...w, cwd: stableCwd(w.id, w.cwd) }));
 
   // 커넥터 갱신은 절대 응답을 막지 않음: force여도 fire-and-forget(다음 폴링에 반영).
   if (forceConnectors) refreshAll(workspaces).catch(() => {});

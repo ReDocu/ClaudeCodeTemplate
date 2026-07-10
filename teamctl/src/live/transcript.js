@@ -5,8 +5,9 @@ import { join, basename } from 'node:path';
 import { homedir } from 'node:os';
 
 const PROJECTS = join(homedir(), '.claude', 'projects');
-// enc-cwd: `\` `:` `/` → `-` (§15). 예 C:\Users\LEE\…\X → C--Users-LEE-…-X
-const encCwd = (cwd) => cwd.replace(/[:\\/]/g, '-');
+// enc-cwd: Claude Code는 비영숫자 전부 `-`로 치환(§15). 예 D:\_Claude\X → D---Claude-X
+// (구버전은 `[:\\/]`만 치환 → `_`·`.`·공백 포함 경로에서 디렉터리 못 찾던 버그)
+const encCwd = (cwd) => cwd.replace(/[^a-zA-Z0-9]/g, '-');
 
 function newestTranscript(cwd) {
   const dir = join(PROJECTS, encCwd(cwd));

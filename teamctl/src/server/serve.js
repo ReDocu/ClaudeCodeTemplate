@@ -7,8 +7,8 @@ import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname } from 'node:path';
 import { randomBytes } from 'node:crypto';
-import { buildState } from '../core/state.js';
-import { selectWorkspace, focusPane, killAgent, send, spawnAgent, invalidateWmux } from '../core/wmux.js';
+import { buildState, stableCwd } from '../core/state.js';
+import { selectWorkspace, focusPane, killAgent, send, spawnAgent, invalidateWmux, getWmuxState } from '../core/wmux.js';
 import { readTranscript } from '../live/transcript.js';
 import { changedFiles } from '../live/gitdiff.js';
 
@@ -94,12 +94,22 @@ export async function serve({ port } = {}) {
         }
         if (req.method === 'POST' && pathname === '/spawn') {
           const b = await readBody(req);
+          const ws = b.ws || b.workspaceId;
+          // cwd 미지정 시 대상 워크스페이스의 고정 프로젝트 cwd로 보정 — 안 하면 wmux가
+          // 홈에 스폰돼 세션이 팀 경로와 분리되고 드로어(GET /api/session?cwd=)가 홈을 읽음.
+          // stableCwd는 폴링으로 채워진 pin에서 드리프트 이전의 프로젝트 경로를 돌려줌.
+          let cwd = b.cwd;
+          if (!cwd && ws) {
+            const st = await getWmuxState();
+            const w = (st.workspaces || []).find((x) => x.id === ws);
+            cwd = stableCwd(ws, w?.cwd) || undefined;
+          }
           const agent = await spawnAgent({
             cmd: b.cmd || 'claude',                 // 기본: claude 역할 세션
             label: b.role || b.label,
-            cwd: b.cwd,
+            cwd,
             pane: b.pane,
-            workspaceId: b.ws || b.workspaceId,
+            workspaceId: ws,
           });
           invalidateWmux(); // 스폰된 세션이 다음 상태 조회에 즉시 뜨도록
           return sendJson(res, 200, { ok: true, agent });
