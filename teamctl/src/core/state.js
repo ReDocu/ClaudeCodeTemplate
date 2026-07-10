@@ -14,9 +14,12 @@ export async function buildState() {
 
   const sessions = {};
   const teams = workspaces.map((w) => {
-    const wsAgents = agents.filter((a) => (a.workspaceId || a.workspace) === w.id);
+    // 종료된(exited/dead) 에이전트는 유령 카드로 쌓이므로 제외 — 살아있는 세션만 표시.
+    const wsAgents = agents.filter((a) =>
+      (a.workspaceId || a.workspace) === w.id && !isDead(a));
     const roleKeys = wsAgents.map((a) => {
-      const key = `${w.id}/${a.id}`;
+      const aid = agentIdOf(a);
+      const key = `${w.id}/${aid}`;
       sessions[key] = mapAgent(a, w);
       return key;
     });
@@ -35,16 +38,21 @@ export async function buildState() {
   return { source: 'live', live: true, teams, sessions, generatedAt: Date.now() };
 }
 
-// agent 객체 → 대시보드 세션 상세. agent list가 현재 비어 있어 필드는 방어적 매핑.
+// wmux agent 실측 필드: agentId·label·cmd·status·paneId·workspaceId·spawnTime·pid·exitCode.
+const agentIdOf = (a) => a.agentId || a.id;
+const isDead = (a) => /exit|dead|stopped|killed|terminated/.test((a.status || a.state || '').toLowerCase());
+
+// agent 객체 → 대시보드 세션 상세.
 function mapAgent(a, w) {
+  const aid = agentIdOf(a);
   const state = (a.status || a.state || '').toLowerCase();
   const waiting = /wait|approval|pending|input/.test(state);
   const running = state === 'running';
   return {
     team: w.title || w.id,
-    role: a.role || a.name || a.title || a.id,
+    role: a.role || a.label || a.name || a.title || aid,
     st: waiting ? 'waiting' : running ? 'working' : 'idle',
-    now: a.lastMessage || a.summary || a.title || '(상태 정보 없음)',
+    now: a.lastMessage || a.summary || (a.cmd ? `실행: ${a.cmd}` : a.title) || '(상태 정보 없음)',
     model: a.model || '—',
     elapsed: a.elapsed || '—',
     cost: a.cost || '—',
@@ -52,8 +60,8 @@ function mapAgent(a, w) {
     tools: a.tools || 0,
     ws: w.id,
     pane: a.paneId || a.pane || '',
-    agentId: a.id,
-    screen: `<span class="mut">agent ${a.id}\nstatus: ${a.status || a.state || 'unknown'}\ncwd: ${w.cwd || ''}</span>`,
+    agentId: aid,
+    screen: `<span class="mut">agent ${aid}\ncmd: ${a.cmd || '—'}\nstatus: ${a.status || a.state || 'unknown'}\ncwd: ${w.cwd || ''}</span>`,
     feed: [],
     files: [],
   };

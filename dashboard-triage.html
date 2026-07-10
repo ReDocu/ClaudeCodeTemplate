@@ -267,7 +267,7 @@
     </div>
   </div>
 
-  <p class="foot">트리아지 대시보드 초안 — 로컬 브리지(D14) 전제 · 클릭=드로어(점프 없는 판단) · "열기"→<code>POST /attach</code> · "종료"→확인+undo→<code>POST /kill</code> · 데이터는 <code>GET /api/state</code> 폴링(현재 정적 시뮬레이션)</p>
+  <p class="foot">트리아지 대시보드 초안 — 로컬 브리지(D14) 전제 · 클릭=드로어(점프 없는 판단) · "열기"→<code>POST /attach</code> · "＋ 세션 스폰"→<code>POST /spawn</code> · "종료"→확인+undo→<code>POST /kill</code> · 데이터는 <code>GET /api/state</code> 폴링</p>
 </div>
 
 <!-- drawer -->
@@ -445,6 +445,13 @@ async function doKill(agentId,label){
   toast(`세션 종료됨(시뮬) — <span class="mono">${label}</span>`,{actionLabel:'실행 취소',onAction:()=>undoKill(label),ttl:6000});
   announce(`${label} 세션을 종료했습니다.`,true);
 }
+async function doSpawn(ws,role,cmd){
+  const label=role||'claude';
+  if(HAS_API){try{await api('/spawn',{method:'POST',body:{ws,role:label,cmd:cmd||'claude'}});
+    ping(`세션 스폰 — <span class="mono">agent spawn ${label}</span> ✓`);
+    announce(`${label} 세션을 시작했습니다. 상태 카드가 곧 나타납니다.`,true);loadState();return;}catch(e){ping('스폰 실패 — '+e.message);return;}}
+  ping(`세션 스폰(시뮬) — <span class="mono">${label} → ${ws||''}</span>`);
+}
 
 /* ===== 트리아지 존 ===== */
 function renderHero(){
@@ -483,10 +490,11 @@ function renderTeams(){
     const port=t.ports[0];
     const portHtml=port?`<span class="conn"><span class="g" style="color:var(--${port.st==='down'?'crit':'quiet'});font-size:9px">${port.st==='down'?'▲':'●'}</span><span class="k mono">${port.p}</span><span class="v">${port.proc} · ${port.tag}</span></span>`:'';
     const connsHtml=(conns||portHtml)?`<div class="conns">${conns}${portHtml}</div>`:'';
+    const spawnBtn=`<button class="rrow spawn" onclick="doSpawn('${t.id}')" title="이 팀에 claude 세션 스폰 (POST /spawn)" style="color:var(--faint);gap:6px"><span class="rn" style="color:var(--quiet)">＋ 세션 스폰</span><span class="now mono" style="font-size:11px">claude → ${t.name}</span><span class="chev">↗</span></button>`;
     return `<section class="tcard ${calm} ${stripe}">
       <div class="tc-head"><span class="nm">${t.name}</span><span class="tg">${t.tag}</span><span class="pt">${t.path}</span>
         <span class="h">${pill(teamHealth(t)==='down'?'down':teamHealth(t)==='waiting'?'waiting':'working', h.label)}</span></div>
-      <div class="rrows">${rows||'<div style="color:var(--faint);font-size:12px;padding:4px 2px">활성 역할 세션 없음</div>'}</div>
+      <div class="rrows">${rows||'<div style="color:var(--faint);font-size:12px;padding:4px 2px">활성 역할 세션 없음</div>'}${spawnBtn}</div>
       ${connsHtml}</section>`;
   }).join('');
 }

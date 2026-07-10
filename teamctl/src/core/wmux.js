@@ -35,3 +35,16 @@ export const selectWorkspace = (id) => wmux(['select-workspace', id], { json: fa
 export const focusPane = (id) => wmux(['focus-pane', id], { json: false });
 export const killAgent = (id) => wmux(['agent', 'kill', id], { json: false });
 export const send = (text) => wmux(['send', text], { json: false });
+
+// agent spawn — cmd 필수(예: 'claude'). label 없으면 wmux가 cmd 첫 토큰으로 대체.
+// workspaceId 주면 해당 워크스페이스에, 없으면 활성 워크스페이스에 스폰.
+// 반환: 스폰된 agent 정보(JSON) → 대시보드가 즉시 loadState로 카드 채움.
+export function spawnAgent({ cmd, label, cwd, pane, workspaceId } = {}) {
+  if (!cmd) throw new Error('cmd 필요');
+  const args = ['agent', 'spawn', '--cmd', cmd];
+  if (label) args.push('--label', label);
+  if (cwd) args.push('--cwd', cwd);
+  if (pane) args.push('--pane', pane);
+  if (workspaceId) args.push('--workspace', workspaceId);
+  return wmux(args);
+}

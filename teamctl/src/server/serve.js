@@ -8,7 +8,7 @@ import { fileURLToPath } from 'node:url';
 import { dirname } from 'node:path';
 import { randomBytes } from 'node:crypto';
 import { buildState } from '../core/state.js';
-import { selectWorkspace, focusPane, killAgent, send } from '../core/wmux.js';
+import { selectWorkspace, focusPane, killAgent, send, spawnAgent } from '../core/wmux.js';
 
 const DASHBOARD = fileURLToPath(new URL('../../../dashboard-triage.html', import.meta.url));
 const CONFIG = fileURLToPath(new URL('../../workspace/config.json', import.meta.url));
@@ -56,7 +56,7 @@ export async function serve({ port } = {}) {
     }
 
     // API — 토큰 필수
-    const isApi = pathname.startsWith('/api/') || ['/attach', '/kill', '/send', '/refresh'].includes(pathname);
+    const isApi = pathname.startsWith('/api/') || ['/attach', '/kill', '/send', '/spawn', '/refresh'].includes(pathname);
     if (isApi) {
       if (req.headers['x-cockpit-token'] !== TOKEN) return sendJson(res, 401, { error: 'unauthorized' });
       try {
@@ -79,6 +79,17 @@ export async function serve({ port } = {}) {
           if (b.pane) await focusPane(b.pane);
           await send(b.text || '');
           return sendJson(res, 200, { ok: true });
+        }
+        if (req.method === 'POST' && pathname === '/spawn') {
+          const b = await readBody(req);
+          const agent = await spawnAgent({
+            cmd: b.cmd || 'claude',                 // 기본: claude 역할 세션
+            label: b.role || b.label,
+            cwd: b.cwd,
+            pane: b.pane,
+            workspaceId: b.ws || b.workspaceId,
+          });
+          return sendJson(res, 200, { ok: true, agent });
         }
         return sendJson(res, 404, { error: 'not found' });
       } catch (e) {
