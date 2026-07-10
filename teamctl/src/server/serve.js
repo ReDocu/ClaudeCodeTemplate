@@ -8,7 +8,7 @@ import { fileURLToPath } from 'node:url';
 import { dirname } from 'node:path';
 import { randomBytes } from 'node:crypto';
 import { buildState } from '../core/state.js';
-import { selectWorkspace, focusPane, killAgent, send, spawnAgent } from '../core/wmux.js';
+import { selectWorkspace, focusPane, killAgent, send, spawnAgent, invalidateWmux } from '../core/wmux.js';
 
 const DASHBOARD = fileURLToPath(new URL('../../../dashboard-triage.html', import.meta.url));
 const CONFIG = fileURLToPath(new URL('../../workspace/config.json', import.meta.url));
@@ -61,7 +61,9 @@ export async function serve({ port } = {}) {
       if (req.headers['x-cockpit-token'] !== TOKEN) return sendJson(res, 401, { error: 'unauthorized' });
       try {
         if (req.method === 'GET' && pathname === '/api/state') return sendJson(res, 200, await buildState());
-        if (req.method === 'POST' && pathname === '/refresh') return sendJson(res, 200, await buildState());
+        if (req.method === 'POST' && pathname === '/refresh') {
+          return sendJson(res, 200, await buildState({ forceConnectors: true })); // 커넥터 백그라운드 강제 갱신
+        }
         if (req.method === 'POST' && pathname === '/attach') {
           const b = await readBody(req);
           if (b.ws) await selectWorkspace(b.ws);
@@ -72,6 +74,7 @@ export async function serve({ port } = {}) {
           const b = await readBody(req);
           if (!b.agentId) return sendJson(res, 400, { error: 'agentId 필요' });
           await killAgent(b.agentId);
+          invalidateWmux(); // 다음 상태 조회에 즉시 반영
           return sendJson(res, 200, { ok: true, agentId: b.agentId });
         }
         if (req.method === 'POST' && pathname === '/send') {
@@ -89,6 +92,7 @@ export async function serve({ port } = {}) {
             pane: b.pane,
             workspaceId: b.ws || b.workspaceId,
           });
+          invalidateWmux(); // 스폰된 세션이 다음 상태 조회에 즉시 뜨도록
           return sendJson(res, 200, { ok: true, agent });
         }
         return sendJson(res, 404, { error: 'not found' });
@@ -107,6 +111,7 @@ export async function serve({ port } = {}) {
       console.log(`[teamctl] 컨트롤 브리지(D14) 기동 — ${url}`);
       console.log(`[teamctl] token ${TOKEN.slice(0, 8)}… · 127.0.0.1 전용 · X-Cockpit-Token`);
       console.log(`[teamctl] 브라우저 패널: wmux browser open ${url}`);
+      buildState({ forceConnectors: true }).catch(() => {}); // 부팅 시 커넥터 캐시 워밍(논블로킹)
       resolve({ server, url, token: TOKEN, port: cfg.port });
     });
   });

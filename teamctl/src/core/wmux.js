@@ -30,6 +30,39 @@ export const listWorkspaces = () => wmux(['list-workspaces']);
 export const listAgents = () => wmux(['agent', 'list']);
 export const agentStatus = (id) => wmux(['agent', 'status', id]);
 
+// wmux 상태 캐시 — CLI 왕복이 호출당 수초까지 감(파이프 연결 고정 지연). 폴링마다 재조회하면 요청이 밀림.
+// 논블로킹: 폴링은 캐시를 즉시 받고, 갱신은 백그라운드 single-flight로. 콜드 첫 호출만 대기.
+// spawn/kill 등 변이 후 invalidateWmux()로 즉시 백그라운드 재조회.
+const WMUX_TTL = 1500;
+let _cache = null, _cacheAt = 0, _inflight = null;
+
+function _refetch() {
+  if (_inflight) return _inflight; // single-flight
+  _inflight = (async () => {
+    try {
+      const [ws, ag] = await Promise.all([listWorkspaces(), listAgents().catch(() => ({ agents: [] }))]);
+      _cache = { workspaces: ws.workspaces || [], agents: ag.agents || [], live: true };
+    } catch {
+      _cache = { workspaces: [], agents: [], live: false }; // list-workspaces 실패 = 오프라인
+    }
+    _cacheAt = Date.now();
+    return _cache;
+  })().finally(() => { _inflight = null; });
+  return _inflight;
+}
+
+// 논블로킹 — 캐시 즉시 반환(오래됐으면 백그라운드 갱신 트리거). 콜드면 null.
+export function getWmuxCached() {
+  if (Date.now() - _cacheAt >= WMUX_TTL && !_inflight) _refetch().catch(() => {});
+  return _cache;
+}
+// 콜드 캐시일 때만 첫 왕복을 대기(부팅/첫 폴링). 이후엔 getWmuxCached로 즉시.
+export async function getWmuxState() {
+  const c = getWmuxCached();
+  return c || _refetch();
+}
+export function invalidateWmux() { _cacheAt = 0; _refetch().catch(() => {}); }
+
 // --- write (제어) — Tech.md §5.1 매핑 ---
 export const selectWorkspace = (id) => wmux(['select-workspace', id], { json: false });
 export const focusPane = (id) => wmux(['focus-pane', id], { json: false });

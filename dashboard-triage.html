@@ -414,12 +414,13 @@ async function api(path,opts){opts=opts||{};
   if(!res.ok)throw new Error(path+' → '+res.status);
   return res.json();
 }
+let PORTS=[];
 async function loadState(){
   if(HAS_API){
     try{
       const d=await api('/api/state');
-      if(d.teams&&d.teams.length){TEAMS=d.teams;S=d.sessions||{};SOURCE=d.live?'live':'demo';}
-      else SOURCE=d.live?'live-empty':'demo(offline)';
+      if(d.teams&&d.teams.length){TEAMS=d.teams;S=d.sessions||{};PORTS=d.ports||[];SOURCE=d.live?'live':'demo';}
+      else{PORTS=d.ports||[];SOURCE=d.live?'live-empty':'demo(offline)';}
     }catch(e){SOURCE='demo(offline)';}
   } else SOURCE='demo';
   renderAll();
@@ -502,12 +503,17 @@ function renderTeams(){
 /* ===== 레일 ===== */
 function renderRail(){
   const rows=[];
-  TEAMS.forEach(t=>t.ports.forEach(p=>rows.push(
-    `<div class="r"><span class="g" style="color:var(--${p.st==='down'?'crit':'ok'})">${p.st==='down'?'▲':'●'}</span><span class="num">${p.p}</span><span class="proc">${p.proc}</span><span class="to team">→ ${t.name}</span></div>`)));
-  if(SOURCE!=='live'&&SOURCE!=='live-empty') EXTRA_PORTS.forEach(p=>rows.push(
-    `<div class="r"><span class="g" style="color:var(--idle)">○</span><span class="num">${p.p}</span><span class="proc">${p.proc}</span><span class="to none">→ 기타</span></div>`));
+  const live=(SOURCE==='live'||SOURCE==='live-empty');
+  const mk=(color,glyph,num,proc,toCls,to)=>`<div class="r"><span class="g" style="color:var(--${color})">${glyph}</span><span class="num">${num}</span><span class="proc">${proc}</span><span class="to ${toCls}">→ ${to}</span></div>`;
+  if(live){ // 실측 글로벌 포트맵(§11) — 팀 귀속 or dev/db만
+    PORTS.forEach(p=>rows.push(mk('ok','●',p.p,p.proc,p.teamName?'team':'none',p.teamName||'기타')));
+    if(!PORTS.length) rows.push('<div style="color:var(--faint);font-size:12px;padding:2px">감지된 dev/db 리스너 없음</div>');
+  } else {
+    TEAMS.forEach(t=>t.ports.forEach(p=>rows.push(mk(p.st==='down'?'crit':'ok',p.st==='down'?'▲':'●',p.p,p.proc,'team',t.name))));
+    EXTRA_PORTS.forEach(p=>rows.push(mk('idle','○',p.p,p.proc,'none','기타')));
+  }
   document.getElementById('portmap').innerHTML=rows.join('');
-  document.getElementById('port-count').textContent=(rows.length)+' listening';
+  document.getElementById('port-count').textContent=((live?PORTS.length:rows.length))+' listening';
   const HO=[
     {who:'team-alpha / planner',meta:'아키텍처 웨이브 계획 완료 · 4 파일 · 09:30',path:'manager/inbox/…planner.md'},
     {who:'team-word / backend',meta:'API 라우트 3종 · 마이그레이션 1 · 09:12',path:'manager/inbox/…backend.md'},

@@ -1,16 +1,20 @@
 // /api/state 페이로드 빌더 — wmux 실측(list-workspaces + agent list)을
 // 트리아지 대시보드가 소비하는 { teams, sessions } 모델로 매핑.
 import { basename } from 'node:path';
-import { isAvailable, listWorkspaces, listAgents } from './wmux.js';
+import { getWmuxState } from './wmux.js';
+import { snapshot, maybeRefresh, refreshAll } from '../connectors/index.js';
 
-export async function buildState() {
-  if (!(await isAvailable())) {
-    return { source: 'offline', live: false, teams: [], sessions: {}, generatedAt: Date.now() };
+// wmux 읽기는 getWmuxState 캐시 경유(TTL+single-flight) — 폴링당 5초 왕복을 압축.
+export async function buildState({ forceConnectors = false } = {}) {
+  const { workspaces, agents, live } = await getWmuxState();
+  if (!live) {
+    return { source: 'offline', live: false, teams: [], sessions: {}, ports: [], generatedAt: Date.now() };
   }
 
-  let workspaces = [], agents = [];
-  try { workspaces = (await listWorkspaces()).workspaces || []; } catch {}
-  try { agents = (await listAgents()).agents || []; } catch {}
+  // 커넥터 갱신은 절대 응답을 막지 않음: force여도 fire-and-forget(다음 폴링에 반영).
+  if (forceConnectors) refreshAll(workspaces).catch(() => {});
+  else maybeRefresh(workspaces);
+  const conn = snapshot();
 
   const sessions = {};
   const teams = workspaces.map((w) => {
@@ -30,12 +34,12 @@ export async function buildState() {
       path: w.cwd || '',
       active: !!w.isActive,
       roles: roleKeys,
-      conns: [],   // TODO: connectors 스캐너 (git/env/node) — 후속
-      ports: [],   // TODO: ports 프로브 — 후속
+      conns: conn.byTeam[w.id]?.conns || [],   // git/env/node 프로브 (connectors 캐시)
+      ports: conn.byTeam[w.id]?.ports || [],   // 이 팀에 귀속된 리스너
     };
   });
 
-  return { source: 'live', live: true, teams, sessions, generatedAt: Date.now() };
+  return { source: 'live', live: true, teams, sessions, ports: conn.globalPorts || [], generatedAt: Date.now() };
 }
 
 // wmux agent 실측 필드: agentId·label·cmd·status·paneId·workspaceId·spawnTime·pid·exitCode.
