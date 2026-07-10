@@ -1,0 +1,12 @@
+{
+  "name": "teamctl",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Claude Cockpit 로컬 컨트롤 브리지 (D14) — 트리아지 대시보드 서빙 + wmux JSON API",
+  "bin": { "teamctl": "bin/teamctl.js" },
+  "scripts": {
+    "serve": "node bin/teamctl.js serve"
+  },
+  "engines": { "node": ">=20" }
+}
