@@ -526,7 +526,31 @@ function renderRail(){
 
 /* ===== 드로어 (황금알) ===== */
 let currentKey=null, killTrigger=null;
-function openDrawer(key){
+function drawerFeed(feed){return feed.length?feed.map(f=>`<div class="ev"><span class="t">${f[0]}</span><span class="tool ${f[2]}">${f[1]}</span><span class="d">${f[3]}</span></div>`).join(''):'<div style="color:var(--faint);font-size:12px">활동 기록 없음</div>';}
+function drawerFiles(files){return files.length?files.map(f=>f[2]==='read'
+    ?`<div class="file"><span class="g" style="color:var(--faint);font-size:9px">○</span><span class="p">${f[0]}</span><span class="r">read</span></div>`
+    :`<div class="file"><span class="g" style="color:var(--ok);font-size:9px">●</span><span class="p">${f[0]}</span><span class="diff"><span class="a">${f[1]}</span> ${f[2]?'<span class="d">'+f[2]+'</span>':''}</span></div>`).join('')
+  :'<div style="color:var(--faint);font-size:12px">변경 없음</div>';}
+function drawerScreen(s,live){
+  if(live&&live.now){
+    const acts=(live.feed||[]).slice(0,5).map(f=>`  <span class="lbl">${f[1]}</span>  ${f[3]}`).join('\n');
+    return `<span class="a">▌</span> 지금: ${live.now}\n\n${acts||'<span class="mut">최근 툴 활동 없음</span>'}`;
+  }
+  return s.screen;
+}
+function renderDrawerBody(s,live){
+  const now=(live&&live.now)||s.now;
+  const feed=(live&&live.feed&&live.feed.length)?live.feed:s.feed;
+  const files=(live&&live.files)?live.files:s.files;
+  const src=live?`<span class="src">트랜스크립트 ${live.source||''}</span>`:'<span class="src">PostToolUse 훅 · 트랜스크립트</span>';
+  document.getElementById('dr-body').innerHTML=`
+    <div class="card"><div class="cb now"><div class="v">${s.st==='waiting'?'⏳ ':'<b>지금</b> '}${now}</div></div>
+      <div class="term"><div class="termbar"><span class="tl t1"></span><span class="tl t2"></span><span class="tl t3"></span><span class="cap">${s.pane} · ${live?'트랜스크립트':'read-screen'}</span></div>
+      <pre class="screen">${drawerScreen(s,live)}</pre></div></div>
+    <div class="card"><h4>⚡ 활동 피드 ${src}</h4><div class="cb feed">${drawerFeed(feed)}</div></div>
+    <div class="card"><h4>📝 변경 파일 <span class="src">git diff</span></h4><div class="cb">${drawerFiles(files)}</div></div>`;
+}
+async function openDrawer(key){
   const s=S[key]; currentKey=key;
   closeConfirm();
   document.getElementById('dr-team').textContent=s.team+' /';
@@ -536,19 +560,15 @@ function openDrawer(key){
     `<span class="tag">모델 <span class="mono">${s.model}</span></span><span class="tag">경과 <span class="mono">${s.elapsed}</span></span>`+
     `<span class="tag">비용 <span class="mono">${s.cost}</span></span><span class="tag"><span class="mono">${s.tools}</span> tools</span>`;
   document.getElementById('dr-open').onclick=()=>doAttach(s.ws,s.pane);
-  const feed=s.feed.map(f=>`<div class="ev"><span class="t">${f[0]}</span><span class="tool ${f[2]}">${f[1]}</span><span class="d">${f[3]}</span></div>`).join('');
-  const files=s.files.length?s.files.map(f=>f[2]==='read'
-      ?`<div class="file"><span class="g" style="color:var(--faint);font-size:9px">○</span><span class="p">${f[0]}</span><span class="r">read</span></div>`
-      :`<div class="file"><span class="g" style="color:var(--ok);font-size:9px">●</span><span class="p">${f[0]}</span><span class="diff"><span class="a">${f[1]}</span> ${f[2]?'<span class="d">'+f[2]+'</span>':''}</span></div>`).join('')
-    :'<div style="color:var(--faint);font-size:12px">변경 없음</div>';
-  document.getElementById('dr-body').innerHTML=`
-    <div class="card"><div class="cb now"><div class="v">${s.st==='waiting'?'⏳ ':'<b>지금</b> '}${s.now}</div></div>
-      <div class="term"><div class="termbar"><span class="tl t1"></span><span class="tl t2"></span><span class="tl t3"></span><span class="cap">${s.pane} · read-screen</span></div>
-      <pre class="screen">${s.screen}</pre></div></div>
-    <div class="card"><h4>⚡ 활동 피드 <span class="src">PostToolUse 훅 · 트랜스크립트</span></h4><div class="cb feed">${feed}</div></div>
-    <div class="card"><h4>📝 변경 파일 <span class="src">git diff</span></h4><div class="cb">${files}</div></div>`;
+  renderDrawerBody(s,null); // 즉시: 기존/정적값
   document.getElementById('scrim').classList.add('on');
   const d=document.getElementById('drawer'); d.classList.add('on'); d.setAttribute('aria-hidden','false'); d.removeAttribute('inert');
+  // 라이브 상세(트랜스크립트 tail + git diff) 온디맨드 — 폴링과 분리, 열려 있는 동안만
+  if(HAS_API&&s.cwd){
+    try{const live=await api('/api/session?cwd='+encodeURIComponent(s.cwd));
+      if(currentKey===key&&(live.now||live.feed?.length||live.files?.length)) renderDrawerBody(s,live);
+    }catch(e){}
+  }
 }
 function closeDrawer(){
   document.getElementById('scrim').classList.remove('on');

@@ -63,6 +63,7 @@ function mapAgent(a, w) {
     tokens: a.tokens || '0',
     tools: a.tools || 0,
     ws: w.id,
+    cwd: w.cwd || '',
     pane: a.paneId || a.pane || '',
     agentId: aid,
     screen: `<span class="mut">agent ${aid}\ncmd: ${a.cmd || '—'}\nstatus: ${a.status || a.state || 'unknown'}\ncwd: ${w.cwd || ''}</span>`,

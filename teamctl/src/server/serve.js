@@ -9,6 +9,8 @@ import { dirname } from 'node:path';
 import { randomBytes } from 'node:crypto';
 import { buildState } from '../core/state.js';
 import { selectWorkspace, focusPane, killAgent, send, spawnAgent, invalidateWmux } from '../core/wmux.js';
+import { readTranscript } from '../live/transcript.js';
+import { changedFiles } from '../live/gitdiff.js';
 
 const DASHBOARD = fileURLToPath(new URL('../../../dashboard-triage.html', import.meta.url));
 const CONFIG = fileURLToPath(new URL('../../workspace/config.json', import.meta.url));
@@ -61,6 +63,13 @@ export async function serve({ port } = {}) {
       if (req.headers['x-cockpit-token'] !== TOKEN) return sendJson(res, 401, { error: 'unauthorized' });
       try {
         if (req.method === 'GET' && pathname === '/api/state') return sendJson(res, 200, await buildState());
+        if (req.method === 'GET' && pathname === '/api/session') {
+          // 온디맨드(드로어 열 때) — 트랜스크립트 tail + git diff. 폴링과 분리.
+          const cwd = new URL(req.url, 'http://127.0.0.1').searchParams.get('cwd') || '';
+          const tx = readTranscript(cwd);
+          const files = await changedFiles(cwd);
+          return sendJson(res, 200, { now: tx?.now || null, feed: tx?.feed || [], files, source: tx?.source || null });
+        }
         if (req.method === 'POST' && pathname === '/refresh') {
           return sendJson(res, 200, await buildState({ forceConnectors: true })); // 커넥터 백그라운드 강제 갱신
         }
