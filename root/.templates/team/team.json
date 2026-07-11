@@ -1,0 +1,22 @@
+{
+  "id": "",
+  "name": "",
+  "projectPath": ".",
+  "workspaceId": null,
+  "roles": [
+    {
+      "id": "lead",
+      "autostart": false
+    },
+    {
+      "id": "ops",
+      "autostart": true,
+      "cwd": "ops"
+    }
+  ],
+  "connectors": [
+    "git",
+    "ports"
+  ],
+  "expectedPorts": []
+}

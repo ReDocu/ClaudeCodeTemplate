@@ -48,6 +48,42 @@ function toolDetail(name, input = {}) {
   return s === '{}' ? '' : s.slice(0, 50);
 }
 
+// 세션 활동 프로브 — 상태 3분류(터미널/명령 대기/작업중)의 근거. 최신 트랜스크립트의
+// mtime(마지막 기록 시각) + 마지막 이벤트 타입(text=턴 종료 발화 · tool_use/tool_result/user=턴 진행 중)
+// + 최근 assistant 발화(lastText — 세션 카드의 "지금" 문구, HTML-escaped).
+// 폴링(2.5s)마다 불리므로 tail 재파싱은 mtime이 변했을 때만(파일별 캐시).
+// 한계: 같은 cwd의 claude 세션 여럿이면 최신 트랜스크립트 하나를 공유(구분 불가).
+const _actCache = new Map(); // file -> { mtimeMs, lastEvent, lastText }
+export function sessionActivity(cwd) {
+  const file = cwd && newestTranscript(cwd);
+  if (!file) return null;
+  let mtimeMs;
+  try { mtimeMs = statSync(file).mtimeMs; } catch { return null; }
+  const hit = _actCache.get(file);
+  if (hit && hit.mtimeMs === mtimeMs) return hit;
+  let lastEvent = null, lastText = '';
+  try {
+    const lines = tailLines(file, 32 * 1024);
+    for (let i = lines.length - 1; i >= 0 && !(lastEvent && lastText); i--) {
+      let e; try { e = JSON.parse(lines[i]); } catch { continue; }
+      const content = e.message?.content;
+      if (e.type === 'assistant') {
+        if (!lastEvent) lastEvent = Array.isArray(content) && content.some((c) => c.type === 'tool_use') ? 'tool_use' : 'text';
+        if (!lastText && Array.isArray(content)) {
+          const t = content.find((c) => c.type === 'text' && c.text?.trim());
+          if (t) lastText = esc(t.text.trim().replace(/\s+/g, ' ').slice(0, 220));
+        }
+      } else if (e.type === 'user') {
+        if (!lastEvent) lastEvent = Array.isArray(content) && content.some((c) => c.type === 'tool_result') ? 'tool_result' : 'user';
+      }
+    }
+  } catch { /* tail 실패 — mtime만으로 판정 */ }
+  const act = { mtimeMs, lastEvent, lastText };
+  _actCache.set(file, act);
+  if (_actCache.size > 200) _actCache.delete(_actCache.keys().next().value); // 무한 성장 방지
+  return act;
+}
+
 // cwd의 최신 트랜스크립트를 파싱해 { now, feed, touched, source } 반환. 없으면 null.
 export function readTranscript(cwd, { feedN = 8 } = {}) {
   const file = cwd && newestTranscript(cwd);

@@ -3,10 +3,26 @@ import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { git } from './run.js';
 
+// 원격 주소 → 웹 URL 정규화(credential 제거). https/ssh:///scp(git@host:path) 지원, 그 외 null.
+function remoteWebUrl(raw) {
+  const r = (raw || '').trim().split(/\r?\n/)[0];
+  if (!r) return null;
+  let m;
+  if ((m = r.match(/^https?:\/\/(?:[^@/]+@)?([^/]+)\/(.+?)(?:\.git)?\/?$/i))) return `https://${m[1]}/${m[2]}`;
+  if ((m = r.match(/^ssh:\/\/(?:[^@/]+@)?([^:/]+)(?::\d+)?\/(.+?)(?:\.git)?\/?$/i))) return `https://${m[1]}/${m[2]}`;
+  if ((m = r.match(/^[\w.-]+@([^:]+):(.+?)(?:\.git)?$/))) return `https://${m[1]}/${m[2]}`;
+  return null;
+}
+
 export async function gitProbe(cwd) {
   if (!cwd || !existsSync(join(cwd, '.git'))) return null; // detect: 파일 기반
-  let out;
-  try { out = await git(cwd, ['status', '--porcelain=v2', '--branch']); }
+  let out, remote = null;
+  try {
+    [out, remote] = await Promise.all([
+      git(cwd, ['status', '--porcelain=v2', '--branch']),
+      git(cwd, ['remote', 'get-url', 'origin']).catch(() => null), // 원격 없음 = null(정상)
+    ]);
+  }
   catch { return { k: 'git', v: 'git 오류', st: 'warn', opt: true }; }
 
   let branch = '?', ahead = 0, behind = 0, upstream = false, detached = false, dirty = 0;
@@ -29,5 +45,6 @@ export async function gitProbe(cwd) {
   const dirtyLabel = dirty ? `${dirty} dirty` : 'clean';
   const noUp = !detached && !upstream ? ' ·no-upstream' : '';
   const st = (detached || (!upstream && !detached)) ? 'warn' : 'ok';
-  return { k: 'git', v: `${branch} ·${dirtyLabel}${ab}${noUp}`, st, opt: true };
+  const url = remoteWebUrl(remote); // 있으면 대시보드 git 칩이 클릭→브라우저(POST /open)
+  return { k: 'git', v: `${branch} ·${dirtyLabel}${ab}${noUp}`, st, opt: true, ...(url ? { url } : {}) };
 }
