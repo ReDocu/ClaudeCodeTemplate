@@ -196,9 +196,9 @@ ClaudeTemplate/
 wmux CLI는 `node $WMUX_CLI …` 로 호출(래퍼가 흡수). 모든 응답은 JSON.
 
 ```js
-// 진입: WMUX_CLI 있으면 그걸, 없으면 PATH의 wmux
-const BASE = process.env.WMUX_CLI ? ['node', process.env.WMUX_CLI] : ['wmux'];
-// execFileSync(BASE[0], [...BASE.slice(1), ...args]) → JSON.parse(stdout)
+// 진입(1회 캐시): ① WMUX_CLI env ② PATH의 wmux ③ config wmuxBin 역산(<루트>/resources/cli/wmux.js)
+// 탐색기 더블클릭(env 없음)에서는 ③이 실질 경로. 셋 다 실패 → ['wmux'] ENOENT = boot의 no-cli 신호.
+// execFile(base[0], [...base.slice(1), ...args]) → JSON.parse(stdout)
 ```
 
 ### 5.1 teamctl 동작 → wmux 명령 매핑 (0.13.0 실측)

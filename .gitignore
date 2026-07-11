@@ -5,3 +5,8 @@
 
 # 양식 폴더의 00_Project는 예외 — 구조 예시 포함 전체 추적
 !00_Team/_ProjectTeam_Template/00_Project/
+
+# cockpit root/: 팀 폴더는 로컬 런타임 상태(워크스페이스·에이전트 바인딩 되쓰기 포함) — 추적 안 함.
+# 스캐폴드 원본(.templates)만 추적. .manager(런타임 캐시)도 제외.
+root/*
+!root/.templates/
