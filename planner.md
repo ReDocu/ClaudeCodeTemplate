@@ -28,6 +28,9 @@
 | D12 | 커넥터 정책 + 포트 | **core(항상) vs optional(선택제·팀별 opt-in), 로컬 포트/서버는 core** | git·supabase 미연결 가능 → 선택제 분리; 포트는 상시 관제 (§6.6) |
 | D13 | 신규 기능: 역할 세션 라이브 뷰 | **"작업중인 내용" 보기 — 소스 3중화(pane 클릭·트랜스크립트 tail·read-screen)** | read-screen 렌더러 의존 → 트랜스크립트 tail 1순위 (§6.7) |
 | D15 | 신규 기능: MCP 연결 상태 상세 | **5소스 열거 + 2계층 판정(정적 파일 스캔 + `claude mcp list` 헬스체크), 파일·CLI 교차검증 필수** | 실측: `claude mcp list`가 settings.json 소스를 누락 → 단일 소스 신뢰 금지. `pending-approval` 상태 신설 (§6.6) |
+| D16 | root/ 팀 폴더 격리 | **팀 폴더 = cockpit 운영정책 무연계 독립 프로젝트 — 생성 시 CLAUDE.md(상위 정책 무효 선언)·자체 `git init`·`.gitignore`(team.json 비추적) 스캐폴드** | 상위 cockpit CLAUDE.md는 조상 탐색으로 팀 세션에 항상 로드되고, 자체 `.git` 없으면 git 명령·프로젝트 경계가 cockpit 저장소로 새어 프로젝트 세션을 오염 → 생성 시점 원천 차단 (registry.createTeam, 멱등) |
+| D17 | 팀 생명주기 | **team.json에 `status`(active/closed)·`createdAt`·`closedAt` — closed 팀은 reconcile·스폰 게이트(409), UI는 접힌 '종료됨' 섹션, 자동 세션 종료 금지(확인 다이얼로그의 선택 일괄 종료만)** | 종료된 프로젝트가 진행 중과 동등 나열·재생성되는 문제(PRD Update U1~U4). 구 팀은 birthtime 백필(추정 표기). 세션9 구현·검증 |
+| D18 | 릴리스 스코프 = 순수 wmux 관제 (**잠정**) | **Cockpit 릴리스판에서 claude 관련 기능·운영 체계 전부 제외 — 코어(wmux 관제)/claude 레이어 분해, 기전 = config `claudeLayer` 플래그(off: 모듈 미로드·엔드포인트 404·UI 미렌더). claude 운영의 거처 = root/<팀>/ 프로젝트** | D16의 완성형(cockpit이 claude 운영에 관여하지 않게). 상세 = doc/prd_Update_v0.1.md §2. 플래그는 세션9 구현·검증(off 매트릭스). ⚠️ 적용 범위(ⓐ 배포판 한정 vs ⓑ 제품 전체 제거) 사용자 확정 대기 — 현재 ⓐ 가정, 기본 on |
 
 ---
 

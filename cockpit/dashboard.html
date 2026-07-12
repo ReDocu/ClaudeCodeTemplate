@@ -1,0 +1,976 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ClaudeCockpit — 프로젝트 관제 (리라이트 v1)</title>
+<style>
+  :root{
+    --bg:#0b0e13; --bg-grid:#0e131a; --panel:#141a22; --panel-2:#171f29;
+    --border:#232c37; --border-2:#2c3744;
+    --text:#d8dee7; --muted:#8b97a6; --faint:#828d9c;
+    --accent:#4fd6c9; --accent-dim:#2c8f88;
+    --ok:#46c667; --warn:#e2a83e; --crit:#f4685c; --idle:#5a6472; --blue:#5aa9f0;
+    --quiet:#6f8a7e; --violet:#a78bfa;
+    --mono:ui-monospace,"Cascadia Code","SFMono-Regular",Consolas,monospace;
+    --ui:system-ui,-apple-system,"Segoe UI",Roboto,"Malgun Gothic",sans-serif;
+  }
+  *{box-sizing:border-box} html,body{margin:0}
+  body{font-family:var(--ui);color:var(--text);background:var(--bg);
+    background-image:radial-gradient(circle at 1px 1px,var(--bg-grid) 1px,transparent 0);background-size:22px 22px;
+    font-size:14px;line-height:1.45;padding:18px;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:1240px;margin:0 auto}
+  .mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
+  button{font-family:inherit}
+  .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
+  @keyframes blip{0%,100%{opacity:1}50%{opacity:.4}}
+  @media(prefers-reduced-motion:reduce){*{animation:none!important}}
+
+  /* topbar (compact — 주인공 아님) */
+  .topbar{display:flex;align-items:center;gap:16px;flex-wrap:wrap;padding:12px 16px;
+    border:1px solid var(--border);border-radius:12px;background:linear-gradient(180deg,var(--panel-2),var(--panel))}
+  .brand{display:flex;align-items:center;gap:11px}
+  .beacon{width:28px;height:28px;flex:0 0 auto}
+  .beacon .ring{fill:none;stroke:var(--accent-dim);stroke-width:1.4}
+  .beacon .core{fill:var(--accent)}
+  .brand h1{font-size:16px;margin:0;letter-spacing:.2px;font-weight:650}
+  .brand .sub{font-size:10.5px;color:var(--muted);letter-spacing:.4px;text-transform:uppercase}
+  .ministat{display:flex;gap:14px;margin-left:8px;font-size:12px;color:var(--muted)}
+  .ministat b{color:var(--text);font-family:var(--mono)}
+  .tools{display:flex;gap:7px;margin-left:auto;align-items:center}
+  .tbtn{font-size:12.5px;border:1px solid var(--border-2);background:var(--panel-2);color:var(--text);border-radius:8px;padding:6px 12px;cursor:pointer}
+  .tbtn:hover{border-color:var(--accent-dim)}
+  .tbtn:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+  .tbtn.primary{border-color:var(--accent-dim);color:var(--accent);background:#4fd6c910}
+  .refresh{font-size:11px;color:var(--faint)}
+
+  /* legend */
+  .legend{display:flex;gap:13px;flex-wrap:wrap;align-items:center;padding:8px 4px 0;font-size:11.5px;color:var(--muted)}
+  .legend b{color:var(--faint);font-size:10px;text-transform:uppercase;letter-spacing:.6px}
+
+  /* status pill — 색 + 형태(글리프) + 텍스트 삼중부호화 */
+  .pill{display:inline-flex;align-items:center;gap:5px;font-size:11.5px;padding:2px 9px;border-radius:20px;
+    border:1px solid;font-weight:600;white-space:nowrap;line-height:1.5}
+  .pill .g{font-size:10px;line-height:1}
+  .pill.ok  {color:var(--quiet);border-color:#2f3d38;background:transparent}
+  .pill.idle{color:var(--faint);border-color:var(--border-2);background:transparent}
+  .pill.warn{color:var(--warn);border-color:#e2a83e66;background:#e2a83e14}
+  .pill.crit{color:var(--crit);border-color:#f4685c70;background:#f4685c16}
+  .pill.claude{color:var(--blue);border-color:#5aa9f066;background:#5aa9f00d}
+  .pill.sm{font-size:10.5px;padding:1px 7px}
+
+  /* layout — 본문(카드) + 우측 레일(포트·기능 인벤토리, FS-14·15) */
+  .grid{display:grid;grid-template-columns:1fr 320px;gap:16px;align-items:start}
+  @media(max-width:940px){.grid{grid-template-columns:1fr}}
+  .colmain{min-width:0}
+  .rail{display:flex;flex-direction:column;gap:14px;margin-top:14px}
+
+  /* 섹션 아이브로 */
+  .eyebrow{font-size:10.5px;color:var(--muted);text-transform:uppercase;letter-spacing:1.2px;margin:14px 0 8px 2px;font-weight:600;
+    display:flex;align-items:center;gap:8px}
+  .eyebrow .cnt{font-family:var(--mono);font-size:10.5px;color:var(--faint);background:var(--panel);border:1px solid var(--border);border-radius:20px;padding:0 8px;letter-spacing:0}
+  .eyebrow .hint{margin-left:auto;text-transform:none;letter-spacing:0;font-weight:400;color:var(--faint)}
+
+  /* project cards — 활성은 또렷하게, 대기는 calm */
+  .cards{display:flex;flex-direction:column;gap:12px}
+  .tcard{border:1px solid var(--border);border-radius:12px;background:var(--panel);padding:12px 14px;position:relative;overflow:hidden}
+  .tcard::before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--quiet)}
+  .tcard.idlecard::before{background:var(--idle)}
+  .tcard.attn-w::before{background:var(--warn)}
+  .tcard.calm{opacity:.72}
+  .tcard.calm:hover,.tcard.calm:focus-within{opacity:1}
+  .tc-head{display:flex;align-items:center;gap:9px;margin-bottom:11px;flex-wrap:wrap}
+  .tc-head .nm{font-weight:650;font-size:14.5px}
+  .tc-head .tg{font-size:10.5px;color:var(--faint)}
+  .tc-head .h{margin-left:auto;display:flex;gap:6px;align-items:center}
+  .ptbtn{background:none;border:0;cursor:pointer;padding:0;font-family:var(--mono);font-size:10.5px;color:var(--faint)}
+  .ptbtn:hover{color:var(--accent);text-decoration:underline}
+  .ptbtn:focus-visible{outline:2px solid var(--accent);outline-offset:1px;border-radius:4px}
+
+  /* 세션 행 (rrow) — 클릭 = 세션 상세 드로어(FS-15), 점프는 드로어 [열기 ↗] */
+  .rrows{display:flex;flex-direction:column;gap:5px;margin-bottom:10px}
+  .rrow{display:flex;align-items:center;gap:10px;padding:6px 9px;border:1px solid var(--border-2);border-radius:8px;
+    background:var(--panel-2);cursor:pointer;text-align:left;width:100%;color:var(--text);font-size:13px}
+  .rrow:hover{border-color:var(--accent-dim);background:#4fd6c908}
+  .rrow:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+  .rrow .rn{font-weight:600;min-width:64px;display:flex;align-items:center;gap:6px}
+  .rrow .pin{font-size:9.5px;color:var(--warn);border:1px solid #e2a83e44;background:#e2a83e10;border-radius:5px;padding:0 5px;
+    text-transform:uppercase;letter-spacing:.5px;font-weight:600}
+  .rrow .now{flex:1;min-width:0;font-family:var(--mono);font-size:11px;color:var(--faint);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .rrow .chev{color:var(--faint);font-size:13px}
+  .rrow:hover .chev{color:var(--accent)}
+  .rrow-wrap{display:flex;gap:5px;align-items:stretch}
+  .rrow-wrap .rrow{flex:1;min-width:0}
+  .claude-go{flex:0 0 auto;display:flex;align-items:center;gap:5px;padding:6px 11px;cursor:pointer;
+    border:1px solid #5aa9f066;border-radius:8px;background:#5aa9f00d;color:var(--blue);
+    font-size:12px;font-weight:600;white-space:nowrap}
+  .claude-go:hover{border-color:var(--blue);background:#5aa9f01a}
+  .claude-go:focus-visible{outline:2px solid var(--blue);outline-offset:1px}
+  .claude-go:disabled{opacity:.5;cursor:default}
+  .cbadge{flex:0 0 auto;display:flex;align-items:center;font-size:10.5px;color:var(--faint);padding:6px 9px;
+    border:1px dashed var(--border-2);border-radius:8px;white-space:nowrap}
+
+  /* 대기중 카드 — 역할 칩(선언만 존재) */
+  .roleschips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px}
+  .rchip{display:inline-flex;align-items:center;gap:6px;padding:3px 10px;border:1px solid var(--border-2);border-radius:8px;
+    background:var(--panel-2);font-size:12px;color:var(--muted)}
+  .rchip .g{font-size:9px;color:var(--faint)}
+  .rchip.ops{color:var(--warn)}
+  .rchip.ops .g{color:var(--warn)}
+
+  /* 서비스 링크·최근 이벤트 */
+  .conns{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+  .conn{display:inline-flex;align-items:center;gap:6px;padding:3px 9px;border:1px solid var(--border);border-radius:8px;background:var(--bg);font-size:11px}
+  .conn .k{color:var(--muted)} .conn .v{font-family:var(--mono);font-size:10.5px}
+  button.conn{cursor:pointer;font-family:inherit;color:var(--text)}
+  button.conn:hover{border-color:var(--accent-dim)} button.conn:hover .k{color:var(--accent)}
+  button.conn:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+  .conn.add{border-style:dashed;color:var(--faint)}
+  .lastev{display:flex;gap:9px;align-items:baseline;font-size:12px;color:var(--muted);margin-top:9px;
+    border-top:1px solid #ffffff08;padding-top:8px;cursor:pointer;background:none;border-left:0;border-right:0;border-bottom:0;width:100%;text-align:left}
+  .lastev:hover .d{color:var(--text)}
+  .lastev:focus-visible{outline:2px solid var(--accent);outline-offset:1px;border-radius:4px}
+  .lastev .t{font-family:var(--mono);font-size:10.5px;color:var(--faint);flex:0 0 auto}
+  .lastev .ev-k{font-family:var(--mono);font-size:11px;flex:0 0 auto;color:var(--muted)}
+  .lastev.err .ev-k,.lastev.err .d{color:var(--crit)}
+  .lastev .d{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .lastev .chev{color:var(--faint);font-size:11px}
+
+  /* 카드 액션 행 */
+  .cact{display:flex;gap:7px;margin-top:10px;flex-wrap:wrap}
+  .btn{font-size:12.5px;border:1px solid var(--border-2);background:var(--panel-2);color:var(--text);border-radius:8px;padding:7px 13px;cursor:pointer}
+  .btn:hover{border-color:var(--accent-dim)}
+  .btn:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+  .btn.primary{border-color:var(--accent-dim);color:var(--accent);background:#4fd6c910}
+  .btn.danger:hover{border-color:var(--crit);color:var(--crit)}
+  .btn.bluish{color:var(--blue);border-color:#5aa9f066;background:#5aa9f00d}
+  .cact .sp{flex:1}
+
+  /* 종료 프로젝트 섹션 — 기본 접힘, 정상 화면의 침묵 유지 */
+  .closed-toggle{display:flex;align-items:center;gap:8px;width:100%;margin-top:14px;padding:8px 12px;cursor:pointer;
+    border:1px solid var(--border);border-radius:10px;background:transparent;color:var(--faint);font-size:12px;text-align:left}
+  .closed-toggle:hover{border-color:var(--border-2);color:var(--muted)}
+  .closed-toggle:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+  .closed-list{display:flex;flex-direction:column;gap:8px;margin-top:8px}
+  .closed-card{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:8px 12px;border:1px solid var(--border);
+    border-radius:10px;background:var(--panel);opacity:.75;font-size:12.5px}
+  .closed-card:hover{opacity:1}
+  .closed-card .nm{font-weight:650}
+  .closed-card .period{font-family:var(--mono);font-size:11px;color:var(--faint)}
+
+  .empty{color:var(--faint);font-size:12.5px;border:1px dashed var(--border);border-radius:10px;padding:14px;text-align:center}
+
+  /* rail panels — 활성 포트(FS-14) · 기능 인벤토리 Global(FS-15) */
+  .panel{border:1px solid var(--border);border-radius:12px;background:var(--panel)}
+  .panel h3{margin:0;padding:11px 14px 10px;font-size:12px;letter-spacing:.3px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px}
+  .panel h3 .count{margin-left:auto;font-family:var(--mono);font-size:11px;color:var(--muted);background:var(--bg);border:1px solid var(--border);border-radius:20px;padding:1px 8px;font-weight:400}
+  .panel .body{padding:10px 14px 12px}
+  .pmap{display:flex;flex-direction:column;gap:1px}
+  .pmap .r{display:flex;align-items:center;gap:9px;padding:5px 3px;font-size:12.5px;border-bottom:1px solid #ffffff08}
+  .pmap .r:last-child{border-bottom:0}
+  .pmap .num{font-family:var(--mono);font-weight:600;min-width:50px}
+  .pmap .proc{font-family:var(--mono);color:var(--muted);font-size:11.5px}
+  .pmap .to{margin-left:auto;font-size:11.5px}.pmap .to.team{color:var(--accent)}.pmap .to.none{color:var(--faint)}
+  .pempty{color:var(--faint);font-size:12px;padding:2px}
+  .capgrp{margin-bottom:11px}.capgrp:last-child{margin-bottom:0}
+  .capgrp .h{display:flex;align-items:center;gap:7px;font-size:11.5px;color:var(--muted);margin-bottom:7px}
+  .cap{display:flex;align-items:center;gap:8px;font-size:12.5px;padding:3px 0}
+  .cap .nm{font-family:var(--mono);font-size:12px}.cap .nm.off{color:var(--faint);text-decoration:line-through}
+  .cap .k{color:var(--faint);font-size:10.5px;margin-left:auto;text-transform:uppercase;letter-spacing:.5px}
+  .scope{font-size:9.5px;text-transform:uppercase;letter-spacing:.5px;padding:1px 6px;border-radius:5px;border:1px solid;font-weight:600}
+  .s-global{color:var(--violet);border-color:#a78bfa55;background:#a78bfa12}
+  .s-project{color:var(--blue);border-color:#5aa9f055;background:#5aa9f012}
+  .s-session{color:var(--warn);border-color:#e2a83e55;background:#e2a83e12}
+
+  /* usage 게이지 (FS-16) — 한도 윈도 3개(5시간·주간 전체·주간 Opus) 세로 막대.
+     트랙 전체=학습된 한도, 사용분이 아래에서 차오름 */
+  .usagebox3{display:flex;gap:10px;justify-content:space-between}
+  .ucol{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;min-width:0}
+  .gauge{width:100%;max-width:58px;min-height:104px;border:1px solid var(--border-2);border-radius:8px;background:var(--panel-2);
+    position:relative;overflow:hidden}
+  .gauge.gempty{border-style:dashed}
+  .gauge .glearn{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+    font-size:9.5px;color:var(--faint);writing-mode:vertical-rl;letter-spacing:2px}
+  .gauge .gtick{position:absolute;left:0;right:0;border-top:1px dashed #ffffff1f}
+  .gauge .gtick i{position:absolute;right:3px;top:-13px;font-size:8.5px;color:var(--faint);font-style:normal;font-family:var(--mono)}
+  .gauge .gfill{position:absolute;left:0;right:0;bottom:0;transition:height .4s ease;border-top:2px solid #ffffff30}
+  .gauge .gfill.okc{background:linear-gradient(180deg,#46c66752,#46c66720)}
+  .gauge .gfill.warnc{background:linear-gradient(180deg,#e2a83e63,#e2a83e28)}
+  .gauge .gfill.critc{background:linear-gradient(180deg,#f4685c63,#f4685c28)}
+  .upct{font-family:var(--mono);font-size:15px;font-weight:650;line-height:1.1}
+  .upct span{font-size:10px;color:var(--faint);font-weight:400}
+  .upct.okc{color:var(--text)} .upct.warnc{color:var(--warn)} .upct.critc{color:var(--crit)} .upct.dimtxt{color:var(--faint)}
+  .ulabel{font-size:10.5px;color:var(--muted);text-align:center;line-height:1.25;white-space:nowrap}
+  .usub{font-family:var(--mono);font-size:9.5px;color:var(--faint);white-space:nowrap}
+  .ufoot{margin-top:9px;padding-top:8px;border-top:1px solid #ffffff08;font-size:10.5px;color:var(--faint)}
+
+  /* drawer — 세션 상세(FS-15): 기능 인벤토리·점프·폴더 (트랜스크립트·diff는 범위 밖) */
+  .scrim{position:fixed;inset:0;background:#05070ac2;opacity:0;pointer-events:none;transition:opacity .18s;z-index:40}
+  .scrim.on{opacity:1;pointer-events:auto}
+  #confirm-scrim,#namer-scrim,#logbox-scrim{z-index:65}
+  .drawer{position:fixed;top:0;right:0;height:100%;width:min(480px,94vw);background:var(--bg);border-left:1px solid var(--border-2);
+    box-shadow:-20px 0 60px -20px #000;transform:translateX(100%);transition:transform .22s cubic-bezier(.4,0,.2,1);z-index:50;
+    display:flex;flex-direction:column;overflow:hidden}
+  .drawer.on{transform:none}
+  .dr-head{display:flex;align-items:center;gap:10px;padding:14px 16px;border-bottom:1px solid var(--border);flex-wrap:wrap;background:linear-gradient(180deg,var(--panel-2),var(--panel))}
+  .dr-head .team{color:var(--muted);font-size:14px}.dr-head .role{font-size:16px;font-weight:650}
+  .dr-head .x{margin-left:auto;background:var(--bg);border:1px solid var(--border-2);color:var(--muted);border-radius:8px;width:30px;height:30px;cursor:pointer;font-size:16px}
+  .dr-head .x:hover{color:var(--text);border-color:var(--crit)}
+  .dr-meta{display:flex;gap:6px;flex-wrap:wrap;padding:10px 16px 0;align-items:center}
+  .tag{font-size:11px;color:var(--muted);border:1px solid var(--border);background:var(--bg);border-radius:20px;padding:2px 9px}.tag .mono{color:var(--text)}
+  .dr-ctrl{display:flex;gap:7px;padding:11px 16px;flex-wrap:wrap}
+  .dr-body{padding:2px 16px 18px;overflow-y:auto;display:flex;flex-direction:column;gap:13px}
+  .dcard{border:1px solid var(--border);border-radius:11px;background:var(--panel)}
+  .dcard h4{margin:0;padding:9px 13px 8px;font-size:11.5px;letter-spacing:.3px;border-bottom:1px solid var(--border);display:flex;gap:8px;align-items:center;color:var(--text)}
+  .dcard h4 .src{margin-left:auto;font-size:9.5px;color:var(--faint);text-transform:uppercase;letter-spacing:.5px}
+  .dcard .cb{padding:11px 13px}
+
+  /* confirm dialog (파괴적 — 비활성화 kill) */
+  .confirm{position:fixed;top:50%;left:50%;transform:translate(-50%,-46%) scale(.98);opacity:0;pointer-events:none;
+    width:min(460px,92vw);background:var(--panel);border:1px solid var(--crit);border-radius:13px;
+    box-shadow:0 24px 70px -20px #000;z-index:70;transition:opacity .16s,transform .16s;padding:17px 18px 15px}
+  .confirm.on{opacity:1;pointer-events:auto;transform:translate(-50%,-50%) scale(1)}
+  .confirm h2{margin:0 0 5px;font-size:15.5px;display:flex;align-items:center;gap:8px}
+  .confirm h2::before{content:"⚠";color:var(--crit);font-size:15px}
+  .confirm .cf-sub{font-size:12.5px;color:var(--muted);margin-bottom:11px;line-height:1.55}
+  .confirm .cf-sub .who{color:var(--text);font-weight:650}
+  .confirm .cf-warn{font-size:12px;color:var(--warn);border:1px solid #e2a83e44;background:#e2a83e12;
+    border-radius:8px;padding:8px 10px;margin-bottom:13px;display:flex;gap:8px;align-items:flex-start;line-height:1.5}
+  .cf-ctrl{display:flex;gap:8px;justify-content:flex-end}
+  .cf-sess{display:flex;flex-direction:column;gap:5px;margin-bottom:13px}
+  .cf-sess .row{display:flex;align-items:center;gap:9px;padding:6px 10px;border:1px solid var(--border-2);border-radius:8px;
+    background:var(--panel-2);font-size:12px}
+  .cf-sess .row .rn{font-family:var(--mono);font-weight:600}
+  .cf-sess .row .sp{flex:1}
+
+  /* 이름 입력 다이얼로그 — confirm 골격 재사용, 파괴적 톤 제거 */
+  .confirm.namer{border-color:var(--border-2)}
+  .confirm.namer h2::before{content:"＋";color:var(--accent);font-size:15px}
+  .namer .field{display:flex;flex-direction:column;gap:4px;margin-bottom:10px;font-size:11.5px;color:var(--muted)}
+  .namer input{font-family:inherit;font-size:13px;color:var(--text);background:var(--bg);border:1px solid var(--border-2);border-radius:8px;padding:8px 10px;outline:none}
+  .namer input:focus{border-color:var(--accent-dim)}
+  .namer input.mono{font-family:var(--mono);font-size:12px}
+  .namer .err{color:var(--crit);font-size:11.5px;min-height:15px;margin:-3px 0 8px}
+
+  /* 관리 로그 다이얼로그 (FS-12) — namer 골격, 피드 리스트 */
+  .confirm.logbox{border-color:var(--border-2);width:min(560px,94vw)}
+  .confirm.logbox h2::before{content:"≡";color:var(--accent);font-size:15px}
+  .feed{display:flex;flex-direction:column;max-height:340px;overflow-y:auto;margin-bottom:13px}
+  .ev{display:flex;gap:10px;padding:7px 0;border-bottom:1px solid #ffffff08;font-size:12.5px}.ev:last-child{border-bottom:0}
+  .ev .t{font-family:var(--mono);font-size:11px;color:var(--faint);min-width:86px}
+  .ev .tool{font-family:var(--mono);font-weight:600;min-width:76px;color:var(--muted)}
+  .ev.err .tool,.ev.err .d{color:var(--crit)}
+  .ev .d{color:var(--muted);min-width:0}
+
+  /* toast */
+  .toasts{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);display:flex;flex-direction:column;gap:8px;z-index:80;align-items:center}
+  .toast{background:#0f1620;border:1px solid var(--accent-dim);color:var(--text);border-radius:10px;padding:10px 15px;font-size:12.5px;
+    box-shadow:0 12px 40px -12px #000;display:flex;align-items:center;gap:9px;opacity:0;transform:translateY(8px);transition:opacity .2s,transform .2s}
+  .toast.on{opacity:1;transform:none}
+  .toast .mono{color:var(--accent)}
+
+  .foot{margin-top:16px;font-size:11px;color:var(--faint);text-align:center;line-height:1.7}
+  .foot code{font-family:var(--mono);color:var(--muted)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="topbar">
+    <div class="brand">
+      <svg class="beacon" viewBox="0 0 30 30" aria-hidden="true">
+        <circle class="ring" cx="15" cy="15" r="12"/><circle class="ring" cx="15" cy="15" r="7.5"/><circle class="core" cx="15" cy="15" r="3"/>
+      </svg>
+      <div><h1>ClaudeCockpit</h1><div class="sub">프로젝트 관제 · 로컬 · rewrite v1</div></div>
+    </div>
+    <div class="ministat">
+      <span>진행중 <b id="m-active">0</b></span><span>대기중 <b id="m-idle">0</b></span>
+      <span id="m-arc-wrap" hidden>종료 <b id="m-arc">0</b></span>
+      <span id="src-badge" style="color:var(--faint)"></span>
+    </div>
+    <div class="tools">
+      <span class="refresh mono" id="refresh">⟳ 방금</span>
+      <button class="tbtn" onclick="doRefresh()">새로고침</button>
+      <button class="tbtn" onclick="importPrompt()" title="기존 프로젝트 폴더를 root/로 이동(move)하고 대기중으로 등록 — POST /import">기존 프로젝트 연동</button>
+      <button class="tbtn primary" onclick="createPrompt()" title="root/<프로젝트>/ 스캐폴드 생성 후 대기중 등록 — POST /create">＋ 새 프로젝트</button>
+    </div>
+  </header>
+
+  <div class="legend">
+    <b>상태 = 색 + 형태 + 텍스트</b>
+    <span class="pill ok"><span class="g">●</span>진행중</span>
+    <span class="pill idle"><span class="g">⏸</span>대기중</span>
+    <span class="pill idle"><span class="g">▪</span>종료(보관)</span>
+    <span class="pill idle"><span class="g">❯</span>터미널</span>
+    <span class="pill claude"><span class="g">✦</span>claude 실행중</span>
+    <span style="margin-left:auto;color:var(--faint)">활성화한 프로젝트만 wmux에 뜸 · 세션 클릭 → 상세(기능 인벤토리·점프)</span>
+  </div>
+
+  <div class="grid">
+    <div class="colmain">
+      <div class="eyebrow"><span style="color:var(--quiet)">●</span> 진행중 <span class="cnt" id="c-active">0</span>
+        <span class="hint">wmux workspace 실측 연결 · 1번 세션은 ops 고정</span></div>
+      <div class="cards" id="g-active"></div>
+
+      <div class="eyebrow"><span style="color:var(--idle)">⏸</span> 대기중 <span class="cnt" id="c-idle">0</span>
+        <span class="hint">선언만 존재 — 활성화 1클릭으로 세션 기동</span></div>
+      <div class="cards" id="g-idle"></div>
+
+      <div id="closed"></div>
+    </div>
+
+    <div class="rail">
+      <div class="panel"><h3>⚡ Claude 사용량 <span class="count" id="usage-src">5h 한도</span></h3>
+        <div class="body" id="usagebox"></div></div>
+      <div class="panel"><h3>🔌 활성 포트 <span class="count" id="port-count"></span></h3>
+        <div class="body pmap" id="portmap"></div></div>
+      <div class="panel"><h3>🧩 기능 인벤토리 <span class="count">global</span></h3>
+        <div class="body" id="gcaps"></div></div>
+    </div>
+  </div>
+
+  <p class="foot">ClaudeCockpit 리라이트 v1 — 프로젝트 생명주기 관제 · 활성화→<code>POST /activate</code>(ops 1번+역할, 멱등) · 비활성화(확인)→<code>POST /deactivate</code> · 보관/재개→<code>POST /archive</code>·<code>/reopen</code> · 연동/생성→<code>POST /import</code>·<code>/create</code> · 역할 추가/제거→<code>POST /create</code>(병합)·<code>/roles</code> · 세션 클릭→상세 드로어(기능 인벤토리), [열기 ↗]→<code>POST /attach</code> · ▶ Claude 실행→<code>POST /claude</code> · 폴더→<code>POST /open</code> · 링크→<code>POST /links</code> · 포트/기능→<code>GET /api/state.ports</code>·<code>GET /api/caps</code> · 사용량 게이지→<code>GET /api/usage</code>(60s) · 데이터는 <code>GET /api/state</code>·<code>/api/log</code> 폴링</p>
+</div>
+
+<!-- drawer — 세션 상세(FS-15) -->
+<div class="scrim" id="drawer-scrim" onclick="closeDrawer()"></div>
+<aside class="drawer" id="drawer" aria-hidden="true" inert>
+  <div class="dr-head">
+    <span class="team" id="dr-team"></span><span class="role" id="dr-role"></span>
+    <button class="x" onclick="closeDrawer()" aria-label="닫기">✕</button>
+  </div>
+  <div class="dr-meta" id="dr-meta"></div>
+  <div class="dr-ctrl" id="dr-ctrl"></div>
+  <div class="dr-body" id="dr-body"></div>
+</aside>
+
+<!-- confirm dialog (비활성화 — kill은 항상 확인 경유, §9-3) -->
+<div class="scrim" id="confirm-scrim" onclick="closeConfirm()"></div>
+<div class="confirm" id="confirm" role="alertdialog" aria-modal="true" aria-labelledby="cf-title" aria-describedby="cf-sub" inert>
+  <h2 id="cf-title">확인</h2>
+  <div class="cf-sub" id="cf-sub"></div>
+  <div class="cf-warn" id="cf-warn" hidden></div>
+  <div class="cf-sess" id="cf-sess" hidden></div>
+  <div class="cf-ctrl">
+    <button class="btn" id="cf-cancel" onclick="closeConfirm()">취소</button>
+    <button class="btn danger" id="cf-confirm">확인</button>
+  </div>
+</div>
+
+<!-- 이름 입력 다이얼로그 (새 프로젝트 · 연동 · 링크 추가 공용) -->
+<div class="scrim" id="namer-scrim" onclick="closeNamer()"></div>
+<div class="confirm namer" id="namer" role="dialog" aria-modal="true" aria-labelledby="nm-title" aria-describedby="nm-sub" inert>
+  <h2 id="nm-title">이름 입력</h2>
+  <div class="cf-sub" id="nm-sub"></div>
+  <div class="cf-warn" id="nm-warn" hidden></div>
+  <div class="field"><label for="nm-a" id="nm-a-label">이름</label><input id="nm-a" autocomplete="off" spellcheck="false"></div>
+  <div class="field" id="nm-b-row" hidden><label for="nm-b" id="nm-b-label"></label><input id="nm-b" class="mono" autocomplete="off" spellcheck="false"></div>
+  <div class="err" id="nm-err"></div>
+  <div class="cf-ctrl">
+    <button class="btn" onclick="closeNamer()">취소</button>
+    <button class="btn primary" id="nm-ok" onclick="submitNamer()">생성</button>
+  </div>
+</div>
+
+<!-- 관리 로그 (FS-12) -->
+<div class="scrim" id="logbox-scrim" onclick="closeLog()"></div>
+<div class="confirm logbox" id="logbox" role="dialog" aria-modal="true" aria-labelledby="lg-title" inert>
+  <h2 id="lg-title">관리 로그</h2>
+  <div class="cf-sub">중앙 이벤트 로그(<span class="mono">workspace/logs/events.jsonl</span>) — 상태 전이·스폰/kill·에러, 최근 20건</div>
+  <div class="feed" id="lg-feed"></div>
+  <div class="cf-ctrl"><button class="btn" onclick="closeLog()">닫기</button></div>
+</div>
+
+<div class="sr-only" id="sr-assertive" aria-live="assertive" role="alert"></div>
+<div class="sr-only" id="sr-polite" aria-live="polite" role="status"></div>
+<div class="toasts" id="toasts"></div>
+
+<script>
+'use strict';
+/* ═══ 데모 데이터 — GET /api/state {projects, ports} 페이로드 시뮬레이션 (PRD §8.4)
+   서버 연결(http) 시 loadState()가 실데이터로 대체. roles = 선언(project.json), sessions = wmux 실측. ═══ */
+const DAY=86400000;
+const iso=d=>new Date(Date.now()-d*DAY).toISOString();
+let PROJECTS=[
+  { name:'CharCollector', status:'active', createdAt:iso(14), archivedAt:null, wsLive:true,
+    links:[{label:'배포',url:'https://example.com'},{label:'DB 콘솔',url:'https://example.com/db'}],
+    roles:[{id:'dev'},{id:'art'}],
+    sessions:[ {role:'ops',agentId:'ag-01',alive:true,claude:'off'},
+               {role:'dev',agentId:'ag-02',alive:true,claude:'on'},
+               {role:'art',agentId:'ag-03',alive:true,claude:'off'} ] },
+  { name:'ClientA-Web', status:'active', createdAt:iso(11), archivedAt:null, wsLive:true,
+    links:[{label:'스테이징',url:'https://example.com'}],
+    roles:[{id:'dev'},{id:'design'}],
+    sessions:[ {role:'ops',agentId:'ag-11',alive:true,claude:'off'},
+               {role:'dev',agentId:'ag-12',alive:true,claude:'unknown'} ] }, // design 세션 누락 → 세션 복구 데모
+  { name:'PortfolioSite', status:'idle', createdAt:iso(40), archivedAt:null, wsLive:false,
+    links:[{label:'배포',url:'https://example.com'}], roles:[{id:'dev'}], sessions:[] },
+  { name:'LegacyMigration', status:'idle', createdAt:iso(6), archivedAt:null, wsLive:false,
+    links:[], roles:[{id:'dev'},{id:'data'}], sessions:[] },
+  { name:'OldLanding', status:'archived', createdAt:iso(130), archivedAt:iso(62), wsLive:false, links:[], roles:[{id:'dev'}], sessions:[] },
+  { name:'PoC-Chatbot', status:'archived', createdAt:iso(90), archivedAt:iso(20), wsLive:false, links:[], roles:[{id:'dev'}], sessions:[] },
+];
+/* FS-14 — 활성 포트(리스너 실측·프로젝트 귀속). 서버 연결 시 /api/state의 ports로 대체. */
+let PORTS=[
+  {p:':5173', proc:'vite dev',  project:'CharCollector'},
+  {p:':3000', proc:'next dev',  project:'ClientA-Web'},
+  {p:':5432', proc:'postgres',  project:null},
+  {p:':9222', proc:'wmux',      project:null},
+];
+/* FS-16 — Claude 사용량, 한도 윈도 3개(5시간·주간 전체·주간 Opus — Claude 플랜 한도 구조와 동형).
+   서버 연결 시 GET /api/usage(60s)로 대체. max = config 수동 지정(usageMax5h·usageMaxWeek·usageMaxWeekOpus)
+   또는 윈도별 관측 학습 — 공식 한도 아님. */
+let USAGE={
+  windows:[
+    {id:'5h',       label:'5시간',      used:412000,  max:860000,  remaining:448000,  pct:48, source:'observed'},
+    {id:'week',     label:'주간·전체',  used:5200000, max:8400000, remaining:3200000, pct:62, source:'observed'},
+    {id:'week-opus',label:'주간·Opus',  used:2400000, max:3400000, remaining:1000000, pct:71, source:'config'},
+  ],
+  today:{in:820000, out:410000},
+  lastActivity:Date.now()-40*60000,
+};
+/* FS-15 — 기능 인벤토리(이름·종류만, 값 비노출). 서버 연결 시 GET /api/caps로 대체. */
+let GCAPS=[ // global: ~/.claude — 모든 세션 상속
+  {nm:'pm-execution',        k:'plugin'},
+  {nm:'deep-research',       k:'skill'},
+  {nm:'dataviz',             k:'skill'},
+  {nm:'unity-mcp-skill',     k:'skill'},
+  {nm:'chrome-devtools-mcp', k:'mcp', off:true},
+];
+const SCAPS={ // '<프로젝트>/<역할>' → 그 세션 전용(project/session 스코프)
+  'CharCollector/dev':{project:[{nm:'pr-reviewer',k:'agent'}],session:[{nm:'unity',k:'mcp'}]},
+  'CharCollector/ops':{project:[{nm:'release-checklist',k:'skill'}],session:[]},
+  'ClientA-Web/dev':{project:[],session:[{nm:'supabase',k:'mcp'}]},
+};
+let EVENTS=[ // GET /api/log 시뮬레이션 — {ts, level, project, event, detail}
+  {ts:Date.now()-2*3600000, level:'info',  project:'CharCollector', event:'claude',     detail:'dev 세션 claude 기동'},
+  {ts:Date.now()-5*3600000, level:'info',  project:'CharCollector', event:'activate',   detail:'workspace 생성 · 세션 3개 스폰 (ops 1번)'},
+  {ts:Date.now()-8*3600000, level:'error', project:'ClientA-Web',  event:'spawn',      detail:'design 세션 스폰 실패 — 폴더 잠금 (재시도: 세션 복구)'},
+  {ts:Date.now()-1*DAY,     level:'info',  project:'ClientA-Web',  event:'activate',   detail:'workspace 생성 · 세션 3개 스폰'},
+  {ts:Date.now()-2*DAY,     level:'info',  project:'PortfolioSite',event:'deactivate', detail:'세션 2개 종료 · 대기중 전환'},
+  {ts:Date.now()-20*DAY,    level:'info',  project:'PoC-Chatbot',  event:'archive',    detail:'아카이브 처리'},
+];
+function logEv(level,project,event,detail){EVENTS.unshift({ts:Date.now(),level,project,event,detail});}
+
+/* ═══ 브리지 연동 — 서버(GET /) 주입 토큰 · file:// 은 데모 ═══ */
+const TOKEN=document.querySelector('meta[name="cockpit-token"]')?.content||'';
+const HAS_API=location.protocol==='http:'||location.protocol==='https:';
+let SOURCE='demo', WAS_LIVE=false; // live였다가 끊기면 offline 구분(운영 시나리오 A6)
+async function api(path,opts){opts=opts||{};
+  const res=await fetch(path,{method:opts.method||'GET',
+    headers:{'X-Cockpit-Token':TOKEN,...(opts.body?{'Content-Type':'application/json'}:{})},
+    body:opts.body?JSON.stringify(opts.body):undefined});
+  if(!res.ok){let d='';try{d=(await res.json()).error||'';}catch(e){}throw new Error(path+' → '+res.status+(d?' · '+d:''));}
+  return res.json();
+}
+async function loadState(){
+  if(HAS_API){
+    try{const d=await api('/api/state');
+      if(d.projects){PROJECTS=d.projects;PORTS=d.ports||[];SOURCE='live';WAS_LIVE=true;}else SOURCE='live-empty';}
+    catch(e){SOURCE=WAS_LIVE?'offline':'demo(offline)';} // live→단절 = offline(서버 확인·exe 재실행)
+  } else SOURCE='demo';
+  renderAll();
+}
+async function loadGlobalCaps(){ // FS-15 — global 인벤토리(레일). 논블로킹, 실패 시 데모 유지.
+  if(!HAS_API)return;
+  try{const d=await api('/api/caps'); if(d.global)GCAPS=d.global; renderRail();}catch(e){}
+}
+async function loadUsage(){ // FS-16 — 사용량(60s, 상태 폴링과 분리). 실패 시 기존 값 유지.
+  if(HAS_API){try{const u=await api('/api/usage');
+    if(u&&u.windows)USAGE=u;
+    else if(u&&u.limit)USAGE={windows:[{id:'5h',label:'5시간',...u.limit}],today:u.today,lastActivity:u.lastActivity}; // 구형 페이로드 정규화
+  }catch(e){}}
+  renderUsage();
+}
+
+/* ═══ 유틸 ═══ */
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+function relTime(x){const d=Date.now()-new Date(x).getTime();if(!(d>=0))return '';
+  const h=3600000;
+  if(d<h)return Math.max(1,Math.round(d/60000))+'분 전';
+  if(d<DAY)return Math.round(d/h)+'시간 전';
+  if(d<DAY*30)return Math.round(d/DAY)+'일 전';
+  if(d<DAY*365)return Math.round(d/(DAY*30))+'개월 전';
+  return (d/(DAY*365)).toFixed(1)+'년 전';}
+const shortDate=x=>x?new Date(x).toLocaleDateString('ko-KR',{year:'2-digit',month:'numeric',day:'numeric'}):'?';
+const evTime=ts=>new Date(ts).toLocaleString('ko-KR',{month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit',hour12:false});
+function announce(msg,assertive){const el=document.getElementById(assertive?'sr-assertive':'sr-polite');el.textContent='';requestAnimationFrame(()=>{el.textContent=msg;});}
+const byStatus=st=>PROJECTS.filter(p=>(p.status||'idle')===st);
+const lastEvOf=name=>EVENTS.find(e=>e.project===name);
+
+/* ═══ 렌더 ═══ */
+function renderAll(){
+  const act=byStatus('active'),idl=byStatus('idle'),arc=byStatus('archived');
+  document.getElementById('m-active').textContent=act.length;
+  document.getElementById('m-idle').textContent=idl.length;
+  document.getElementById('m-arc-wrap').hidden=!arc.length;
+  document.getElementById('m-arc').textContent=arc.length;
+  document.getElementById('c-active').textContent=act.length;
+  document.getElementById('c-idle').textContent=idl.length;
+  setSourceBadge(); renderActive(act); renderIdle(idl); renderClosed(arc); renderRail();
+}
+function setSourceBadge(){
+  const el=document.getElementById('src-badge');
+  const live=SOURCE==='live'||SOURCE==='live-empty';
+  if(SOURCE==='offline'){ // A6 — 서버 콘솔 창이 닫힌 경우 등: demo 폴백과 구분해 복구 유도
+    el.innerHTML=`<span style="color:var(--crit)">▲</span> <span style="color:var(--crit)">offline</span> — 서버 확인 · exe 재실행`;
+    return;}
+  el.innerHTML=`<span style="color:var(--${live?'ok':'idle'})">${live?'●':'○'}</span> ${live?'live · wmux':SOURCE}`;
+}
+function lastEvHtml(p){
+  const e=lastEvOf(p.name); if(!e)return '';
+  const pi=PROJECTS.indexOf(p);
+  return `<button class="lastev ${e.level==='error'?'err':''}" onclick="openLog(${pi})" title="관리 로그 — 프로젝트별 최근 20건 (GET /api/log)">
+    <span class="t">${evTime(e.ts)}</span><span class="ev-k">${esc(e.event)}</span><span class="d">${esc(e.detail)}</span><span class="chev">≡ 로그</span></button>`;
+}
+function linksHtml(p){
+  const pi=PROJECTS.indexOf(p);
+  const chips=(p.links||[]).map((l,li)=>
+    `<button class="conn" onclick="openLink(${pi},${li})" title="${esc(l.url)} — 기본 브라우저로 열기">
+      <span class="g" style="color:var(--quiet);font-size:9px">●</span><span class="k">${esc(l.label)}</span><span style="color:var(--faint);font-size:10px">↗</span></button>`).join('');
+  const add=`<button class="conn add" onclick="linkPrompt(${pi})" title="서비스 링크 등록(배포·DB 콘솔 등) — POST /links">＋ 링크</button>`;
+  return `<div class="conns">${chips}${add}</div>`;
+}
+/* 진행중 카드 — 세션 행(rrow) 클릭=상세 드로어 · ops 고정 · ▶ Claude 실행(off일 때만) */
+function renderActive(list){
+  document.getElementById('g-active').innerHTML=list.map(p=>{
+    const pi=PROJECTS.indexOf(p);
+    const missing=(p.roles||[]).filter(r=>!(p.sessions||[]).some(s=>s.role===r.id&&s.alive)).length
+      +((p.sessions||[]).some(s=>s.role==='ops'&&s.alive)?0:1);
+    const rows=(p.sessions||[]).map((s,si)=>{
+      const stPill=s.claude==='on'
+        ?'<span class="pill sm claude"><span class="g">✦</span>claude</span>'
+        :'<span class="pill sm idle"><span class="g">❯</span>터미널</span>';
+      const main=`<button class="rrow" onclick="openSession(${pi},${si})" title="세션 상세 — 기능 인벤토리(skill/agent/MCP)·wmux 점프·폴더">
+        ${stPill}<span class="rn">${esc(s.role)}${s.role==='ops'?'<span class="pin" title="1번 고정 세션 — 개별 종료 없음(비활성화 시에만 함께 종료) · git/DB/배포 확인 거처">ops 고정</span>':''}</span>
+        <span class="now">root/${esc(p.name)}/${esc(s.role)}/</span><span class="chev">↗</span></button>`;
+      if(s.claude==='off')return `<div class="rrow-wrap">${main}<button class="claude-go" onclick="doClaude(${pi},${si},this)" title="이 pane에서 claude 실행 — POST /claude (이미 실행 중이면 재전송 생략)">▶ Claude 실행</button></div>`;
+      if(s.claude==='unknown')return `<div class="rrow-wrap">${main}<span class="cbadge" title="claude 실측 대기 — 오발동 방지를 위해 실행 버튼 미노출">? 확인 중</span></div>`;
+      return main;}).join('');
+    const health=missing
+      ?`<span class="pill sm warn"><span class="g">⏸</span>세션 ${missing}개 누락</span>`
+      :`<span class="pill sm ok"><span class="g">●</span>세션 ${(p.sessions||[]).length}/${(p.roles||[]).length+1}</span>`;
+    return `<section class="tcard ${missing?'attn-w':''}">
+      <div class="tc-head"><span class="nm">${esc(p.name)}</span>
+        ${p.createdAt?`<span class="tg" title="시작 ${esc(p.createdAt)}">${relTime(p.createdAt)} 시작</span>`:''}
+        <button class="ptbtn" onclick="doOpen(${pi})" title="탐색기에서 폴더 열기 — POST /open">root/${esc(p.name)}/</button>
+        <span class="h">${health}</span></div>
+      <div class="rrows">${rows||'<div style="color:var(--faint);font-size:12px;padding:4px 2px">실측 세션 없음 — 세션 복구로 재수렴</div>'}</div>
+      ${linksHtml(p)}${lastEvHtml(p)}
+      <div class="cact">
+        <button class="btn" onclick="doActivate(${pi},true)" title="같은 활성화 수렴 재호출 — 빠진 세션만 채움, N회 반복해도 중복 0 (멱등·KR3)">⟲ 세션 복구</button>
+        <button class="btn" onclick="rolePrompt(${pi})" title="선언 경유 역할 추가(FS-8 — 자유 스폰 아님) · 스폰은 [세션 복구]로">＋ 역할</button>
+        <span class="sp"></span>
+        <button class="btn danger" onclick="deactivatePrompt(${pi})" title="세션 전체 종료(확인 필수) 후 대기중으로 — POST /deactivate">비활성화</button>
+      </div></section>`;
+  }).join('')||'<div class="empty">진행중인 프로젝트 없음 — 대기중 프로젝트를 활성화하세요</div>';
+}
+/* 대기중 카드 — calm(침묵) · 역할 칩 · 활성화가 주 액션 */
+function renderIdle(list){
+  document.getElementById('g-idle').innerHTML=list.map(p=>{
+    const pi=PROJECTS.indexOf(p);
+    const chips=`<span class="rchip ops" title="1번 고정 세션 — 활성화 시 항상 먼저 스폰"><span class="g">📌</span>ops</span>`
+      +(p.roles||[]).map(r=>`<button class="rchip" onclick="removeRolePrompt(${pi},'${esc(r.id)}')" title="클릭 — 역할 제거(선언에서만, 폴더 보존 · FS-8)"><span class="g">❯</span>${esc(r.id)} ✕</button>`).join('');
+    return `<section class="tcard idlecard calm">
+      <div class="tc-head"><span class="nm">${esc(p.name)}</span>
+        <span class="tg"><span class="pill sm idle"><span class="g">⏸</span>대기중</span></span>
+        ${p.createdAt?`<span class="tg" title="시작 ${esc(p.createdAt)}">${relTime(p.createdAt)} 시작</span>`:''}
+        <button class="ptbtn" onclick="doOpen(${pi})" title="탐색기에서 폴더 열기 — POST /open">root/${esc(p.name)}/</button></div>
+      <div class="roleschips">${chips}</div>
+      ${linksHtml(p)}${lastEvHtml(p)}
+      <div class="cact">
+        <button class="btn primary" onclick="doActivate(${pi})" title="workspace 생성 → ops 1번 스폰 → 역할 세션 스폰 — POST /activate (1클릭·KR2)">▶ 활성화</button>
+        <button class="btn" onclick="rolePrompt(${pi})" title="선언 경유 역할 추가(FS-8 — 자유 스폰 아님)">＋ 역할</button>
+        <span class="sp"></span>
+        <button class="btn" onclick="doArchive(${pi})" title="보관 — 폴더·선언 유지, 하단 종료됨 섹션으로 (재개 가능)">▪ 아카이브</button>
+      </div></section>`;
+  }).join('')||'<div class="empty">대기중인 프로젝트 없음 — 새 프로젝트를 만들거나 기존 프로젝트를 연동하세요</div>';
+}
+/* 종료(보관) — 기본 접힘 */
+let CLOSED_OPEN=false;
+function toggleClosed(){CLOSED_OPEN=!CLOSED_OPEN;renderAll();}
+function renderClosed(list){
+  const el=document.getElementById('closed');
+  if(!list.length){el.innerHTML='';return;}
+  const items=list.slice().sort((a,b)=>new Date(b.archivedAt||0)-new Date(a.archivedAt||0)).map(p=>{
+    const pi=PROJECTS.indexOf(p);
+    return `<div class="closed-card">
+      <span style="color:var(--idle)">▪</span><span class="nm">${esc(p.name)}</span>
+      <span class="period" title="생성 ${esc(p.createdAt||'?')} · 종료 ${esc(p.archivedAt||'?')}">${shortDate(p.createdAt)} ~ ${shortDate(p.archivedAt)}</span>
+      <button class="ptbtn" onclick="doOpen(${pi})" title="탐색기에서 폴더 열기">root/${esc(p.name)}/</button>
+      <button class="tbtn" style="margin-left:auto" onclick="doReopen(${pi})" title="재개 — 대기중으로 복귀(즉시 활성화 없음) — POST /reopen">재개</button>
+    </div>`;}).join('');
+  el.innerHTML=`<button class="closed-toggle" aria-expanded="${CLOSED_OPEN}" onclick="toggleClosed()">
+      <span>${CLOSED_OPEN?'▾':'▸'}</span><span>종료됨 <b class="mono">${list.length}</b></span>
+      <span style="margin-left:auto;font-size:10.5px">보관된 프로젝트 — 활성화 차단 · 재개로 대기중 복귀</span></button>
+    <div class="closed-list" ${CLOSED_OPEN?'':'hidden'}>${items}</div>`;
+}
+/* 우측 레일 — 사용량 게이지(FS-16) + 활성 포트(FS-14) + Global 기능 인벤토리(FS-15) */
+function fmtTok(n){n=n||0;return n>=1e6?((n/1e6>=10?Math.round(n/1e6):(n/1e6).toFixed(1))+'M'):n>=1e3?Math.round(n/1e3)+'k':String(n);}
+function renderUsage(){
+  const el=document.getElementById('usagebox'); if(!el)return;
+  const wins=(USAGE&&USAGE.windows)||[];
+  const srcEl=document.getElementById('usage-src');
+  if(!wins.length){
+    el.innerHTML='<div class="pempty">사용량 학습 중 — 과거 사용 이력 관측 후 표시됩니다 (config.usageMax5h·usageMaxWeek·usageMaxWeekOpus로 즉시 지정 가능)</div>';
+    if(srcEl)srcEl.textContent='학습 중';return;}
+  const cols=wins.map(w=>{
+    if(!w.max) // 이 윈도만 학습 중 — 나머지는 정상 렌더 (가짜 만재/공백 방지)
+      return `<div class="ucol"><div class="gauge gempty" title="${esc(w.label)} — 한도 학습 중 (config로 수동 지정 가능)"><div class="glearn">학습중</div></div>
+        <div class="upct dimtxt">—</div><div class="ulabel">${esc(w.label)}</div><div class="usub">${fmtTok(w.used)}/?</div></div>`;
+    const pct=Math.max(0,Math.min(100,w.pct??Math.round(w.used/w.max*100)));
+    const cls=pct>=90?'critc':pct>=70?'warnc':'okc';
+    return `<div class="ucol">
+      <div class="gauge" role="img" aria-label="${esc(w.label)} 사용 ${pct}퍼센트 — 사용 ${fmtTok(w.used)}, 최대 ${fmtTok(w.max)}"
+        title="${esc(w.label)} — 사용 ${fmtTok(w.used)} / 최대 ${fmtTok(w.max)} · 남음 ${fmtTok(w.remaining??(w.max-w.used))}&#10;트랙 전체 = 학습된 한도 · 채움 = 사용량 (관측 추정 — 공식 한도 아님)&#10;최대치 출처: ${w.source==='config'?'config 수동 지정':'관측 학습(역대 최대)'}">
+        <div class="gtick" style="bottom:90%"><i>90</i></div>
+        <div class="gtick" style="bottom:70%"><i>70</i></div>
+        <div class="gfill ${cls}" style="height:${pct}%"></div>
+      </div>
+      <div class="upct ${cls}">${pct}<span>%</span></div>
+      <div class="ulabel">${esc(w.label)}</div>
+      <div class="usub">${fmtTok(w.used)}/${fmtTok(w.max)}</div>
+    </div>`;}).join('');
+  const worst=wins.filter(w=>w.max).reduce((a,w)=>{
+    const p=w.pct??Math.round(w.used/w.max*100); return !a||p>a.p?{p,label:w.label}:a;},null);
+  if(srcEl)srcEl.textContent=worst?`최대 ${worst.p}% · ${worst.label}`:'학습 중';
+  const t=USAGE.today||{};
+  el.innerHTML=`<div class="usagebox3">${cols}</div>
+    <div class="ufoot">오늘 in ${fmtTok(t.in)} · out ${fmtTok(t.out)}${USAGE.lastActivity?` · 마지막 활동 ${new Date(USAGE.lastActivity).toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit',hour12:false})}`:''}</div>`;
+}
+function capItems(list,badge){
+  return (list||[]).map(c=>`<div class="cap">${badge?`<span class="scope s-${badge.sc}">${badge.tag}</span>`:''}<span class="nm${c.off?' off':''}">${esc(c.nm)}</span><span class="k">${esc(c.k)}${c.off?' · off':''}</span></div>`).join('');
+}
+function renderRail(){
+  const rows=PORTS.map(pt=>`<div class="r">
+    <span style="color:var(--${pt.project?'ok':'idle'});font-size:9px">${pt.project?'●':'○'}</span>
+    <span class="num">${esc(pt.p)}</span><span class="proc">${esc(pt.proc)}</span>
+    <span class="to ${pt.project?'team':'none'}">→ ${esc(pt.project||'기타')}</span></div>`).join('');
+  document.getElementById('portmap').innerHTML=rows||'<div class="pempty">감지된 dev/db 리스너 없음</div>';
+  document.getElementById('port-count').textContent=PORTS.length+' listening';
+  document.getElementById('gcaps').innerHTML=
+    `<div class="capgrp"><div class="h"><span class="scope s-global">global</span> 모든 세션 상속 — <span class="mono" style="font-size:10.5px">~/.claude</span></div>
+      ${capItems(GCAPS)||'<div class="pempty">항목 없음</div>'}</div>
+     <div style="font-size:10.5px;color:var(--faint);border-top:1px solid #ffffff08;padding-top:8px">세션 전용(skill/agent/MCP)은 <b style="color:var(--muted)">세션 행 클릭 → 상세</b>에서 — 이름·종류만 표시(값 비노출)</div>`;
+  renderUsage();
+}
+
+/* ═══ 세션 상세 드로어 (FS-15) — 기능 인벤토리·점프·폴더 ═══ */
+let DR=null;
+async function openSession(pi,si){
+  const p=PROJECTS[pi]; const s=p&&(p.sessions||[])[si]; if(!s)return;
+  DR={pi,si};
+  document.getElementById('dr-team').textContent=p.name+' /';
+  document.getElementById('dr-role').textContent=s.role;
+  const claudePill=s.claude==='on'?'<span class="pill claude"><span class="g">✦</span>claude 실행중</span>'
+    :s.claude==='off'?'<span class="pill idle"><span class="g">❯</span>터미널 (claude off)</span>'
+    :'<span class="pill idle"><span class="g">?</span>claude 확인 중</span>';
+  document.getElementById('dr-meta').innerHTML=claudePill
+    +(s.role==='ops'?'<span class="tag" title="1번 고정 세션 — 비활성화 시에만 함께 종료 · git/DB/배포 확인 거처">📌 ops 고정</span>':'')
+    +`<span class="tag">cwd <span class="mono">root/${esc(p.name)}/${esc(s.role)}/</span></span>`
+    +`<span class="tag">agent <span class="mono">${esc(s.agentId||'?')}</span></span>`;
+  const ctrl=[`<button class="btn primary" onclick="doAttach(${pi},${si})" title="wmux 해당 pane으로 포커스 이동 — POST /attach">열기 ↗ (wmux 점프)</button>`,
+    `<button class="btn" onclick="doOpen(${pi},'${esc(s.role)}')" title="탐색기에서 역할 폴더 열기 — POST /open {name, role}">📁 폴더</button>`];
+  if(s.claude==='off')ctrl.push(`<button class="btn bluish" onclick="doClaude(${pi},${si},this)" title="이 pane에서 claude 실행 — POST /claude">▶ Claude 실행</button>`);
+  document.getElementById('dr-ctrl').innerHTML=ctrl.join('');
+  renderDrawerCaps(p,s,null); // 즉시: 데모/캐시 → 라이브 도착 시 교체
+  document.getElementById('drawer-scrim').classList.add('on');
+  const d=document.getElementById('drawer'); d.classList.add('on'); d.setAttribute('aria-hidden','false'); d.removeAttribute('inert');
+  announce(`${p.name} ${s.role} 세션 상세를 열었습니다.`);
+  if(HAS_API){ // 세션 스코프 기능 인벤토리 온디맨드 — GET /api/caps?project=&role=
+    try{const caps=await api('/api/caps?project='+encodeURIComponent(p.name)+'&role='+encodeURIComponent(s.role));
+      if(DR&&DR.pi===pi&&DR.si===si)renderDrawerCaps(p,s,caps);}catch(e){}
+  }
+}
+function renderDrawerCaps(p,s,live){
+  const local=live||SCAPS[p.name+'/'+s.role]||{project:[],session:[]};
+  const scoped=capItems(local.project,{sc:'project',tag:'proj'})+capItems(local.session,{sc:'session',tag:'sess'});
+  document.getElementById('dr-body').innerHTML=`
+    <div class="dcard"><h4>🧩 기능 인벤토리 <span class="src">${live?'GET /api/caps':'demo'} · 이름·종류만</span></h4><div class="cb">
+      <div class="capgrp"><div class="h"><span class="scope s-project">project</span><span class="scope s-session">session</span> 이 세션 전용</div>
+        ${scoped||'<div class="pempty">세션 전용 기능 없음 — global 상속만 사용</div>'}</div>
+      <div class="capgrp"><div class="h"><span class="scope s-global">global</span> 모든 세션 상속</div>
+        ${capItems(GCAPS)||'<div class="pempty">항목 없음</div>'}</div>
+    </div></div>
+    <div class="dcard"><h4>ℹ 범위 안내</h4><div class="cb" style="font-size:12px;color:var(--muted);line-height:1.6">
+      트랜스크립트·활동 피드·git diff는 v1 범위 밖(§13) — 작업 내용은 <b style="color:var(--text)">열기 ↗</b>로 wmux에서 직접 확인.
+      기능 목록은 <span class="mono">~/.claude</span>(global)와 역할 폴더의 <span class="mono">.claude/·.mcp.json</span>(전용) 실측 — 설정 값·키는 표시하지 않음.</div></div>`;
+}
+function closeDrawer(){
+  DR=null;
+  document.getElementById('drawer-scrim').classList.remove('on');
+  const d=document.getElementById('drawer'); d.classList.remove('on'); d.setAttribute('aria-hidden','true'); d.setAttribute('inert','');
+}
+
+/* ═══ 액션 — 서버 연결 시 PRD §8.4 API, 데모는 인메모리 시뮬 ═══ */
+async function doActivate(pi,recover){
+  const p=PROJECTS[pi]; if(!p)return;
+  if(HAS_API){try{const r=await api('/activate',{method:'POST',body:{name:p.name}});
+    ping(`활성화 수렴 — <span class="mono">${p.name}</span> 스폰 ${r.spawned??'?'} · 재사용 ${r.reused??'?'} ✓`);
+    announce(`${p.name} 활성화 — 세션이 준비되었습니다.`,true);loadState();return;}
+  catch(e){ping((String(e.message).includes('409')?'보관된 프로젝트 — 재개 후 활성화하세요':'활성화 실패 — ')+e.message);return;}}
+  // demo
+  if(recover){
+    const missing=[{id:'ops'},...(p.roles||[])].filter(r=>!(p.sessions||[]).some(s=>s.role===(r.id||r)&&s.alive));
+    if(!missing.length){ping('멱등 재수렴 — 빠진 세션 없음, agent 수 불변 (KR3)');return;}
+    missing.forEach(r=>p.sessions.push({role:r.id,agentId:'ag-'+Math.floor(Math.random()*899+100),alive:true,claude:'off'}));
+    p.sessions.sort((a,b)=>(a.role==='ops'?-1:b.role==='ops'?1:0));
+    logEv('info',p.name,'activate',`재수렴 — 세션 ${missing.length}개 복구 (${missing.map(r=>r.id).join('·')})`);
+    ping(`세션 복구 — <span class="mono">${missing.map(r=>r.id).join(' · ')}</span> ✓`);renderAll();return;
+  }
+  p.status='active';p.wsLive=true;
+  p.sessions=[{role:'ops',agentId:'ag-'+pi+'0',alive:true,claude:'off'},
+    ...(p.roles||[]).map((r,i)=>({role:r.id,agentId:'ag-'+pi+(i+1),alive:true,claude:'off'}))];
+  logEv('info',p.name,'activate',`workspace 생성 · 세션 ${p.sessions.length}개 스폰 (ops 1번)`);
+  ping(`활성화 — <span class="mono">${p.name}</span> 세션 ${p.sessions.length}개 스폰 (ops 1번 고정) ✓`);
+  announce(`${p.name} 프로젝트를 활성화했습니다. 세션 ${p.sessions.length}개.`,true);renderAll();
+}
+function deactivatePrompt(pi){
+  const p=PROJECTS[pi]; if(!p)return;
+  const sess=(p.sessions||[]).filter(s=>s.alive);
+  const claudeOn=sess.filter(s=>s.claude==='on').length;
+  openConfirmDialog({
+    title:'프로젝트를 비활성화합니다',
+    sub:`<span class="who">${esc(p.name)}</span> — 아래 세션 ${sess.length}개가 모두 종료(kill)되고 대기중으로 전환됩니다.<br><b>종료된 세션은 되돌릴 수 없습니다(undo 없음).</b>`,
+    warn:claudeOn?`claude가 실행 중인 세션 ${claudeOn}개가 있습니다 — 작업 중일 수 있습니다.`:null,
+    sess:sess.map(s=>`<div class="row"><span class="rn">${esc(s.role)}</span>${s.role==='ops'?'<span class="pin" style="font-size:9.5px;color:var(--warn)">고정</span>':''}<span class="sp"></span>${
+      s.claude==='on'?'<span class="pill sm claude"><span class="g">✦</span>claude</span>':'<span class="pill sm idle"><span class="g">❯</span>터미널</span>'}</div>`).join(''),
+    okText:'세션 종료 후 비활성화',
+    onConfirm:()=>doDeactivate(pi)});
+}
+async function doDeactivate(pi){
+  const p=PROJECTS[pi]; const n=(p.sessions||[]).length;
+  if(HAS_API){try{await api('/deactivate',{method:'POST',body:{name:p.name,confirm:true}});
+    ping(`비활성화 — <span class="mono">${p.name}</span> 세션 ${n}개 종료 ✓`);
+    announce(`${p.name} 비활성화 — 세션을 종료했습니다.`,true);loadState();return;}
+  catch(e){ping('비활성화 실패 — '+e.message);return;}}
+  p.status='idle';p.wsLive=false;p.sessions=[];
+  logEv('info',p.name,'deactivate',`세션 ${n}개 종료 · 대기중 전환`);
+  ping(`비활성화 — <span class="mono">${p.name}</span> 세션 ${n}개 종료 · 대기중 ✓`);
+  announce(`${p.name} 프로젝트를 비활성화했습니다.`,true);renderAll();
+}
+async function doArchive(pi){
+  const p=PROJECTS[pi]; if(!p)return;
+  if((p.status||'idle')==='active'){ping('진행중 프로젝트는 먼저 비활성화하세요 (409 — kill을 아카이브에 숨기지 않음)');return;}
+  if(HAS_API){try{await api('/archive',{method:'POST',body:{name:p.name}});
+    ping(`아카이브 — <span class="mono">${p.name}</span> ✓ (하단 종료됨 섹션)`);loadState();return;}
+  catch(e){ping('아카이브 실패 — '+e.message);return;}}
+  p.status='archived';p.archivedAt=new Date().toISOString();
+  logEv('info',p.name,'archive','아카이브 처리');
+  ping(`아카이브 — <span class="mono">${p.name}</span> ✓ (재개로 복귀 가능)`);renderAll();
+}
+async function doReopen(pi){
+  const p=PROJECTS[pi]; if(!p)return;
+  if(HAS_API){try{await api('/reopen',{method:'POST',body:{name:p.name}});
+    ping(`재개 — <span class="mono">${p.name}</span> ✓ 대기중 복귀`);loadState();return;}
+  catch(e){ping('재개 실패 — '+e.message);return;}}
+  p.status='idle';p.archivedAt=null;
+  logEv('info',p.name,'reopen','재개 — 대기중 복귀');
+  ping(`재개 — <span class="mono">${p.name}</span> 대기중 복귀 (활성화는 별도 액션) ✓`);
+  announce(`${p.name} 프로젝트를 재개했습니다.`);renderAll();
+}
+async function doClaude(pi,si,btn){
+  const p=PROJECTS[pi]; const s=p&&p.sessions[si]; if(!s)return;
+  if(btn){btn.disabled=true;btn.textContent='시작 중…';}
+  if(HAS_API){try{const r=await api('/claude',{method:'POST',body:{agentId:s.agentId}});
+    if(r&&r.already){ping(`이미 실행 중 — <span class="mono">${s.role}</span> pane의 claude에 연결 (재전송 생략)`);}
+    else ping(`Claude 시작 — <span class="mono">${s.role}</span> pane ✓ (상태는 실측 확인 후 전환)`);
+    announce(`${s.role} 세션에서 Claude를 시작했습니다.`,true);setTimeout(loadState,1500);return;}
+  catch(e){ping('Claude 시작 실패 — '+e.message);if(btn){btn.disabled=false;btn.textContent='▶ Claude 실행';}return;}}
+  logEv('info',p.name,'claude',`${s.role} 세션에 claude 기동 전송`);
+  ping(`Claude 시작(시뮬) — <span class="mono">${s.role}</span> (실측 갱신 대기)`);
+  setTimeout(()=>{s.claude='on';renderAll();if(DR&&DR.pi===pi&&DR.si===si)openSession(pi,si);},900);
+}
+async function doAttach(pi,si){
+  const p=PROJECTS[pi]; const s=p&&p.sessions[si]; if(!s)return;
+  if(HAS_API){try{await api('/attach',{method:'POST',body:{agentId:s.agentId}});
+    ping('wmux 점프 — <span class="mono">'+esc(p.name)+'/'+esc(s.role)+'</span> ✓');return;}
+  catch(e){ping('점프 실패 — '+e.message);return;}}
+  ping(`wmux 점프(시뮬) — <span class="mono">${esc(p.name)}/${esc(s.role)}</span>`);
+}
+async function doOpen(pi,role){
+  const p=PROJECTS[pi]; if(!p)return;
+  const path=`root/${p.name}/${role?role+'/':''}`;
+  if(HAS_API){try{await api('/open',{method:'POST',body:{name:p.name,...(role?{role}:{})}});
+    ping(`폴더 열림 — <span class="mono">${esc(path)}</span>`);return;}
+  catch(e){ping('폴더 열기 실패 — '+e.message);return;}}
+  ping(`폴더 열기(시뮬) — <span class="mono">${esc(path)}</span>`);
+}
+async function openLink(pi,li){
+  const l=PROJECTS[pi]&&PROJECTS[pi].links[li]; if(!l)return;
+  if(HAS_API){window.open(l.url,'_blank','noopener');return;}
+  ping(`링크 열기(시뮬) — <span class="mono">${esc(l.url)}</span>`);
+}
+
+/* ═══ 다이얼로그 — confirm(파괴적)·namer(입력)·logbox(피드), scrim+inert 공용 골격 ═══ */
+let confirmAction=null,cfTrigger=null;
+function openConfirmDialog({title,sub,warn,sess,okText,onConfirm}){
+  cfTrigger=document.activeElement; confirmAction=onConfirm;
+  document.getElementById('cf-title').textContent=title||'확인';
+  document.getElementById('cf-sub').innerHTML=sub||'';
+  const w=document.getElementById('cf-warn');
+  if(warn){w.hidden=false;w.innerHTML='<span>⚠</span><span>'+warn+'</span>';}else w.hidden=true;
+  const sl=document.getElementById('cf-sess');
+  if(sess){sl.hidden=false;sl.innerHTML=sess;}else sl.hidden=true;
+  document.getElementById('cf-confirm').textContent=okText||'확인';
+  openModal('confirm');document.getElementById('cf-cancel').focus();
+  announce(`${title} — 확인이 필요합니다.`,true);
+}
+function closeConfirm(){closeModal('confirm');if(cfTrigger&&cfTrigger.focus)cfTrigger.focus();cfTrigger=null;confirmAction=null;}
+document.getElementById('cf-confirm').onclick=()=>{const fn=confirmAction;closeConfirm();if(fn)fn();};
+
+let namerSubmit=null,nmTrigger=null;
+function openNamer({title,sub,warn,aLabel,aPh,aMono,b,okText,onSubmit}){
+  namerSubmit=onSubmit;nmTrigger=document.activeElement;
+  document.getElementById('nm-title').textContent=title;
+  document.getElementById('nm-sub').innerHTML=sub||'';
+  const w=document.getElementById('nm-warn');
+  if(warn){w.hidden=false;w.innerHTML='<span>⚠</span><span>'+warn+'</span>';}else w.hidden=true;
+  document.getElementById('nm-a-label').textContent=aLabel||'이름';
+  const a=document.getElementById('nm-a');a.value='';a.placeholder=aPh||'';a.className=aMono?'mono':'';
+  document.getElementById('nm-b-row').hidden=!b;
+  if(b){document.getElementById('nm-b-label').textContent=b.label;
+    const bi=document.getElementById('nm-b');bi.value='';bi.placeholder=b.ph||'';}
+  document.getElementById('nm-err').textContent='';
+  document.getElementById('nm-ok').textContent=okText||'생성';
+  openModal('namer');a.focus();
+}
+function closeNamer(){closeModal('namer');if(nmTrigger&&nmTrigger.focus)nmTrigger.focus();nmTrigger=null;namerSubmit=null;}
+async function submitNamer(){
+  const a=document.getElementById('nm-a').value.trim();
+  if(!a){document.getElementById('nm-err').textContent='값을 입력하세요.';document.getElementById('nm-a').focus();return;}
+  const b=document.getElementById('nm-b-row').hidden?'':document.getElementById('nm-b').value.trim();
+  const fn=namerSubmit;closeNamer();if(fn)await fn(a,b);
+}
+for(const id of['nm-a','nm-b'])document.getElementById(id).addEventListener('keydown',e=>{if(e.key==='Enter')submitNamer();});
+
+let lgTrigger=null;
+async function openLog(pi){
+  const p=PROJECTS[pi]; if(!p)return; lgTrigger=document.activeElement;
+  document.getElementById('lg-title').textContent='관리 로그 — '+p.name;
+  let rows=EVENTS.filter(e=>e.project===p.name);
+  if(HAS_API){try{const d=await api('/api/log?project='+encodeURIComponent(p.name)+'&limit=20');rows=d.events||rows;}catch(e){}}
+  document.getElementById('lg-feed').innerHTML=rows.slice(0,20).map(e=>
+    `<div class="ev ${e.level==='error'?'err':''}"><span class="t">${evTime(e.ts)}</span><span class="tool">${esc(e.event)}</span><span class="d">${esc(e.detail)}</span></div>`).join('')
+    ||'<div style="color:var(--faint);font-size:12px;padding:6px 0">기록 없음</div>';
+  openModal('logbox');
+}
+function closeLog(){closeModal('logbox');if(lgTrigger&&lgTrigger.focus)lgTrigger.focus();lgTrigger=null;}
+
+function openModal(id){
+  document.querySelector('.wrap').setAttribute('inert','');
+  const dr=document.getElementById('drawer'); if(dr.classList.contains('on'))dr.setAttribute('inert','');
+  document.getElementById(id+'-scrim').classList.add('on');
+  const m=document.getElementById(id);m.classList.add('on');m.removeAttribute('inert');
+}
+function closeModal(id){
+  const m=document.getElementById(id);
+  document.getElementById(id+'-scrim').classList.remove('on');
+  m.classList.remove('on');m.setAttribute('inert','');
+  document.querySelector('.wrap').removeAttribute('inert');
+  const dr=document.getElementById('drawer'); if(dr.classList.contains('on'))dr.removeAttribute('inert');
+}
+
+/* 새 프로젝트(FS-8) · 기존 연동(FS-9) · 링크 추가(FS-11) 프롬프트 */
+function createPrompt(){
+  openNamer({title:'새 프로젝트',
+    sub:'<b>root/&lt;프로젝트&gt;/</b> 폴더와 격리 스캐폴드(프로젝트 CLAUDE.md · git init · .gitignore)를 만들고 <b>대기중</b>으로 등록합니다. ops 폴더는 자동 포함.',
+    aLabel:'프로젝트 이름',aPh:'예: MyApp',
+    b:{label:'역할 (쉼표 구분 — ops는 자동 포함)',ph:'예: dev, art'},okText:'생성',
+    onSubmit:async(name,rolesRaw)=>{
+      const roles=rolesRaw.split(',').map(s=>s.trim()).filter(s=>s&&s!=='ops');
+      if(HAS_API){try{await api('/create',{method:'POST',body:{name,roles}});
+        ping(`프로젝트 생성 — <span class="mono">${esc(name)}</span> ✓ 대기중 등록`);loadState();return;}
+      catch(e){ping('생성 실패 — '+e.message);return;}}
+      PROJECTS.push({name,status:'idle',createdAt:new Date().toISOString(),archivedAt:null,wsLive:false,
+        links:[],roles:roles.map(id=>({id})),sessions:[]});
+      logEv('info',name,'create',`격리 스캐폴드 생성 · 역할 ${roles.length}개 · 대기중 등록`);
+      ping(`프로젝트 생성(시뮬) — <span class="mono">${esc(name)}</span> 대기중 등록 ✓`);renderAll();}});
+}
+function importPrompt(){
+  openNamer({title:'기존 프로젝트 연동',
+    sub:'기존 프로젝트 폴더를 root/ 아래로 <b>이동(move)</b>하고 선언·격리 스캐폴드를 적용해 <b>대기중</b>으로 등록합니다. 경로가 이미 root/ 아래면 <b>이동 없이 제자리 등록</b>됩니다(구 팀 재등록 — B7).',
+    warn:'폴더가 실제로 이동됩니다 — 같은 드라이브만 지원, 실패 시 원본은 변경되지 않습니다. 이동 후 프로젝트 내부의 절대경로 참조(.env·IDE 설정·스크립트)는 깨질 수 있습니다.',
+    aLabel:'기존 프로젝트 경로',aPh:'예: D:\\work\\my-old-project',aMono:true,
+    b:{label:'프로젝트 이름 (비우면 폴더명)',ph:'my-old-project'},okText:'root/로 이사',
+    onSubmit:async(path,name)=>{
+      name=name||path.split(/[\\/]/).filter(Boolean).pop()||'project';
+      if(HAS_API){try{await api('/import',{method:'POST',body:{path,name}});
+        ping(`이사 완료 — <span class="mono">root/${esc(name)}/</span> ✓ 대기중 등록`);loadState();return;}
+      catch(e){ping('이사 실패 — '+e.message+' (원본 무변경)');return;}}
+      PROJECTS.push({name,status:'idle',createdAt:new Date().toISOString(),archivedAt:null,wsLive:false,
+        links:[],roles:[{id:'dev'}],sessions:[]});
+      logEv('info',name,'import',`${path} → root/${name}/ 이동 · 스캐폴드 적용 · 대기중 등록`);
+      ping(`이사(시뮬) — <span class="mono">root/${esc(name)}/</span> 대기중 등록 ✓`);renderAll();}});
+}
+/* 역할 추가/제거 (FS-8 — 선언 경유, user_context §4-2·C8) */
+function rolePrompt(pi){
+  const p=PROJECTS[pi]; if(!p)return;
+  openNamer({title:'역할 추가',
+    sub:`<span class="who">${esc(p.name)}</span> — 선언(project.json)에 역할을 추가하고 <b>root/${esc(p.name)}/&lt;역할&gt;/</b> 폴더를 준비합니다. 자유 스폰이 아니라 <b>선언 경유</b> — 스폰은 활성화/[세션 복구]가 수행합니다.`,
+    aLabel:'역할 이름',aPh:'예: dev · art · qa',okText:'추가',
+    onSubmit:async(role)=>{
+      role=role.trim(); if(!role||role==='ops'){ping(role==='ops'?'ops는 예약 역할 — 항상 포함됩니다':'역할 이름을 입력하세요');return;}
+      if(HAS_API){try{await api('/create',{method:'POST',body:{name:p.name,roles:[role]}});
+        ping(`역할 추가 — <span class="mono">${esc(role)}</span> ✓${(p.status==='active')?' · [세션 복구]로 스폰하세요':''}`);loadState();return;}
+      catch(e){ping('역할 추가 실패 — '+e.message);return;}}
+      if(!(p.roles||[]).some(r=>r.id===role)){(p.roles=p.roles||[]).push({id:role});}
+      logEv('info',p.name,'create',`역할 병합 — 추가 ${role}`);
+      ping(`역할 추가(시뮬) — <span class="mono">${esc(role)}</span>${p.status==='active'?' · [세션 복구]로 스폰':''} ✓`);renderAll();}});
+}
+function removeRolePrompt(pi,role){
+  const p=PROJECTS[pi]; if(!p)return;
+  openConfirmDialog({
+    title:'역할을 제거합니다',
+    sub:`<span class="who">${esc(p.name)}</span> / <span class="mono">${esc(role)}</span> — <b>선언에서만 제거</b>합니다. 역할 폴더·파일은 보존됩니다(파괴 없음). 살아있는 세션이 있으면 거부(409)됩니다.`,
+    okText:'선언에서 제거',
+    onConfirm:async()=>{
+      if(HAS_API){try{await api('/roles',{method:'POST',body:{name:p.name,action:'remove',role}});
+        ping(`역할 제거 — <span class="mono">${esc(role)}</span> ✓ (폴더 보존)`);loadState();return;}
+      catch(e){ping(String(e.message).includes('409')?'살아있는 세션이 있는 역할 — 비활성화 후 제거하세요 (409)':'역할 제거 실패 — '+e.message);return;}}
+      p.roles=(p.roles||[]).filter(r=>r.id!==role);
+      logEv('info',p.name,'roles',`역할 제거 — ${role} (선언만, 폴더 보존)`);
+      ping(`역할 제거(시뮬) — <span class="mono">${esc(role)}</span> ✓`);renderAll();}});
+}
+function linkPrompt(pi){
+  const p=PROJECTS[pi]; if(!p)return;
+  openNamer({title:'서비스 링크 등록',
+    sub:`<span class="who">${esc(p.name)}</span> — 배포 URL·DB 콘솔 등 연동 서비스 바로가기를 카드에 추가합니다 (표시 전용 · http/https만).`,
+    aLabel:'라벨',aPh:'예: 배포 · DB 콘솔',
+    b:{label:'URL (http/https)',ph:'https://…'},okText:'등록',
+    onSubmit:async(label,url)=>{
+      if(!/^https?:\/\//.test(url)){ping('http(s):// URL만 등록할 수 있습니다');return;}
+      if(HAS_API){try{await api('/links',{method:'POST',body:{name:p.name,action:'add',label,url}});
+        ping(`링크 등록 — <span class="mono">${esc(label)}</span> ✓`);loadState();return;}
+      catch(e){ping('링크 등록 실패 — '+e.message);return;}}
+      (p.links=p.links||[]).push({label,url});
+      ping(`링크 등록(시뮬) — <span class="mono">${esc(label)}</span> ✓`);renderAll();}});
+}
+
+/* ═══ 토스트·새로고침·키 ═══ */
+function toast(html){
+  const t=document.createElement('div');t.className='toast';
+  t.innerHTML=`<span class="pill ok sm" style="pointer-events:none"><span class="g">↗</span></span><span>${html}</span>`;
+  document.getElementById('toasts').appendChild(t);
+  requestAnimationFrame(()=>t.classList.add('on'));
+  setTimeout(()=>{t.classList.remove('on');setTimeout(()=>t.remove(),250);},2600);
+}
+function ping(html){toast(html);}
+let rc=0;
+function doRefresh(){rc=0;document.getElementById('refresh').textContent='⟳ 방금';loadState();loadGlobalCaps();loadUsage();ping('상태 갱신 — <span class="mono">GET /api/state</span>');}
+setInterval(()=>{rc++;document.getElementById('refresh').textContent=`⟳ ${rc}초 전`;},1000);
+document.addEventListener('keydown',e=>{
+  if(e.key!=='Escape')return;
+  if(document.getElementById('namer').classList.contains('on'))closeNamer();
+  else if(document.getElementById('logbox').classList.contains('on'))closeLog();
+  else if(document.getElementById('confirm').classList.contains('on'))closeConfirm();
+  else closeDrawer();
+});
+
+/* ═══ init ═══ */
+loadState();
+loadGlobalCaps();
+loadUsage();
+if(HAS_API){setInterval(loadState,2500);setInterval(loadGlobalCaps,60000);setInterval(loadUsage,60000);}
+</script>
+</body>
+</html>

@@ -10,8 +10,10 @@
 // 재접속·응답 다중화 복잡도가 이득이 없어 요청당 1연결로 둔다.
 import net from 'node:net';
 import { readFileSync } from 'node:fs';
+import { spawnSync } from 'node:child_process';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
+import { readConfig, patchConfig } from './registry.js';
 
 const PIPE = process.env.WMUX_PIPE || '\\\\.\\pipe\\wmux';
 const TIMEOUT = 10_000;
@@ -131,7 +133,43 @@ export async function sendLine(text, surfaceId) {
 }
 
 // 스폰 기본 셸 — "처음 실행은 터미널로 시작"(claude 자동 실행 안 함, ▶ 버튼/POST /claude로 전환).
-export const TERMINAL_CMD = process.env.TEAMCTL_SHELL || 'pwsh';
+// FS-1(B2): 구 'pwsh' 하드코딩은 PowerShell 7 미설치 머신에서 스폰 전체가 죽음 → 탐지 체인으로 결정.
+// 우선순위: config.shell(수동 지정 최우선) → TEAMCTL_SHELL → 자동 탐지(1회) → 플랫폼 기본 폴백.
+// 자동 탐지 결과는 config.json.shell에 되써 다음 부팅부터 탐지를 생략한다.
+const SHELL_CHAIN = process.platform === 'win32' ? ['pwsh', 'powershell', 'cmd'] : ['pwsh', 'bash', 'sh'];
+const WHICH = process.platform === 'win32' ? 'where.exe' : 'which';
+function shellExists(name) {
+  try { return spawnSync(WHICH, [name], { stdio: 'ignore', timeout: 3000 }).status === 0; }
+  catch { return false; }
+}
+let _shell = null;
+export function resolveShell() {
+  if (_shell) return _shell;
+  const cfg = readConfig();
+  if (cfg.shell) return (_shell = String(cfg.shell));
+  const env = process.env.TEAMCTL_SHELL?.trim();
+  if (env) return (_shell = env);
+  _shell = SHELL_CHAIN.find(shellExists) || (process.platform === 'win32' ? 'cmd' : 'sh');
+  try { patchConfig({ shell: _shell }); } catch { /* 캐시 실패 — 다음 부팅에 재탐지 */ }
+  return _shell;
+}
+export const terminalCmd = () => resolveShell();
+
+// 스폰 즉사 감지(FS-1) — 스폰 직후 상태를 1회 실측, exited면 호출자가 에러를 표면화.
+// ⚠️ 실측 한계(2026-07-12, wmux 0.13.0): 내부 명령이 즉사해도(존재하지 않는 명령 포함)
+// agent.status는 running 유지 + 반환 pid(ConPTY 래퍼)도 생존 — wmux가 pane 수준에서 실패를
+// 마스킹하므로 현 버전에선 이 감지가 발화하지 않는다. B2의 실질 대응은 예방(resolveShell 탐지
+// 체인)이며, 이 훅은 wmux가 종료를 제대로 보고하게 될 때를 대비한 방어선으로 유지(비용 ~0.3s).
+export async function spawnDied(agentId, waitMs = 300) {
+  if (!agentId) return { died: false };
+  await new Promise((r) => setTimeout(r, waitMs));
+  try {
+    const st = await agentStatus(agentId);
+    const s = ((st && (st.status || st.state)) || '').toLowerCase();
+    if (/exit|dead|stopped|killed|terminated/.test(s)) return { died: true, exitCode: st?.exitCode ?? null };
+  } catch { /* 조회 실패 = 판정 불가 — 생존 취급(오탐 방지) */ }
+  return { died: false };
+}
 
 // 대시보드를 wmux 브라우저 패널에 (boot ④). caller = CLI의 issue #62 라우팅과 동일.
 export function openBrowser(url) {
@@ -146,6 +184,13 @@ export function createWorkspace({ title, cwd } = {}) {
   if (title) params.title = title;
   if (cwd) params.cwd = cwd;
   return request('workspace.create', params);
+}
+
+// 워크스페이스 닫기 — cleanup(선언에 없는 ws 정리) 전용. 프로브 실측이 파라미터 명 두 갈래
+// (세션9 {workspaceId} · 세션18 {id})라 id 우선, 실패 시 workspaceId 재시도.
+export async function closeWorkspace(id) {
+  try { return await request('workspace.close', { id }); }
+  catch { return request('workspace.close', { workspaceId: id }); }
 }
 
 // agent spawn — cmd 필수(예: 'claude'). label 기본값은 cmd 첫 토큰(CLI와 동일).

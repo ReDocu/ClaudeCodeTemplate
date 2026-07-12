@@ -96,13 +96,25 @@ function warnIfNoClaude() {
 
 // 콜드 부트 전체 — F12 사용자 시나리오 2번. 서버가 없으면 이 프로세스가 서버가 된다(창=서버 콘솔).
 // panel: true면 구 동작(wmux 브라우저 패널). 기본은 시스템 기본 브라우저(크롬 등) — 사용자 요구.
-export async function boot({ port, setup = false, panel = false } = {}) {
+// clean: 선언 밖 정리(cleanup.js) — 플래그 또는 config.cleanOnBoot로 옵트인. 기본 off:
+//        "boot는 죽이지 않는다" 원칙의 예외이므로 사용자가 명시했을 때만.
+export async function boot({ port, setup = false, panel = false, clean = false } = {}) {
   console.log('[boot] ① wmux 확인/기동');
   const w = await ensureWmux({ forceLocate: setup });
   console.log(`[boot]    wmux ${w.action === 'reused' ? '이미 실행 중 — 재사용' : `기동 완료 (pid ${w.pid})`}`);
   warnIfNoClaude();
 
   const cfg = readConfig();
+
+  if (clean || cfg.cleanOnBoot === true) {
+    console.log(`[boot] ①+ 선언 밖 정리 (${clean ? '--clean' : 'config.cleanOnBoot'}) — root/ 선언에 없는 워크스페이스·세션 종료`);
+    try {
+      const { cleanup } = await import('./cleanup.js');
+      const c = await cleanup({});
+      for (const x of c.closed) console.log(`[boot]      ✕ ${x.title || x.id}  [${x.action}]  세션 ${x.agents.length}개`);
+      console.log(`[boot]    닫음 ${c.closed.length}개 · 유지 ${c.kept.length}개${c.errors.length ? ` · 오류 ${c.errors.length}건` : ''}`);
+    } catch (e) { console.warn(`[boot]    정리 실패(${e.message}) — 부트는 계속 진행`); }
+  }
   const PORT = port || cfg.port || 7420;
   const url = `http://127.0.0.1:${PORT}/`;
 

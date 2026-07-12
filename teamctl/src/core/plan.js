@@ -36,11 +36,14 @@ export async function buildPlan() {
     });
     // 대기(pending) = 워크스페이스 미생성(1) + 스폰 안 된 autostart 역할 수
     const pending = (ws ? 0 : 1) + roles.filter((r) => r.autostart && !r.agentId).length;
+    const status = t.status || 'active'; // FS-5·7 — closed 팀은 수렴 대상이 아님(pending 아님)
     return {
       id: t.id, name: t.name, folder: t._folder,
       projectPath: t.projectPath || '', workspaceId: ws,
       connectors: t.connectors || [], expectedPorts: t.expectedPorts || [],
-      roles, pending, syncState: pending ? 'pending' : 'synced',
+      status, createdAt: t.createdAt || null, closedAt: t.closedAt || null,
+      roles, pending: status === 'closed' ? 0 : pending,
+      syncState: status === 'closed' ? 'closed' : (pending ? 'pending' : 'synced'),
     };
   });
 

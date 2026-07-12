@@ -1,13 +1,20 @@
 // reconcile — 폴더 선언(desired)에 맞춰 wmux를 수렴시킨다 (teamctl up / POST /up).
 // 원칙(§P2): ① 멱등(없는 것만 생성, 있으면 재사용) ② 부여된 id를 team.json에 되쓰기
 //           ③ eager 워크스페이스·lazy 역할(autostart만 스폰) ④ drift는 표시만, 자동 종료 금지.
-import { mkdirSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { scanTeams, writeTeam } from './registry.js';
-import { getWmuxFresh, createWorkspace, spawnAgent, invalidateWmux, TERMINAL_CMD } from './wmux.js';
-import { claudeAlive } from '../live/proc.js';
+import { scanTeams, writeTeam, scaffoldRoleDir, claudeLayerEnabled } from './registry.js';
+import { getWmuxFresh, createWorkspace, spawnAgent, invalidateWmux, terminalCmd, spawnDied } from './wmux.js';
 import { buildPlan } from './plan.js';
 import { stableCwd } from './state.js';
+
+// claude 실측(claudeAlive)은 claude 레이어(FS-12) — off면 로드하지 않고 실측 미상(null) 취급.
+// 미상은 compatibleCmd에서 보수적(불일치) 판정이라 off여도 안전(채택 대신 스폰).
+let _claudeAlive = () => null, _layerTried = false;
+async function ensureLayer() {
+  if (_layerTried) return; _layerTried = true;
+  if (!claudeLayerEnabled()) return;
+  try { _claudeAlive = (await import('../live/proc.js')).claudeAlive; } catch { /* 미상 취급 */ }
+}
 
 const norm = (p) => (p || '').replace(/[\\/]+/g, '/').replace(/\/$/, '').toLowerCase();
 const isDead = (a) => /exit|dead|stopped|killed|terminated/.test((a.status || a.state || '').toLowerCase());
@@ -23,7 +30,7 @@ const cmdKey = (cmd) => (String(cmd || '').trim().replace(/^["']/, '').split(/\s
 function compatibleCmd(a, wantCmd) {
   const want = cmdKey(wantCmd), have = cmdKey(a.cmd);
   if (want && want === have) return true;
-  const claudeOn = have === 'claude' || claudeAlive(a.pid || a.processId) === true;
+  const claudeOn = have === 'claude' || _claudeAlive(a.pid || a.processId) === true;
   if (SHELLS.has(want)) return SHELLS.has(have) || claudeOn;
   if (want === 'claude') return claudeOn;
   return false;
@@ -42,10 +49,20 @@ function matchWs(t, workspaces) {
 
 // scope: {team} 지정 시 그 팀만, 없으면 전체. dryRun: 변경 없이 계획만.
 export async function reconcile({ team, dryRun = false } = {}) {
+  await ensureLayer();
   const desired = scanTeams().filter((t) => !team || t.id === team || t._folder === team);
   const summary = { teams: [], drift: [], changed: 0, dryRun };
 
   for (const t of desired) {
+    // FS-7(U2) — 종료 팀: 워크스페이스 생성·스폰·채택 전부 스킵. 조용히 생략하지 않고
+    // closed-skip으로 표기(plan·대시보드가 "왜 안 만들었나"를 볼 수 있게).
+    if ((t.status || 'active') === 'closed') {
+      summary.teams.push({
+        id: t.id, name: t.name, ws: null, status: 'closed',
+        roles: (t.roles || []).map((r) => ({ id: r.id, action: 'closed-skip' })),
+      });
+      continue;
+    }
     // 변이 결정은 신선한 상태로 — stale 캐시는 방금 열린 세션/워크스페이스를 못 보고 중복 생성한다.
     let { workspaces = [] } = await getWmuxFresh();
     let ws = matchWs(t, workspaces);
@@ -89,7 +106,7 @@ export async function reconcile({ team, dryRun = false } = {}) {
       const open = !r.cwd && wsAgents.find((a) => {
         const aid = agentIdOf(a);
         return !claimed.has(aid) && !boundIds.has(aid) && !roleIds.has(labelOf(a))
-          && compatibleCmd(a, r.cmd || TERMINAL_CMD);
+          && compatibleCmd(a, r.cmd || terminalCmd());
       });
       if (open) {
         claimed.add(agentIdOf(open));
@@ -99,15 +116,24 @@ export async function reconcile({ team, dryRun = false } = {}) {
         continue;
       }
       if (dryRun || !ws) { tRes.roles.push({ id: r.id, action: 'would-spawn' }); continue; }
-      // role.cwd(F13) = 팀 폴더 기준 상대경로(예: ops의 'ops') — 지정 시 그 폴더에서 스폰(수기 선언 대비 생성 보장).
+      // role.cwd(F13) = 팀 폴더 기준 상대경로(예: ops의 'ops') — FS-9: 폴더 생성을 스캐폴드
+      // (README·시크릿 .gitignore·역할 지침, 멱등)로 승격. 절대경로 선언은 생성만(파일 미주입).
       const cwd = r.cwd ? resolve(t._dir, r.cwd) : projectAbs(t);
-      if (r.cwd) mkdirSync(cwd, { recursive: true });
+      if (r.cwd) scaffoldRoleDir(t._dir, r.id, r.cwd);
       // 기본은 터미널 스폰 — claude는 대시보드 ▶ 버튼(POST /claude)으로 명시 시작. role.cmd 선언은 존중.
-      const agent = await spawnAgent({ cmd: r.cmd || TERMINAL_CMD, label: r.id, cwd, workspaceId: ws });
+      const agent = await spawnAgent({ cmd: r.cmd || terminalCmd(), label: r.id, cwd, workspaceId: ws });
       const aid = agentIdOf(agent);
-      r.agentId = aid; writeTeam(t._dir, t); // 바인딩 되쓰기
-      tRes.roles.push({ id: r.id, action: 'spawned', agentId: aid }); summary.changed++;
       invalidateWmux();
+      // FS-1 — 즉사 감지: exited pane에 바인딩을 남기면 유령 역할이 된다 → 바인딩 생략, 다음 reconcile이 재시도.
+      const dd = await spawnDied(aid);
+      if (dd.died) {
+        tRes.roles.push({ id: r.id, action: 'spawn-died', agentId: aid, cwd, exitCode: dd.exitCode });
+        summary.changed++;
+        continue;
+      }
+      r.agentId = aid; writeTeam(t._dir, t); // 바인딩 되쓰기
+      // cwd를 결과에 실음(FS-2 진단) — 스폰 시 넘긴 경로 vs 실측 드리프트 대조용.
+      tRes.roles.push({ id: r.id, action: 'spawned', agentId: aid, cwd }); summary.changed++;
     }
     summary.teams.push(tRes);
   }

@@ -1,13 +1,27 @@
 // 폴더 레지스트리 — root/ 를 팀 선언(desired state)의 진실로 읽고 쓴다.
 // 규칙: root/ 바로 아래 점(.) 안 붙은 폴더 = 팀 하나. 그 안 team.json = 팀 신원.
 // .manager/(런타임 캐시)·.templates/(스캐폴드 원본)는 점 접두어라 스캔에서 제외.
-import { readFileSync, writeFileSync, readdirSync, mkdirSync, existsSync, renameSync, copyFileSync } from 'node:fs';
+import { readFileSync, writeFileSync, readdirSync, mkdirSync, existsSync, renameSync, copyFileSync, statSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { join } from 'node:path';
+import { join, dirname, isAbsolute } from 'node:path';
 
 export const ROOT = fileURLToPath(new URL('../../../root/', import.meta.url));
 const MANAGER = join(ROOT, '.manager');
 const TEMPLATES = join(ROOT, '.templates');
+
+// teamctl 런타임 설정(workspace/config.json) — serve.js loadConfig와 같은 파일. 이 헬퍼는
+// 다른 코어 모듈(wmux 셸 캐시·claude 레이어 판정)이 순환 의존 없이 읽고 쓰는 최소 창구.
+const CONFIG_PATH = fileURLToPath(new URL('../../workspace/config.json', import.meta.url));
+export function readConfig() { try { return JSON.parse(readFileSync(CONFIG_PATH, 'utf8')); } catch { return {}; } }
+export function patchConfig(patch) {
+  const cfg = { ...readConfig(), ...patch };
+  mkdirSync(dirname(CONFIG_PATH), { recursive: true });
+  writeFileSync(CONFIG_PATH, JSON.stringify(cfg, null, 2));
+  return cfg;
+}
+// claude 레이어 스위치(FS-12·PRD §2) — 기본 on(dev). false면 코어(순수 wmux 관제)만 동작.
+export const claudeLayerEnabled = () => readConfig().claudeLayer !== false;
 
 const readJson = (p) => JSON.parse(readFileSync(p, 'utf8'));
 const writeJson = (p, o) => writeFileSync(p, JSON.stringify(o, null, 2) + '\n');
@@ -42,17 +56,113 @@ connections.json
 logs/
 `;
 
-// root/<팀>/ops/ 절충 스캐폴드 — README+.gitignore(+역할 지침)만. 풀 트리 생성 금지(유령 구조).
-export function scaffoldOps(dir) {
-  const ops = join(dir, 'ops');
-  mkdirSync(ops, { recursive: true });
-  const rd = join(ops, 'README.md');
-  if (!existsSync(rd)) writeFileSync(rd, OPS_README);
-  const gi = join(ops, '.gitignore');
-  if (!existsSync(gi)) writeFileSync(gi, OPS_GITIGNORE);
-  mkdirSync(join(dir, 'roles'), { recursive: true });
-  const rm = join(dir, 'roles', 'role-ops.md');
-  if (!existsSync(rm)) writeFileSync(rm, OPS_ROLE_MD);
+// 역할 지침 템플릿(FS-10·U7′) — 파일만 놓아준다(멱등). 팀 CLAUDE.md 반영·운영은 프로젝트 소관(D16):
+// cockpit은 팀 CLAUDE.md를 생성 시점(scaffoldIsolation) 이후 절대 수정하지 않는다.
+const ROLE_MD = (id) => `# ${id} — 역할 지침
+
+이 역할의 목적·책임·작업 범위를 여기에 적는다.
+
+- (목적) …
+- (책임) …
+- (범위 밖) …
+
+> 이 지침을 팀 CLAUDE.md에 반영할지·어떻게 운영할지는 이 프로젝트가 정한다 —
+> cockpit은 이 파일을 다시 수정하지 않는다.
+`;
+export function scaffoldRoleDoc(teamDir, roleId) {
+  mkdirSync(join(teamDir, 'roles'), { recursive: true });
+  const p = join(teamDir, 'roles', `role-${roleId}.md`);
+  if (!existsSync(p)) writeFileSync(p, roleId === 'ops' ? OPS_ROLE_MD : ROLE_MD(roleId));
+}
+
+// 역할 작업 폴더 스캐폴드(FS-9·U5) — ops 절충 계약의 일반화: README+.gitignore(시크릿 4규칙)만,
+// 풀 트리 금지·멱등. rel 미지정 시 폴더명 = 역할 id(A-2). 절대경로 rel은 스캐폴드 없이 생성만
+// (팀 사이드카 밖 — 프로젝트 리포 오염 방지 원칙상 파일을 심지 않는다).
+const ROLE_DIR_README = (id) => `# ${id} — 역할 작업 폴더
+
+이 팀의 \`${id}\` 역할 세션 작업 디렉터리(cockpit이 이 폴더를 cwd로 스폰).
+
+- 하위 구조는 필요할 때만 만든다(유령 폴더 금지).
+- 시크릿은 커밋 금지 — \`.gitignore\`가 선제 차단: \`deploy-keys/\`·\`connections.json\`·\`.env.*\`·\`logs/\`.
+- 역할 지침: \`../roles/role-${id}.md\`
+`;
+export function scaffoldRoleDir(teamDir, roleId, rel = roleId) {
+  const d = isAbsolute(rel) ? rel : join(teamDir, rel);
+  mkdirSync(d, { recursive: true });
+  if (!isAbsolute(rel)) {
+    const rd = join(d, 'README.md');
+    if (!existsSync(rd)) writeFileSync(rd, roleId === 'ops' ? OPS_README : ROLE_DIR_README(roleId));
+    const gi = join(d, '.gitignore');
+    if (!existsSync(gi)) writeFileSync(gi, OPS_GITIGNORE);
+  }
+  scaffoldRoleDoc(teamDir, roleId);
+  return d;
+}
+
+// (기존 호출부 호환) ops 스캐폴드 = scaffoldRoleDir의 특수 케이스.
+export function scaffoldOps(dir) { scaffoldRoleDir(dir, 'ops', 'ops'); }
+
+// D16 — 팀 폴더 격리: root/<팀>/은 cockpit 운영정책과 무연계인 독립 프로젝트.
+// 상위 cockpit CLAUDE.md는 조상 탐색으로 팀 폴더 세션에도 항상 로드되므로(차단 불가),
+// 팀 CLAUDE.md가 명시적으로 무효화하고, 자체 git init으로 프로젝트 경계(설정·git 명령 기준)를
+// 팀 폴더에 고정한다. team.json(런타임 바인딩 되쓰기)은 팀 저장소에서도 추적 금지. 전부 멱등.
+const ISOLATION_CLAUDE_MD = (name) => `# ${name} — 독립 프로젝트
+
+이 폴더는 Claude Cockpit이 세션 기동·관찰만 담당하는 **독립 프로젝트**다.
+Cockpit의 운영정책은 이 프로젝트와 무관하다.
+
+## 격리 선언 (상위 지침보다 우선)
+
+- 상위 폴더(ClaudeCockpit 저장소)의 CLAUDE.md는 **cockpit 도구 자체의 운영정책**이다 —
+  wmux/teamctl 불변 규칙·검증 컨벤션·handover.md 관례·커밋 컨벤션을 포함해 전부
+  **이 프로젝트에 적용하지 말 것**. 이 프로젝트에서는 이 파일과 하위 문서만 따른다.
+- 이 폴더는 자체 git 저장소다(팀 생성 시 \`git init\`). 커밋·브랜치·리뷰 등 모든 git 작업은
+  이 저장소 기준이며, 상위 cockpit 저장소를 대상으로 하지 않는다.
+- \`team.json\`은 cockpit 제어 파일(워크스페이스·에이전트 런타임 바인딩 포함) —
+  프로젝트 코드가 참조·수정하지 않고, 이 저장소에서도 추적하지 않는다(.gitignore).
+
+## 프로젝트 규칙
+
+(여기서부터 이 프로젝트 고유 규칙을 추가)
+`;
+const ISOLATION_GITIGNORE = `# Claude Cockpit 제어 파일 — 이 머신의 런타임 바인딩(workspaceId·agentId)이 되써짐. 추적 금지.
+/team.json
+`;
+
+// 인수인계 표준 템플릿(FS-11·U8′) — planner §8 표준 섹션만. cockpit 고유 관례(세션 번호 형식 등)는
+// 배제(D16 — 팀 소유 문서). 채우는 방식·주기는 프로젝트가 정한다.
+const HANDOVER_MD = (name) => `# ${name} — 인수인계 (handover)
+
+> 세션을 마칠 때 아래 표준 섹션으로 기록을 남긴다. 작성 방식·주기·상세도는 이 프로젝트가 정한다.
+
+## 무엇을 했나
+
+## 변경 파일 · 브랜치
+
+## 결정과 이유
+
+## 미해결 · 다음 할 일
+
+## 검증 방법
+`;
+export function scaffoldHandover(dir, name) {
+  const p = join(dir, 'handover.md');
+  if (!existsSync(p)) writeFileSync(p, HANDOVER_MD(name));
+}
+
+export function scaffoldIsolation(dir, name) {
+  const cm = join(dir, 'CLAUDE.md');
+  if (!existsSync(cm)) writeFileSync(cm, ISOLATION_CLAUDE_MD(name));
+  const gi = join(dir, '.gitignore');
+  if (!existsSync(gi)) writeFileSync(gi, ISOLATION_GITIGNORE);
+  scaffoldHandover(dir, name); // FS-11 — 인수인계 표준 템플릿(멱등, 기존 파일 미덮어쓰기)
+  if (!existsSync(join(dir, '.git'))) {
+    try { execFileSync('git', ['init', '-b', 'main'], { cwd: dir, stdio: 'ignore' }); }
+    catch {
+      try { execFileSync('git', ['init'], { cwd: dir, stdio: 'ignore' }); }
+      catch { /* git 미설치·실패 — CLAUDE.md 문서 격리만으로 진행 */ }
+    }
+  }
 }
 
 // 서버 부팅 시 1회 — 없으면 .manager/.templates 뼈대만 생성(팀 폴더는 사용자/대시보드가 만듦).
@@ -83,6 +193,16 @@ export function scanTeams() {
     if (!existsSync(tj)) continue;
     try {
       const obj = readJson(tj);
+      if (!obj.status) obj.status = 'active'; // FS-5(U1) — 필드 부재 = active(구 팀 관용)
+      if (!obj.createdAt) {
+        // FS-5(U3) 백필 — 생성일 없는 구 팀은 team.json birthtime으로 1회 추정 기록(estimated 표기).
+        try {
+          const s = statSync(tj);
+          obj.createdAt = new Date(s.birthtimeMs > 0 ? s.birthtimeMs : s.mtimeMs).toISOString();
+          obj.createdAtEstimated = true;
+          writeAtomic(tj, obj);
+        } catch { /* 백필 실패 — 다음 스캔에 재시도 */ }
+      }
       obj._dir = dir; obj._folder = e.name;
       if (!obj.id) obj.id = e.name;
       if (!obj.name) obj.name = e.name;
@@ -119,6 +239,7 @@ export function createTeam({ name, projectPath } = {}) {
     roles: Array.isArray(tpl.roles) && tpl.roles.length ? [...tpl.roles] : [{ id: 'lead', autostart: false }],
     connectors: Array.isArray(tpl.connectors) ? tpl.connectors : ['git', 'ports'],
     expectedPorts: Array.isArray(tpl.expectedPorts) ? tpl.expectedPorts : [],
+    status: 'active', createdAt: new Date().toISOString(), closedAt: null, // FS-5(U1·U3) — 생명주기
   };
   // 배포용 ops 세션은 디폴트(F13) — 템플릿이 구버전이라 없으면 보충(템플릿이 ops를 커스텀했으면 존중).
   if (!team.roles.some((r) => r && r.id === OPS_ROLE.id)) team.roles.push({ ...OPS_ROLE });
@@ -129,8 +250,49 @@ export function createTeam({ name, projectPath } = {}) {
     }
   } catch { /* 역할 지침 템플릿 없으면 생략 */ }
   scaffoldOps(dir);
+  scaffoldIsolation(dir, display); // D16 — cockpit 정책 무연계 격리(CLAUDE.md·자체 git·team.json 비추적)
+  for (const r of team.roles) { if (r && r.id) scaffoldRoleDoc(dir, r.id); } // FS-10 — 선언 역할 전부 지침 템플릿 보장
   writeJson(join(dir, 'team.json'), team);
   return { ...team, _dir: dir, _folder: folder };
+}
+
+// FS-5·6(U1) — 팀 생명주기: 종료(closed)/재개(active). wmux 워크스페이스·세션은 절대 건드리지
+// 않는다(자동 종료 금지 — 일괄 kill은 대시보드 확인 다이얼로그가 별도로, 명시 확인 후에만).
+export function setTeamStatus(key, status) {
+  const t = scanTeams().find((x) => x.id === key || x._folder === key || x.workspaceId === key);
+  if (!t) throw new Error('팀을 찾을 수 없습니다: ' + key);
+  t.status = status;
+  t.closedAt = status === 'closed' ? new Date().toISOString() : null;
+  writeTeam(t._dir, t);
+  return { id: t.id, folder: t._folder, name: t.name, status: t.status, closedAt: t.closedAt };
+}
+
+// FS-4(B4) — 스폰/채택된 세션을 팀 선언에 등재 + agentId 바인딩 되쓰기(reconcile 되쓰기와 동일 계약).
+// team은 scanTeams() 결과 객체(_dir 보유). 등재된 역할은 재시작 후 reconcile이 복원(재스폰/채택)한다.
+export function declareRole(team, roleId, agentId, opts = {}) {
+  if (!team) return { declared: false, reason: 'no-team' };
+  if (!roleId) return { declared: false, reason: 'no-role' };
+  try {
+    if (!Array.isArray(team.roles)) team.roles = [];
+    let r = team.roles.find((x) => x && x.id === roleId);
+    if (!r) { r = { id: roleId }; team.roles.push(r); }
+    if (opts.cwd) r.cwd = opts.cwd;
+    if (agentId) r.agentId = agentId;
+    writeTeam(team._dir, team);
+    scaffoldRoleDoc(team._dir, roleId); // FS-10 — 역할 지침 템플릿 보장(멱등)
+    return { declared: true, team: team.id };
+  } catch (e) { return { declared: false, reason: String(e.message || e) }; }
+}
+
+// 선언 해제 — team.json roles에서만 제거. 세션(agent)은 건드리지 않는다(종료와 별개, drift로 전환).
+export function undeclareRole(key, roleId) {
+  const t = scanTeams().find((x) => x.id === key || x._folder === key || x.workspaceId === key);
+  if (!t) throw new Error('팀을 찾을 수 없습니다: ' + key);
+  const before = (t.roles || []).length;
+  t.roles = (t.roles || []).filter((r) => !r || r.id !== roleId);
+  if (t.roles.length === before) return { removed: false, team: t.id };
+  writeTeam(t._dir, t);
+  return { removed: true, team: t.id };
 }
 
 export function readTeam(dir) { return readJson(join(dir, 'team.json')); }

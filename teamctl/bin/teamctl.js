@@ -6,7 +6,7 @@ const argv = process.argv.slice(2);
 const cmd = argv[0] || 'serve';
 const flag = (n) => { const i = argv.indexOf(n); return i >= 0 ? argv[i + 1] : undefined; };
 const port = flag('--port') ? Number(flag('--port')) : undefined;
-const USAGE = 'usage: teamctl serve [--port 7420]  |  teamctl up [--team <id>] [--dry]  |  teamctl boot [--port 7420] [--setup] [--panel]';
+const USAGE = 'usage: teamctl serve [--port 7420]  |  teamctl up [--team <id>] [--dry]  |  teamctl boot [--port 7420] [--setup] [--panel] [--clean]  |  teamctl cleanup [--dry]';
 
 if (cmd === 'serve') {
   serve({ port }).catch((e) => {
@@ -27,11 +27,25 @@ if (cmd === 'serve') {
   // F12 콜드 부트 — wmux 보장 → 서버 보장(없으면 이 프로세스가 서버) → reconcile → 대시보드 오픈.
   // --setup: wmux 경로 설정 프롬프트를 강제로 띄움(자동 발견을 건너뛰고 직접 선택/입력).
   // --panel: 대시보드를 기본 브라우저 대신 wmux 브라우저 패널에 연다(구 동작).
+  // --clean: reconcile 전에 root/ 선언에 없는 워크스페이스·세션 종료(config.cleanOnBoot로도 켤 수 있음).
   const { boot } = await import('../src/core/boot.js');
-  await boot({ port, setup: argv.includes('--setup'), panel: argv.includes('--panel') }).catch((e) => {
+  await boot({ port, setup: argv.includes('--setup'), panel: argv.includes('--panel'), clean: argv.includes('--clean') }).catch((e) => {
     console.error('[teamctl] 콜드 부트 실패:', e.message);
     process.exit(1);
   });
+} else if (cmd === 'cleanup') {
+  // 선언 밖 정리 — root/ 선언에 연결되지 않은 wmux 워크스페이스와 안의 세션을 종료(옵트인 전용).
+  const { cleanup } = await import('../src/core/cleanup.js');
+  const r = await cleanup({ dryRun: argv.includes('--dry') }).catch((e) => {
+    console.error('[teamctl] cleanup 실패:', e.message);
+    process.exit(1);
+  });
+  for (const w of r.closed) {
+    console.log(`✕ ${w.title || w.id}  [${w.action}]  세션 ${w.agents.length}개${w.agents.length ? ` (${w.agents.map((a) => a.label || a.agentId).join(', ')})` : ''}`);
+  }
+  for (const w of r.kept) console.log(`· 유지 ${w.title || w.id} — ${w.reason}`);
+  if (r.errors.length) console.log(`⚠ 오류 ${r.errors.length}건: ${r.errors.map((e) => e.error).join(' / ')}`);
+  console.log(`${r.dryRun ? '[dry-run] ' : ''}닫음 ${r.closed.length}개 · 유지 ${r.kept.length}개`);
 } else if (cmd === 'help' || cmd === '--help') {
   console.log(USAGE);
 } else {

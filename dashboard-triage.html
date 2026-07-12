@@ -149,14 +149,6 @@
   .pmap .num{font-family:var(--mono);font-weight:600;min-width:50px}
   .pmap .proc{font-family:var(--mono);color:var(--muted);font-size:11.5px}
   .pmap .to{margin-left:auto;font-size:11.5px}.pmap .to.team{color:var(--accent)}.pmap .to.none{color:var(--faint)}
-  .inbox{display:flex;flex-direction:column;gap:8px}
-  .ho{display:flex;gap:10px;align-items:flex-start;padding:9px 10px;border:1px solid var(--border-2);border-radius:9px;
-    background:var(--panel-2);cursor:pointer;width:100%;text-align:left;color:var(--text)}
-  .ho:hover{border-color:var(--accent-dim)}
-  .ho:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
-  .ho-txt{display:flex;flex-direction:column;gap:1px}
-  .ho .who{font-size:12.5px;font-weight:600}.ho .meta{font-size:11px;color:var(--muted)}
-  .ho .new{margin-left:auto;font-size:9.5px;text-transform:uppercase;letter-spacing:.6px;color:var(--accent);border:1px solid var(--accent-dim);border-radius:20px;padding:1px 6px;align-self:center}
   .capgrp{margin-bottom:11px}.capgrp:last-child{margin-bottom:0}
   .capgrp .h{display:flex;align-items:center;gap:7px;font-size:11.5px;color:var(--muted);margin-bottom:7px}
   .cap{display:flex;align-items:center;gap:8px;font-size:12.5px;padding:3px 0}
@@ -224,7 +216,7 @@
     border-radius:8px;padding:8px 10px;margin-bottom:13px;display:flex;gap:8px;align-items:flex-start;line-height:1.5}
   .cf-ctrl{display:flex;gap:8px;justify-content:flex-end}
 
-  /* 이름 입력 다이얼로그 (새 팀 · 세션 스폰) — confirm 골격 재사용, 파괴적 톤 제거 */
+  /* 이름 입력 다이얼로그 (세션 스폰) — confirm 골격 재사용, 파괴적 톤 제거 */
   #namer-scrim{z-index:65}
   .confirm.namer{border-color:var(--border-2)}
   .confirm.namer h2::before{content:"＋";color:var(--accent);font-size:15px}
@@ -243,6 +235,23 @@
   .toast .btn-undo{background:var(--panel-2);border:1px solid var(--accent-dim);color:var(--accent);border-radius:7px;padding:3px 10px;font-size:11.5px;cursor:pointer;font-family:inherit;margin-left:2px}
   .toast .btn-undo:hover{background:#4fd6c918}
 
+  /* confirm 다이얼로그 선택 체크(팀 종료 시 세션 일괄 종료 등) */
+  .cf-check{display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--text);margin:0 0 13px;cursor:pointer}
+  .cf-check input{accent-color:var(--accent);width:14px;height:14px;cursor:pointer}
+
+  /* 종료 프로젝트 섹션 (FS-8 · U4) — 기본 접힘, 정상 화면의 침묵 유지 */
+  .closed-toggle{display:flex;align-items:center;gap:8px;width:100%;margin-top:2px;padding:8px 12px;cursor:pointer;
+    border:1px solid var(--border);border-radius:10px;background:transparent;color:var(--faint);font-size:12px;text-align:left}
+  .closed-toggle:hover{border-color:var(--border-2);color:var(--muted)}
+  .closed-toggle:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+  .closed-list{display:flex;flex-direction:column;gap:8px;margin-top:8px}
+  .closed-card{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:8px 12px;border:1px solid var(--border);
+    border-radius:10px;background:var(--panel);opacity:.75;font-size:12.5px}
+  .closed-card:hover{opacity:1}
+  .closed-card .nm{font-weight:650}
+  .closed-card .period{font-family:var(--mono);font-size:11px;color:var(--faint)}
+  .dmark{color:var(--faint);font-size:10px;flex:0 0 auto}
+
   .foot{margin-top:16px;font-size:11px;color:var(--faint);text-align:center;line-height:1.7}
   .foot code{font-family:var(--mono);color:var(--muted)}
 </style>
@@ -256,19 +265,19 @@
       </svg>
       <div><h1>Claude Cockpit</h1><div class="sub">트리아지 대시보드 · 로컬</div></div>
     </div>
-    <div class="ministat"><span>팀 <b id="m-teams">0</b></span><span>세션 <b id="m-sessions">0</b></span><span id="m-usage" style="cursor:help"></span><span id="src-badge" style="color:var(--faint)"></span></div>
+    <div class="ministat"><span>팀 <b id="m-teams">0</b></span><span>세션 <b id="m-sessions">0</b></span><span id="m-closed-wrap" hidden>종료 <b id="m-closed">0</b></span><span id="src-badge" style="color:var(--faint)"></span></div>
     <div class="tools">
       <span class="refresh mono" id="refresh">⟳ 방금</span>
       <button class="tbtn" onclick="doRefresh()">새로고침</button>
-      <button class="tbtn" onclick="doHandoverAll()" title="모든 Claude 세션: handover.md 갱신 → /exit → 터미널 복귀">⏻ 전체 핸드오버</button>
-      <button class="tbtn primary" onclick="newTeam()">＋ 새 팀</button>
+      <button class="tbtn cl-only" onclick="doHandoverAll()" title="모든 Claude 세션: handover.md 갱신 → /exit → 터미널 복귀">⏻ 전체 핸드오버</button>
+      <button class="tbtn primary" onclick="syncTeams()" title="root/에 저장된 팀 선언을 wmux와 수렴 — 열려있는 세션은 채택, 없는 것만 스폰 (멱등)">⟲ 저장된 팀 연결</button>
     </div>
   </header>
 
   <div class="legend">
     <b>상태 = 색 + 형태 + 텍스트</b>
-    <span class="pill ok"><span class="g">●</span>Claude 작업중</span>
-    <span class="pill ready"><span class="g">◆</span>Claude 대기(명령 대기중)</span>
+    <span class="pill ok cl-only"><span class="g">●</span>Claude 작업중</span>
+    <span class="pill ready cl-only"><span class="g">◆</span>Claude 대기(명령 대기중)</span>
     <span class="pill warn"><span class="g">⏸</span>입력대기(승인)</span>
     <span class="pill crit"><span class="g">▲</span>오류/DOWN</span>
     <span class="pill idle"><span class="g">❯</span>터미널</span>
@@ -283,12 +292,11 @@
     <div class="col">
       <div class="eyebrow">팀 · 헬스 롤업</div>
       <div class="teams" id="teams"></div>
+      <div id="closed"></div>
     </div>
     <div class="col">
       <div class="panel"><h3>🌐 글로벌 포트맵 <span class="count" id="port-count"></span></h3>
         <div class="body pmap" id="portmap"></div></div>
-      <div class="panel"><h3>📥 인수인계 도착함 <span class="count">2 new</span></h3>
-        <div class="body inbox" id="inbox"></div></div>
       <div class="panel"><h3>🧩 기능 인벤토리 <span class="count">team-alpha</span></h3>
         <div class="body">
           <div class="capgrp"><div class="h"><span class="scope s-global">global</span> 모든 세션 상속</div>
@@ -302,7 +310,7 @@
     </div>
   </div>
 
-  <p class="foot">트리아지 대시보드 초안 — 로컬 브리지(D14) 전제 · 클릭=드로어(점프 없는 판단) · "열기"→<code>POST /attach</code> · "＋ 세션 스폰"(터미널)→<code>POST /spawn</code> · "▶ Claude 실행"→<code>POST /claude</code> · "⏻ 전체 핸드오버"→<code>POST /handover</code> · "종료"→확인+undo→<code>POST /kill</code> · 데이터는 <code>GET /api/state</code> 폴링 (Claude 켜짐/꺼짐은 프로세스 실측)</p>
+  <p class="foot">트리아지 대시보드 — 로컬 브리지(D14) 전제 · 클릭=드로어(점프 없는 판단) · "열기"→<code>POST /attach</code> · "＋ 세션 스폰"(터미널, 선언 등재)→<code>POST /spawn</code> · "▶ Claude 실행"→<code>POST /claude</code> · "⏻ 전체 핸드오버"→<code>POST /handover</code> · 세션/프로젝트 "종료"→확인+undo→<code>POST /kill</code>·<code>/team-close</code> · 선언 등재/해제→<code>POST /declare</code> · 데이터는 <code>GET /api/state</code> 폴링</p>
 </div>
 
 <!-- drawer -->
@@ -317,6 +325,7 @@
     <button class="btn primary" id="dr-open">열기 ↗ (wmux 점프)</button>
     <button class="btn" onclick="ping('메시지 전송 — POST /send')">메시지</button>
     <button class="btn" id="dr-folder" title="탐색기에서 작업 폴더 열기">📁 폴더</button>
+    <button class="btn" id="dr-declare" hidden title="팀 선언(team.json)에 이 세션을 등재/해제 — 등재된 역할은 재시작 후 복원됩니다"></button>
     <button class="btn danger" id="dr-kill" onclick="openConfirm()">종료</button>
   </div>
   <div class="dr-body" id="dr-body"></div>
@@ -328,18 +337,20 @@
   <h2 id="cf-title">세션을 종료합니다</h2>
   <div class="cf-sub" id="cf-sub"></div>
   <div class="cf-warn" id="cf-warn" hidden></div>
+  <label class="cf-check" id="cf-check-row" hidden><input type="checkbox" id="cf-check"><span id="cf-check-label"></span></label>
   <div class="cf-ctrl">
     <button class="btn" id="cf-cancel" onclick="closeConfirm()">취소</button>
     <button class="btn danger" id="cf-confirm">종료 확인</button>
   </div>
 </div>
-<!-- 이름 입력 다이얼로그 (새 팀 · 세션 스폰) -->
+<!-- 이름 입력 다이얼로그 (세션 스폰) -->
 <div class="scrim" id="namer-scrim" onclick="closeNamer()"></div>
 <div class="confirm namer" id="namer" role="dialog" aria-modal="true" aria-labelledby="nm-title" aria-describedby="nm-sub" inert>
   <h2 id="nm-title">이름 입력</h2>
   <div class="cf-sub" id="nm-sub"></div>
   <div class="field"><label for="nm-name" id="nm-label">이름</label><input id="nm-name" autocomplete="off" spellcheck="false"></div>
-  <div class="field" id="nm-path-row" hidden><label for="nm-path">프로젝트 경로 (선택)</label><input id="nm-path" class="mono" autocomplete="off" spellcheck="false" placeholder="비우면 root/&lt;팀 폴더&gt; 자체를 사용"></div>
+  <div class="field" id="nm-path-row" hidden><label for="nm-path" id="nm-path-label">프로젝트 경로 (선택)</label><input id="nm-path" class="mono" autocomplete="off" spellcheck="false" placeholder="비우면 root/&lt;팀 폴더&gt; 자체를 사용"></div>
+  <label class="cf-check" id="nm-check-row" hidden><input type="checkbox" id="nm-check"><span id="nm-check-label"></span></label>
   <div class="err" id="nm-err"></div>
   <div class="cf-ctrl">
     <button class="btn" onclick="closeNamer()">취소</button>
@@ -366,6 +377,10 @@ let TEAMS = [
     roles:['beta/frontend'],
     conns:[{k:'git',v:'main ·clean',st:'ok',opt:true},{k:'supabase',v:'connected',st:'ok',opt:true}],
     ports:[{p:':4321',proc:'astro dev',st:'up',tag:'running'}] },
+  // FS-8(U4) 데모 — 종료된 프로젝트는 본 그리드가 아니라 하단 '종료됨' 접힌 섹션에 모인다.
+  { id:'legacy', name:'team-legacy', tag:'종료 예시', path:'D:\\clients\\legacy-site', folder:'team-legacy',
+    roles:[], conns:[], ports:[], status:'closed',
+    createdAt:'2026-05-01T09:00:00Z', closedAt:'2026-06-20T18:00:00Z' },
 ];
 const EXTRA_PORTS = [{p:':3306',proc:'mysqld'},{p:':9222',proc:'wmux'}];
 
@@ -457,8 +472,15 @@ function teamHealth(t){
 
 /* ===== 로컬 브리지(D14) 연동 ===== */
 const TOKEN=document.querySelector('meta[name="cockpit-token"]')?.content||'';
+// FS-12(§2) — claude 레이어: 서버가 off로 주입하면 claude UI(배지·▶·핸드오버·claude pill)를 렌더하지 않음.
+// 파일로 직접 연 데모는 기본 on(전체 UX 확인용).
+const CLAUDE_LAYER=(document.querySelector('meta[name="cockpit-claude-layer"]')?.content||'on')!=='off';
 const HAS_API=location.protocol==='http:'||location.protocol==='https:';
-let SOURCE='demo';
+let SOURCE='demo', WAS_LIVE=false; // live였다가 끊기면 offline 구분(demo 폴백과 분리)
+// 팀 생명주기(FS-5·8) — status 필드 부재(구 서버·데모)는 active 취급
+const isClosed=t=>(t.status||'active')==='closed';
+const activeTeams=()=>TEAMS.filter(t=>!isClosed(t));
+const closedList=()=>TEAMS.filter(isClosed);
 async function api(path,opts){opts=opts||{};
   const res=await fetch(path,{method:opts.method||'GET',
     headers:{'X-Cockpit-Token':TOKEN,...(opts.body?{'Content-Type':'application/json'}:{})},
@@ -474,7 +496,8 @@ async function loadState(){
       HANDOVER=d.handover||null;
       if(d.teams&&d.teams.length){TEAMS=d.teams;S=d.sessions||{};PORTS=d.ports||[];SOURCE=d.live?'live':'demo';}
       else{PORTS=d.ports||[];SOURCE=d.live?'live-empty':'demo(offline)';}
-    }catch(e){SOURCE='demo(offline)';}
+      if(SOURCE==='live'||SOURCE==='live-empty')WAS_LIVE=true;
+    }catch(e){SOURCE=WAS_LIVE?'offline':'demo(offline)';} // 한 번이라도 live였으면 서버 단절 = offline
   } else SOURCE='demo';
   renderAll();
 }
@@ -482,6 +505,8 @@ let BOOTING=false;
 function setSourceBadge(){
   const el=document.getElementById('src-badge'); if(!el)return;
   const live=SOURCE==='live'||SOURCE==='live-empty';
+  if(SOURCE==='offline'){ // live였다가 서버 응답 끊김 — demo 폴백과 구분해 복구 유도(서버 자체가 죽어 boot 버튼 미노출)
+    el.innerHTML=`<span style="color:var(--crit)">▲</span> <span style="color:var(--crit)">offline</span> — 서버 확인 · exe 재실행`;return;}
   el.innerHTML=`<span style="color:var(--${live?'ok':'idle'})">${live?'●':'○'}</span> ${live?'live · wmux':SOURCE}`;
   // F12 콜드 부트: 서버는 살아있는데(HAS_API) wmux만 오프라인 → 기동 버튼(POST /boot) 노출
   if(HAS_API&&!live)el.innerHTML+=` <button class="tbtn" onclick="bootWmux()" ${BOOTING?'disabled':''}>${BOOTING?'wmux 기동 중…':'▶ wmux 시작'}</button>`;
@@ -494,10 +519,19 @@ async function bootWmux(){
   BOOTING=false; await loadState();
 }
 function renderAll(){
-  document.getElementById('m-teams').textContent=TEAMS.length;
+  document.getElementById('m-teams').textContent=activeTeams().length;
   document.getElementById('m-sessions').textContent=Object.keys(S).length;
-  setSourceBadge(); renderHandover(); renderHero(); renderTeams(); renderRail(); announceWaiting();
+  setSourceBadge(); renderHandover(); renderHero(); renderTeams(); renderClosed(); renderRail(); announceWaiting();
 }
+/* 상대 시각(생성일 표기, FS-8·U3) */
+function relTime(iso){const d=Date.now()-new Date(iso).getTime();if(!(d>=0))return '';
+  const h=3600000,day=86400000;
+  if(d<h)return Math.max(1,Math.round(d/60000))+'분 전';
+  if(d<day)return Math.round(d/h)+'시간 전';
+  if(d<day*30)return Math.round(d/day)+'일 전';
+  if(d<day*365)return Math.round(d/(day*30))+'개월 전';
+  return (d/(day*365)).toFixed(1)+'년 전';}
+const shortDate=iso=>iso?new Date(iso).toLocaleDateString('ko-KR',{year:'2-digit',month:'numeric',day:'numeric'}):'?';
 // 단체 핸드오버 진행 배너 — /api/state의 handover 스냅샷. 완료 후 60초 지나면 자동 숨김.
 function renderHandover(){
   let el=document.getElementById('ho-bar');
@@ -521,14 +555,21 @@ async function doKill(agentId,label){
   toast(`세션 종료됨(시뮬) — <span class="mono">${label}</span>`,{actionLabel:'실행 취소',onAction:()=>undoKill(label),ttl:6000});
   announce(`${label} 세션을 종료했습니다.`,true);
 }
-async function doSpawn(ws,role,cmd){
+async function doSpawn(ws,role,cmd,roleDir,cwd){
   const label=role||'session';
-  // cmd 미지정 시 서버 기본 = 터미널 셸(claude 자동 실행 안 함 — row의 ▶ Claude 실행으로 시작)
-  if(HAS_API){try{const r=await api('/spawn',{method:'POST',body:{ws,role:label,...(cmd?{cmd}:{})}});
-    if(r&&r.adopted){ping(`이미 열려있는 세션과 연결 — <span class="mono">${label}</span> (중복 스폰 생략)`);
-      announce(`${label} — 같은 이름의 열려있는 세션이 있어 그 세션에 연결했습니다.`,true);loadState();return;}
-    ping(`세션 스폰 — <span class="mono">agent spawn ${label}</span> (터미널) ✓`);
-    announce(`${label} 터미널 세션을 시작했습니다. ▶ Claude 실행 버튼으로 claude를 시작할 수 있습니다.`,true);loadState();return;}catch(e){ping('스폰 실패 — '+e.message);return;}}
+  // cmd 미지정 시 서버 기본 = 터미널 셸(자동 탐지, FS-1). roleDir(FS-9)=root/<팀>/<역할>/ 폴더 스캐폴드+cwd.
+  // cwd 지정 시 그 폴더를 작업 폴더로 — 서버가 없으면 생성, 있으면 그대로 연결.
+  if(HAS_API){try{const r=await api('/spawn',{method:'POST',body:{ws,role:label,...(cmd?{cmd}:{}),...(cwd?{cwd}:{}),...(roleDir?{roleDir:true}:{})}});
+    if(r&&r.adopted){ping(`이미 열려있는 세션과 연결 — <span class="mono">${label}</span> (${r.via==='binding'?'선언 바인딩':'라벨'} 일치 · 중복 스폰 생략)`);
+      announce(`${label} — 중복되는 열려있는 세션이 있어 그 세션에 연결했습니다.`,true);loadState();return;}
+    if(r&&r.died){toast(`⚠ 세션이 즉시 종료됨 (exit ${r.exitCode??'?'}) — <span class="mono">config.json</span>의 shell 설정을 확인하세요`,{ttl:9000});
+      announce(`${label} 세션이 스폰 직후 종료되었습니다. 셸 설정을 확인하세요.`,true);loadState();return;}
+    const extra=(r&&r.declared?' · 선언 등재':'')+(roleDir?' · 역할 폴더':'')+(cwd?(r&&r.cwdCreated?' · 폴더 생성+연결':' · 폴더 연결'):'');
+    ping(`세션 스폰 — <span class="mono">agent spawn ${label}</span> (터미널)${extra} ✓`);
+    announce(`${label} 터미널 세션을 시작했습니다.${CLAUDE_LAYER?' ▶ Claude 실행 버튼으로 claude를 시작할 수 있습니다.':''}`,true);loadState();return;}
+  catch(e){
+    if(String(e.message).includes('team-closed')){ping('종료된 프로젝트 — 재개(하단 종료됨 섹션) 후 스폰하세요');return;}
+    ping('스폰 실패 — '+e.message);return;}}
   ping(`세션 스폰(시뮬) — <span class="mono">${label} → ${ws||''}</span>`);
 }
 async function doClaude(k,btn){
@@ -568,34 +609,12 @@ async function openUrl(u){
   catch(e){ping('열기 실패 — '+e.message);}
 }
 
-/* ===== Claude 사용량 배지(GET /api/usage, 60s) — 트랜스크립트 실측 집계 ===== */
-function fmtTok(n){n=n||0;return n>=1e6?((n/1e6>=10?Math.round(n/1e6):(n/1e6).toFixed(1))+'M'):n>=1e3?Math.round(n/1e3)+'k':String(n);}
-async function loadUsage(){
-  if(!HAS_API)return;
-  const el=document.getElementById('m-usage'); if(!el)return;
-  try{
-    const u=await api('/api/usage');
-    const t=u.today&&u.today.total, f=u.last5h&&u.last5h.total, L=u.limit;
-    if(!t||!t.msgs){el.innerHTML='usage <b>오늘 0</b>';el.title='오늘 기록된 Claude 사용 없음 (~/.claude/projects 트랜스크립트 기준)';return;}
-    let html=`usage 오늘 <b>${fmtTok(t.in+t.out)}</b> · 5h <b>${fmtTok(f.in+f.out)}</b>`;
-    // 5h 한도 비교(최대 vs 남은 토큰) — 총 토큰(in+out+캐시) 기준, 서버가 max를 학습/설정에서 공급
-    if(L&&L.max){
-      const c=L.pct>=90?'crit':L.pct>=70?'warn':'faint';
-      html+=` <span style="color:var(--${c})">▏${fmtTok(L.used)}/${fmtTok(L.max)} · 남음 <b>${fmtTok(L.remaining)}</b> (${100-L.pct}%)</span>`;
-    }
-    el.innerHTML=html;
-    el.title='Claude 사용량 — 트랜스크립트 실측 (in+out 토큰, 캐시 별도)\n'
-      +Object.entries(u.today.byModel).map(([m,v])=>`${m} — in ${fmtTok(v.in)} · out ${fmtTok(v.out)} · 캐시읽기 ${fmtTok(v.cacheRead)} (${v.msgs} msg)`).join('\n')
-      +(L&&L.max?`\n5h 한도 비교(총 토큰=in+out+캐시): 사용 ${fmtTok(L.used)} / 최대 ${fmtTok(L.max)} · 남음 ${fmtTok(L.remaining)} (${L.pct}% 사용)`
-        +`\n최대치 출처: ${L.source==='config'?'config.json usageMax5h(수동 지정)':L.source==='observed'?'관측 학습(최근 5h가 역대 최대)':'과거 트랜스크립트 실측 최대(추정)'} — 공식 한도 아님`
-        :'\n5h 한도: 학습 중(과거 이력 스캔) — config.json에 usageMax5h를 적으면 즉시 사용')
-      +(u.lastActivity?`\n마지막 활동 ${new Date(u.lastActivity).toLocaleTimeString('ko-KR')}`:'');
-  }catch(e){/* 서버 구버전/오프라인 — 배지 생략 */}
-}
+/* usage 표시 제거 — 트랜스크립트 토큰 합(캐시 포함)÷추정 최대치라 공식 /usage와 근본적으로 불일치,
+   정확히 맞추려면 로컬에 없는 서버측 한도 소스가 필요해 유지 비용만 남음(사용자 결정, 2026-07-12). */
 
-/* ===== 이름 입력 다이얼로그 — 새 팀 · 세션 스폰 공용 ===== */
+/* ===== 이름 입력 다이얼로그 — 세션 스폰 ===== */
 let namerSubmit=null, namerTrigger=null;
-function openNamer({title,sub,label,placeholder,path,okText,onSubmit}){
+function openNamer({title,sub,label,placeholder,path,okText,onSubmit,check}){
   namerSubmit=onSubmit; namerTrigger=document.activeElement;
   document.getElementById('nm-title').textContent=title;
   document.getElementById('nm-sub').innerHTML=sub||'';
@@ -604,6 +623,13 @@ function openNamer({title,sub,label,placeholder,path,okText,onSubmit}){
   inp.value=''; inp.placeholder=placeholder||'';
   document.getElementById('nm-path-row').hidden=!path;
   document.getElementById('nm-path').value='';
+  // path가 객체면 라벨·placeholder 커스텀(새 팀 vs 세션 스폰 공용 다이얼로그)
+  document.getElementById('nm-path-label').textContent=(path&&path.label)||'프로젝트 경로 (선택)';
+  document.getElementById('nm-path').placeholder=(path&&path.placeholder)||'비우면 root/<팀 폴더> 자체를 사용';
+  const cr=document.getElementById('nm-check-row');
+  if(check){cr.hidden=false;document.getElementById('nm-check').checked=false;
+    document.getElementById('nm-check-label').textContent=check;}
+  else cr.hidden=true;
   document.getElementById('nm-err').textContent='';
   document.getElementById('nm-ok').textContent=okText||'생성';
   document.querySelector('.wrap').setAttribute('inert','');
@@ -625,35 +651,44 @@ async function submitNamer(){
   const name=document.getElementById('nm-name').value.trim();
   if(!name){document.getElementById('nm-err').textContent='이름을 입력하세요.';document.getElementById('nm-name').focus();return;}
   const path=document.getElementById('nm-path-row').hidden?'':document.getElementById('nm-path').value.trim();
+  const checked=document.getElementById('nm-check-row').hidden?false:document.getElementById('nm-check').checked;
   const fn=namerSubmit; closeNamer();
-  if(fn)await fn(name,path);
+  if(fn)await fn(name,path,checked);
 }
-function newTeam(){
-  openNamer({title:'새 팀 생성',
-    sub:'<code>root/&lt;팀 이름&gt;/team.json</code> 선언이 만들어지고, wmux 워크스페이스가 바로 준비됩니다.',
-    label:'팀 이름',placeholder:'예: Project-Test1',path:true,okText:'팀 생성',
-    onSubmit:async(name,path)=>{
-      if(!HAS_API){ping(`팀 생성(시뮬) — <span class="mono">${name}</span>`);return;}
-      try{
-        const r=await api('/api/team',{method:'POST',body:{name,projectPath:path||undefined}});
-        ping(`팀 생성 — <span class="mono">root/${r.team.folder}</span> ✓${r.up?'':' (wmux 오프라인 — 선언만)'}`);
-        announce(`${r.team.name} 팀을 생성했습니다.`,true);
-        loadState();
-      }catch(e){ping('팀 생성 실패 — '+e.message);}
-    }});
+/* 저장된 팀 연결 — root/ 선언을 wmux와 수렴(POST /up = reconcile). 팀 생성 UI는 제거 —
+   root/<팀>/ 폴더 선언이 유일한 팀 추가 경로(폴더가 진실). 열려있는 세션은 채택, 없는 것만 스폰. */
+async function syncTeams(){
+  if(!HAS_API){ping('팀 연결(시뮬) — 서버 연결 시 root/ 선언을 wmux와 수렴합니다');return;}
+  try{
+    const r=await api('/up',{method:'POST',body:{}});
+    const acts=(r.teams||[]).flatMap(t=>(t.roles||[]).map(x=>x.action));
+    const n=a=>acts.filter(x=>x===a).length;
+    const parts=[];
+    const wsNew=(r.teams||[]).filter(t=>t.ws&&t.ws.action==='created').length;
+    if(wsNew)parts.push(`워크스페이스 생성 ${wsNew}`);
+    if(n('adopted'))parts.push(`기존 세션 채택 ${n('adopted')}`);
+    if(n('spawned'))parts.push(`스폰 ${n('spawned')}`);
+    if(n('spawn-died'))parts.push(`스폰 실패 ${n('spawn-died')}`);
+    if(r.drift&&r.drift.length)parts.push(`선언 밖 ${r.drift.length}`);
+    ping(`저장된 팀 연결 — ${parts.length?parts.join(' · '):'변경 없음 (이미 동기화됨 ✓)'}`);
+    announce(parts.length?`팀 연결 완료 — ${parts.join(', ')}.`:'모든 팀이 이미 연결되어 있습니다.',true);
+    loadState();
+  }catch(e){ping('팀 연결 실패 — '+e.message);}
 }
 function spawnPrompt(ws,teamName){
   openNamer({title:'세션 스폰',
-    sub:`<span class="who">${teamName||ws}</span> 팀에 터미널 세션을 추가합니다. 입력한 이름이 역할 라벨이 되고, 스폰 후 ▶ Claude 실행 버튼으로 claude를 시작합니다.`,
+    sub:`<span class="who">${teamName||ws}</span> 팀에 터미널 세션을 추가합니다. 입력한 이름이 <b>역할</b>이 되어 팀 선언(team.json)에 등재되고, 역할 지침 파일 <code>roles/role-&lt;이름&gt;.md</code>가 팀 폴더에 준비됩니다${CLAUDE_LAYER?'. 스폰 후 ▶ Claude 실행 버튼으로 claude를 시작합니다':''}.`,
     label:'세션 이름 (역할)',placeholder:'예: frontend · qa · reviewer',okText:'스폰',
-    onSubmit:(name)=>doSpawn(ws,name)});
+    path:{label:'작업 폴더 (선택)',placeholder:'예: D:\\projects\\my-app — 없으면 생성, 있으면 그 폴더에 연결'},
+    check:'역할 폴더 생성 — root/<팀>/<이름>/ 를 작업 폴더로 (FS-9 · 위 경로 입력 시 무시)',
+    onSubmit:(name,path,checked)=>doSpawn(ws,name,undefined,checked&&!path,path)});
 }
 
 /* ===== 트리아지 존 ===== */
 function renderHero(){
   const items=[];
-  TEAMS.forEach(t=>{
-    t.roles.forEach(k=>{const s=S[k]; if(s.st==='waiting') items.push({kind:'w',key:k,who:`${s.team} / ${s.role}`,path:t.path,desc:s.now,act:'승인 열기',go:()=>openDrawer(k)});});
+  activeTeams().forEach(t=>{ // 종료 팀은 트리아지 대상 아님(FS-8 — 침묵 유지)
+    t.roles.forEach(k=>{const s=S[k]; if(s&&s.st==='waiting') items.push({kind:'w',key:k,who:`${s.team} / ${s.role}`,path:t.path,desc:s.now,act:'승인 열기',go:()=>openDrawer(k)});});
     t.ports.forEach(p=>{if(p.st==='down') items.push({kind:'c',who:`${t.name} · ${p.p}`,path:p.proc,desc:`${p.proc} — ${p.note}`,act:'조치',go:()=>ping(`${t.name} ${p.p} 조치 — 포트 재시작`)});});
   });
   window.__attn=items;
@@ -675,15 +710,18 @@ function attnAct(i){ window.__attn[i].go(); }
 /* ===== 팀 카드 ===== */
 function renderTeams(){
   document.getElementById('teams').innerHTML=TEAMS.map((t,ti)=>{
+    if(isClosed(t))return ''; // 종료 팀은 하단 '종료됨' 섹션(renderClosed)으로 — 인덱스 보존 위해 여기서 스킵
     const h=HEALTH[teamHealth(t)];
     const stripe=h.attn==='c'?'attn-c':h.attn==='w'?'attn-w':'';
     const calm=h.attn?'':'calm';
-    const rows=t.roles.map(k=>{const s=S[k];const m=ST[s.st];
+    const rows=t.roles.map(k=>{const s=S[k];if(!s)return '';const m=ST[s.st];
+      // FS-4 — 선언 밖(drift) 세션은 ◌ 마커(재시작 시 복원 안 됨)
+      const dm=s.declared===false?`<span class="dmark" title="선언 밖(drift) — 재시작 시 복원되지 않음. 드로어에서 선언에 추가 가능">◌</span>`:'';
       const main=`<button class="rrow ${s.st==='waiting'?'wait':''}" onclick="openDrawer('${k}')">
-        ${pill(s.st).replace('pill ','pill sm ')}<span class="rn">${s.role}</span>
+        ${pill(s.st).replace('pill ','pill sm ')}<span class="rn">${s.role}</span>${dm}
         <span class="now">${s.st==='waiting'?'⏳ ':''}${s.now}</span><span class="chev">↗</span></button>`;
-      // 터미널 세션: 같은 pane에서 claude를 시작하는 ▶ 버튼(POST /claude) 노출
-      if(s.st!=='terminal')return main;
+      // 터미널 세션: 같은 pane에서 claude를 시작하는 ▶ 버튼(POST /claude) — claude 레이어 on일 때만(FS-12)
+      if(!CLAUDE_LAYER||s.st!=='terminal')return main;
       return `<div class="rrow-wrap">${main}<button class="claude-go" onclick="doClaude('${k}',this)" title="이 pane에서 claude 실행 — POST /claude">▶ Claude 실행</button></div>`;}).join('');
     // 원격 URL 있는 칩(git)은 클릭→기본 브라우저(POST /open). 인라인 문자열 이스케이프 회피를 위해 인덱스 참조.
     const conns=t.conns.map((c,ci)=>{
@@ -695,12 +733,70 @@ function renderTeams(){
     const portHtml=port?`<span class="conn"><span class="g" style="color:var(--${port.st==='down'?'crit':'quiet'});font-size:9px">${port.st==='down'?'▲':'●'}</span><span class="k mono">${port.p}</span><span class="v">${port.proc} · ${port.tag}</span></span>`:'';
     const connsHtml=(conns||portHtml)?`<div class="conns">${conns}${portHtml}</div>`:'';
     const spawnBtn=`<button class="rrow spawn" onclick="spawnPrompt('${t.id}','${(t.name||'').replace(/['\\\\]/g,'')}')" title="이 팀에 터미널 세션 스폰 — 이름 입력 후 POST /spawn (claude는 ▶ 버튼으로)" style="color:var(--faint);gap:6px"><span class="rn" style="color:var(--quiet)">＋ 세션 스폰</span><span class="now mono" style="font-size:11px">terminal → ${t.name}</span><span class="chev">↗</span></button>`;
+    // FS-8(U3) — 생성일 상대 표기(추정 백필은 ~ 접두). FS-6 — 선언된 팀만 종료(보관) 가능.
+    const created=t.createdAt?`<span class="tg" title="시작 ${t.createdAt}${t.createdAtEstimated?' (폴더 시간 추정)':''}">${t.createdAtEstimated?'~':''}${relTime(t.createdAt)} 시작</span>`:'';
+    const closeBtn=(t.folder||t.status)?`<button class="pt ptbtn" onclick="closeTeamPrompt(${ti})" title="프로젝트 종료(보관) — 세션은 자동 종료되지 않습니다">▪ 종료</button>`:'';
     return `<section class="tcard ${calm} ${stripe}">
-      <div class="tc-head"><span class="nm">${t.name}</span><span class="tg">${t.tag}</span>${t.path?`<button class="pt ptbtn" onclick="openTeamFolder(${ti})" title="탐색기에서 폴더 열기">${t.path}</button>`:''}
+      <div class="tc-head"><span class="nm">${t.name}</span><span class="tg">${t.tag}</span>${created}${t.path?`<button class="pt ptbtn" onclick="openTeamFolder(${ti})" title="탐색기에서 폴더 열기">${t.path}</button>`:''}${closeBtn}
         <span class="h">${pill(teamHealth(t)==='down'?'down':teamHealth(t)==='waiting'?'waiting':'working', h.label)}</span></div>
       <div class="rrows">${rows||'<div style="color:var(--faint);font-size:12px;padding:4px 2px">활성 역할 세션 없음</div>'}${spawnBtn}</div>
       ${connsHtml}</section>`;
   }).join('');
+}
+
+/* ===== 종료 프로젝트 섹션 (FS-8 · U4) — 기본 접힘, 재개(reopen)로 복귀 ===== */
+let CLOSED_OPEN=false;
+function toggleClosed(){CLOSED_OPEN=!CLOSED_OPEN;renderClosed();}
+function renderClosed(){
+  const el=document.getElementById('closed'); if(!el)return;
+  const list=closedList();
+  const mc=document.getElementById('m-closed-wrap');
+  if(mc){mc.hidden=!list.length;document.getElementById('m-closed').textContent=list.length;}
+  if(!list.length){el.innerHTML='';return;}
+  const items=list.map(t=>{const ti=TEAMS.indexOf(t);
+    const liveN=(t.roles||[]).length;
+    return `<div class="closed-card">
+      <span style="color:var(--idle)">▪</span><span class="nm">${t.name}</span>
+      <span class="period" title="생성 ${t.createdAt||'?'} · 종료 ${t.closedAt||'?'}">${shortDate(t.createdAt)} ~ ${shortDate(t.closedAt)}</span>
+      ${liveN?`<span class="tg" style="color:var(--warn)" title="종료 처리 시 세션은 자동 종료되지 않음 — wmux에 열려 있음">세션 ${liveN}개 열림</span>`:''}
+      ${t.path?`<button class="pt ptbtn" onclick="openTeamFolder(${ti})" title="탐색기에서 폴더 열기">${t.path}</button>`:''}
+      <button class="tbtn" style="margin-left:auto" onclick="reopenTeam(${ti})" title="재개 — status:active 복귀, 다음 수렴(reconcile) 때 세션 복원">재개</button>
+    </div>`;}).join('');
+  el.innerHTML=`<button class="closed-toggle" aria-expanded="${CLOSED_OPEN}" onclick="toggleClosed()">
+      <span>${CLOSED_OPEN?'▾':'▸'}</span><span>종료됨 <b class="mono">${list.length}</b></span>
+      <span style="margin-left:auto;font-size:10.5px">보관된 프로젝트 — 세션 생성 차단 · 재개로 복귀</span></button>
+    <div class="closed-list" ${CLOSED_OPEN?'':'hidden'}>${items}</div>`;
+}
+async function reopenTeam(ti){const t=TEAMS[ti]; if(!t)return; reopenByKey(t.folder||t.id,t.name);}
+async function reopenByKey(key,name){
+  if(!HAS_API){ping(`재개(시뮬) — <span class="mono">${name||key}</span>`);return;}
+  try{await api('/team-reopen',{method:'POST',body:{team:key}});
+    ping(`프로젝트 재개 — <span class="mono">${name||key}</span> ✓ (다음 수렴 때 세션 복원)`);
+    announce(`${name||key} 프로젝트를 재개했습니다.`);loadState();}
+  catch(e){ping('재개 실패 — '+e.message);}
+}
+function closeTeamPrompt(ti){
+  const t=TEAMS[ti]; if(!t)return;
+  const key=t.folder||t.id, nm=t.name;
+  const open=(t.roles||[]).map(k=>S[k]).filter(Boolean);
+  openConfirmDialog({
+    title:'프로젝트를 종료합니다',
+    sub:`<span class="who">${nm}</span> 프로젝트를 종료(보관)합니다.<br>하단 '종료됨' 섹션으로 이동하고 세션 생성이 차단됩니다. 언제든 재개할 수 있습니다.`,
+    warn:open.length?`열린 세션 ${open.length}개는 자동으로 종료되지 않습니다.`:null,
+    check:open.length?`열린 세션 ${open.length}개 함께 종료 (세션 종료는 되돌릴 수 없음)`:null,
+    okText:'프로젝트 종료',
+    onConfirm:async(checked)=>{
+      if(!HAS_API){ping(`종료(시뮬) — <span class="mono">${nm}</span>`);return;}
+      try{
+        await api('/team-close',{method:'POST',body:{team:key}});
+        let killed=0;
+        if(checked){for(const s of open){if(s.agentId){try{await api('/kill',{method:'POST',body:{agentId:s.agentId}});killed++;}catch(e){}}}}
+        toast(`프로젝트 종료됨 — <span class="mono">${nm}</span>${killed?` · 세션 ${killed}개 종료`:''}`,
+          {actionLabel:'실행 취소',onAction:()=>reopenByKey(key,nm),ttl:8000});
+        announce(`${nm} 프로젝트를 종료했습니다.${killed?' 종료한 세션 복원은 재개 후 수렴으로.':''}`,true);
+        loadState();
+      }catch(e){ping('종료 실패 — '+e.message);}
+    }});
 }
 
 /* ===== 레일 ===== */
@@ -717,14 +813,6 @@ function renderRail(){
   }
   document.getElementById('portmap').innerHTML=rows.join('');
   document.getElementById('port-count').textContent=((live?PORTS.length:rows.length))+' listening';
-  const HO=[
-    {who:'team-alpha / planner',meta:'아키텍처 웨이브 계획 완료 · 4 파일 · 09:30',path:'manager/inbox/…planner.md'},
-    {who:'team-word / backend',meta:'API 라우트 3종 · 마이그레이션 1 · 09:12',path:'manager/inbox/…backend.md'},
-  ];
-  document.getElementById('inbox').innerHTML=HO.map(h=>
-    `<button class="ho" type="button" aria-label="인수인계 열기: ${h.who}, ${h.meta}" onclick="openHandoff('${h.who}','${h.path}')">
-      <span class="g" style="color:var(--ok);font-size:9px;margin-top:3px">●</span>
-      <span class="ho-txt"><span class="who">${h.who}</span><span class="meta">${h.meta}</span></span><span class="new">new</span></button>`).join('');
 }
 
 /* ===== 드로어 (황금알) ===== */
@@ -758,14 +846,30 @@ async function openDrawer(key){
   closeConfirm();
   document.getElementById('dr-team').textContent=s.team+' /';
   document.getElementById('dr-role').textContent=s.role;
+  // FS-4 — 선언 배지 · FS-2 — cwd 출처 진단(role-cwd/workspace-pin/live)
+  const declTag=s.declared===undefined?'':`<span class="tag" title="${s.declared?'team.json에 선언된 역할 — 재시작 후 reconcile이 복원':'선언 밖(drift) — 재시작 시 복원되지 않음'}">${s.declared?'선언됨':'◌ 드리프트'}</span>`;
+  const cwdTag=s.cwdSource?`<span class="tag" title="드로어가 읽는 작업 폴더의 출처 — role-cwd: 역할 전용 폴더 · workspace-pin: 드리프트 보정 · live: 실측">cwd <span class="mono">${s.cwdSource}</span></span>`:'';
   document.getElementById('dr-meta').innerHTML=
-    pill(s.st)+
+    pill(s.st)+declTag+cwdTag+
     `<span class="tag">모델 <span class="mono">${s.model}</span></span><span class="tag">경과 <span class="mono">${s.elapsed}</span></span>`+
     `<span class="tag">비용 <span class="mono">${s.cost}</span></span><span class="tag"><span class="mono">${s.tools}</span> tools</span>`;
   document.getElementById('dr-open').onclick=()=>doAttach(s.ws,s.pane);
   const fb=document.getElementById('dr-folder');
   fb.style.display=s.cwd?'':'none';
   fb.onclick=()=>openFolder(s.cwd);
+  fb.title='탐색기에서 작업 폴더 열기'+(s.cwd?` — ${s.cwd}`:'');
+  // FS-4 — 선언 토글(등재/해제). 서버 연결 + 선언 정보가 있을 때만 노출.
+  const db=document.getElementById('dr-declare');
+  if(HAS_API&&s.agentId&&s.declared!==undefined){
+    db.hidden=false; db.textContent=s.declared?'선언 제거':'선언에 추가';
+    db.onclick=async()=>{try{
+      if(s.declared){await api('/declare',{method:'POST',body:{ws:s.ws,role:s.role,action:'remove'}});
+        ping(`선언에서 제거 — <span class="mono">${s.role}</span> (세션 유지, drift로 표시)`);}
+      else{const r=await api('/declare',{method:'POST',body:{ws:s.ws,role:s.role,agentId:s.agentId}});
+        ping(r.declared?`선언에 등재 — <span class="mono">${s.role}</span> ✓`:'등재 불가 — '+(r.reason==='no-team'?'이 워크스페이스에 팀 선언 없음':r.reason));}
+      loadState(); closeDrawer();
+    }catch(e){ping('선언 변경 실패 — '+e.message);}};
+  } else db.hidden=true;
   renderDrawerBody(s,null); // 즉시: 기존/정적값
   document.getElementById('scrim').classList.add('on');
   const d=document.getElementById('drawer'); d.classList.add('on'); d.setAttribute('aria-hidden','false'); d.removeAttribute('inert');
@@ -783,19 +887,37 @@ function closeDrawer(){
 
 /* ===== 확인 다이얼로그 + 라이브 리전 ===== */
 function announce(msg,assertive){const el=document.getElementById(assertive?'sr-assertive':'sr-polite');el.textContent='';requestAnimationFrame(()=>{el.textContent=msg;});}
-function openConfirm(){
-  if(!currentKey)return;
-  const s=S[currentKey]; killTrigger=document.getElementById('dr-kill');
-  document.getElementById('cf-sub').innerHTML=`<span class="who">${s.team} / ${s.role}</span> 세션을 종료합니다.<br>현재: ${s.now}`;
-  const warn=document.getElementById('cf-warn');
-  const risky=s.st==='waiting'||s.files.some(f=>f[1]);
-  if(risky){warn.hidden=false;warn.innerHTML='<span>⚠</span><span>커밋되지 않은 변경 또는 대기 중 작업이 있습니다. 종료하면 유실될 수 있습니다.</span>';}else warn.hidden=true;
+/* 공용 확인 다이얼로그(FS-6) — 세션 종료(기존)·프로젝트 종료가 같은 골격을 씀. check=선택 체크박스. */
+let confirmAction=null;
+function openConfirmDialog({title,sub,warn,check,okText,onConfirm,trigger}){
+  killTrigger=trigger||document.activeElement;
+  confirmAction=onConfirm;
+  document.getElementById('cf-title').textContent=title||'확인';
+  document.getElementById('cf-sub').innerHTML=sub||'';
+  const w=document.getElementById('cf-warn');
+  if(warn){w.hidden=false;w.innerHTML='<span>⚠</span><span>'+warn+'</span>';}else w.hidden=true;
+  const cr=document.getElementById('cf-check-row');
+  if(check){cr.hidden=false;document.getElementById('cf-check').checked=false;document.getElementById('cf-check-label').textContent=check;}
+  else cr.hidden=true;
+  document.getElementById('cf-confirm').textContent=okText||'확인';
   document.querySelector('.wrap').setAttribute('inert','');
-  document.getElementById('drawer').setAttribute('inert','');
+  const dr=document.getElementById('drawer'); if(dr.classList.contains('on'))dr.setAttribute('inert','');
   document.getElementById('confirm-scrim').classList.add('on');
   const c=document.getElementById('confirm'); c.classList.add('on'); c.removeAttribute('inert');
   document.getElementById('cf-cancel').focus();
-  announce(`${s.team} ${s.role} 세션 종료 확인이 필요합니다.`,true);
+  announce(`${title} — 확인이 필요합니다.`,true);
+}
+function openConfirm(){
+  if(!currentKey)return;
+  const s=S[currentKey];
+  openConfirmDialog({
+    title:'세션을 종료합니다',
+    sub:`<span class="who">${s.team} / ${s.role}</span> 세션을 종료합니다.<br>현재: ${s.now}`,
+    warn:(s.st==='waiting'||(s.files||[]).some(f=>f[1]))?'커밋되지 않은 변경 또는 대기 중 작업이 있습니다. 종료하면 유실될 수 있습니다.':null,
+    okText:'종료 확인',
+    trigger:document.getElementById('dr-kill'),
+    onConfirm:()=>{const label=`${s.team} ${s.role}`;doKill(s.agentId,label);},
+  });
 }
 function closeConfirm(){
   const c=document.getElementById('confirm');
@@ -803,17 +925,18 @@ function closeConfirm(){
   c.classList.remove('on'); c.setAttribute('inert','');
   document.querySelector('.wrap').removeAttribute('inert');
   const dr=document.getElementById('drawer'); if(dr.classList.contains('on'))dr.removeAttribute('inert');
-  if(killTrigger){killTrigger.focus();killTrigger=null;}
+  if(killTrigger&&killTrigger.focus)killTrigger.focus();
+  killTrigger=null; confirmAction=null;
 }
-function confirmKill(){
-  const s=S[currentKey],label=`${s.team} ${s.role}`;
+function confirmRun(){
+  const fn=confirmAction;
+  const checked=document.getElementById('cf-check-row').hidden?false:document.getElementById('cf-check').checked;
   closeConfirm();
-  doKill(s.agentId,label);
+  if(fn)fn(checked);
 }
 function undoKill(label){toast('종료를 취소했습니다 — 세션 복구');announce(`${label} 세션 종료를 취소했습니다.`);}
 
-/* ===== 내비게이션 + 인수인계 ===== */
-function openHandoff(who,path){toast(`인수인계 열람 — <span class="mono">${path}</span>`);announce(`인수인계 열기: ${who}`);}
+/* ===== 내비게이션 ===== */
 function announceWaiting(){
   const keys=Object.keys(S).filter(k=>S[k].st==='waiting');
   if(!keys.length)return;
@@ -846,12 +969,11 @@ document.addEventListener('keydown',e=>{
 });
 
 /* ===== init ===== */
-document.getElementById('cf-confirm').onclick=confirmKill;
+document.getElementById('cf-confirm').onclick=confirmRun;
+if(!CLAUDE_LAYER)document.querySelectorAll('.cl-only').forEach(e=>{e.hidden=true;e.style.display='none';}); // FS-12 — claude UI 게이팅
 for(const id of ['nm-name','nm-path'])document.getElementById(id).addEventListener('keydown',e=>{if(e.key==='Enter')submitNamer();});
 loadState();
 if(HAS_API) setInterval(loadState, 2500);
-loadUsage();
-if(HAS_API) setInterval(loadUsage, 60000);
 </script>
 </body>
 </html>
