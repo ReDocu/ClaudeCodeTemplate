@@ -29,7 +29,6 @@
 | **처음 써봐요** | **[Manual.md](Manual.md)** (초보자용 설명서) → **[ClaudeCockpit-Guide.html](ClaudeCockpit-Guide.html)** (화면 예시 시각 가이드) |
 | **책상에 붙여둘 요약이 필요해요** | **[ClaudeCockpit-Cheatsheet.html](ClaudeCockpit-Cheatsheet.html)** (인쇄용 1페이지 · `Ctrl+P`) |
 | **기능·API를 자세히 알고 싶어요** | **[Tech.md](Tech.md)** (기능명세서 — 전 기능·엔드포인트·규칙) |
-| **어디까지 됐는지 볼래요** | **[handover.md](handover.md)** (세션별 개발 기록 — 재개 시 여기부터) |
 | **문제가 생겼거나 제안이 있어요** | **[문의 폼][form]** 하나로 접수 (1분) |
 
 ---
@@ -133,10 +132,7 @@ Claude Code 훅(bin/activity-hook.mjs) ──▶ cockpit/workspace/activity/*.js
 ├─ Manual.md                    # 초보자용 사용 설명서
 ├─ ClaudeCockpit-Guide.html     # 시각 가이드 (화면 예시 + 주석)
 ├─ ClaudeCockpit-Cheatsheet.html# 인쇄용 1페이지 치트시트
-├─ Tech.md                      # 기능명세서 (전 기능·API·규칙)
-├─ handover.md                  # 세션별 개발 기록 (재개 시 여기부터)
-├─ doc/                         # 재기획·리라이트 문서 · backup/planner/ 연구 체인
-└─ teamctl/                     # (폐기) 구 시스템 — 미추적 잔존물, 재배선 금지
+└─ Tech.md                      # 기능명세서 (전 기능·API·규칙)
 ```
 
 ---
@@ -168,8 +164,6 @@ Claude Code 훅(bin/activity-hook.mjs) ──▶ cockpit/workspace/activity/*.js
 | [ClaudeCockpit-Guide.html](ClaudeCockpit-Guide.html) | 사용자 | 화면 예시 재현 + 번호 주석 시각 가이드 |
 | [ClaudeCockpit-Cheatsheet.html](ClaudeCockpit-Cheatsheet.html) | 사용자 | 인쇄용 1페이지 요약 |
 | [Tech.md](Tech.md) | 개발자 | 기능명세서 — FS·API·상태 전이·불변 규칙 |
-| [handover.md](handover.md) | 개발자 | 세션별 개발 기록(최신 진실 — 재개 시 여기부터) |
-| [doc/](doc/) | 참고 | 재기획·리라이트 문서(prd_rewrite_v1.md 등)·연구 체인 |
 
 <!-- 문의 폼 링크(단일 교체 지점) — 바꾸려면 이 URL 한 줄만 수정하면 README 내 모든 "문의 폼" 링크에 반영됩니다. -->
 [form]: https://docs.google.com/forms/d/e/1FAIpQLSfdAAODOXSfYg8bQp-WLewENrP_otXglztMzfR7bL678wqdHg/viewform

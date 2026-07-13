@@ -14,8 +14,10 @@ root/*
 # cockpit(리라이트) 런타임 — 토큰·로그·학습값(config.json·logs/·usage-max.json). 새 클론엔 없음.
 cockpit/workspace/
 
-# 내부 개발 문서 — 배포/공개 대상 아님 (Claude Code 코드맵). 로컬에는 남기고 추적만 중단.
+# 내부 개발 문서 — 배포/공개 대상 아님. 로컬에는 남기고 추적만 중단.
 /CLAUDE.md
+/handover.md
+/doc/
 
 # 릴리스 빌드 산출물(zip) — git archive로 그때그때 생성, 저장소엔 미추적.
 *.zip
