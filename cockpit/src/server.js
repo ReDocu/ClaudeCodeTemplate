@@ -1,6 +1,6 @@
 // HTTP 레이어(유일) — FS-3 + 전 엔드포인트(§8.4, 이 목록이 전부):
 //   GET  / · /api/state · /api/log · /api/caps · /api/usage
-//   POST /activate · /deactivate · /archive · /reopen · /create · /import · /roles
+//   POST /activate · /spawn · /kill-session · /deactivate · /archive · /reopen · /create · /import · /create-git · /roles
 //        /claude · /attach · /open · /links · /git-remote · /adopt
 // 127.0.0.1 바인드 + X-Cockpit-Token(GET / 제외 전부, A-5). 어떤 프로브도 응답을 막지 않는다(§9-⑥).
 import { createServer } from 'node:http';
@@ -11,10 +11,11 @@ import { fileURLToPath } from 'node:url';
 import { join, basename } from 'node:path';
 import { ROOT, readConfig, patchConfig, scanProjects, findProject, createProject, importProject, removeRole, writeProject } from './registry.js';
 import { getState, getFresh, invalidate, selectWorkspace, focusPane, sendLine } from './wmux.js';
-import { activate, deactivate, archive, reopen, matchWorkspace, agentsOfWs } from './lifecycle.js';
+import { activate, deactivate, archive, reopen, spawnRole, killSession, matchWorkspace, agentsOfWs } from './lifecycle.js';
 import { claudeAlive, claudeAliveFresh, invalidateProc } from './proc.js';
 import { getPorts } from './ports.js';
-import { getGit, connectRemote } from './git.js';
+import { getGit, connectRemote, repoNameFromUrl } from './git.js';
+import { getActivity } from './activity.js';
 import { globalCaps, sessionCaps } from './caps.js';
 import { getUsage } from './usage.js';
 import { logEvent, readLog } from './log.js';
@@ -55,8 +56,11 @@ function buildState(state) {
         const alive = claudeAlive(a.pid);
         const adoptedRole = adopted[a.agentId];
         const connected = !!adoptedRole || declaredRoles.has(a.label); // 선언 역할 label 일치 또는 채택됨
-        return { role: adoptedRole || a.label || a.agentId, agentId: a.agentId, alive: true,
-          connected, adopted: !!adoptedRole, claude: alive === true ? 'on' : alive === false ? 'off' : 'unknown' };
+        const role = adoptedRole || a.label || a.agentId;
+        return { role, agentId: a.agentId, alive: true,
+          connected, adopted: !!adoptedRole, claude: alive === true ? 'on' : alive === false ? 'off' : 'unknown',
+          // 활동 상태(FS-훅): claude 실행 중일 때만 의미 — 훅이 쓴 상태 파일 실측(없으면 null).
+          activity: alive === true ? getActivity(p._folder, role) : null };
       }),
     });
     if (p.status === 'active') {
@@ -116,6 +120,8 @@ const routes = {
   },
 
   'POST /activate': async (b) => activate(b.name),
+  'POST /spawn': async (b) => spawnRole(b.name, b.role), // role 지정=개별([＋ 세션 활성화]) · 생략=전체 수렴
+  'POST /kill-session': async (b) => killSession(b.name, b.agentId), // 개별 비활성화(세밀 kill — 대시보드가 claude 실행 중이면 확인)
   'POST /deactivate': async (b) => {
     if (b.confirm !== true) throw err(400, 'confirm-required'); // §9-3 — kill은 항상 확인 경유
     return deactivate(b.name);
@@ -136,6 +142,21 @@ const routes = {
       r.already ? '이미 등록됨(멱등)' : r.inPlace ? '제자리 등록 — 이동 없이 스캐폴드·선언 적용'
         : `${b.path} → root/${r.project.name}/ops/ 이동${r.backup ? ` · 기존 ops 백업 ${basename(r.backup)}` : ''} · 대기중 등록`);
     return { ok: true, name: r.project.name, inPlace: r.inPlace, already: r.already, backup: r.backup ? basename(r.backup) : null };
+  },
+  'POST /create-git': async (b) => {
+    // git URL 하나로 프로젝트 생성 — 스캐폴드(createProject) ⊕ ops에 clone(connectRemote) 합성.
+    const url = String(b.url || '').trim().replace(/^["']|["']$/g, '');
+    if (!/^(https?:\/\/|git@|ssh:\/\/|git:\/\/)/.test(url)) throw err(400, 'git-url-invalid'); // git URL 형태만
+    const name = String(b.name || '').trim() || repoNameFromUrl(url);
+    if (!name) throw err(400, 'name-underivable'); // URL에서 이름을 못 뽑음 — 이름 직접 입력 필요
+    const r = createProject({ name });             // 격리 스캐폴드 생성(멱등 — project.json 있으면 재사용)
+    const opsDir = join(r.project._dir, 'ops');
+    mkdirSync(opsDir, { recursive: true });
+    const g = await connectRemote(opsDir, url);    // ops에 clone(스켈레톤은 교체, 실내용은 백업 후) — clone 실패는 여기서 throw
+    logEvent('info', r.project.name, 'create-git',
+      `git ${g.action === 'cloned' ? 'clone' : '원격 갱신'} → root/${r.project.name}/ops/`
+      + (g.backup ? ` · 기존 ops 백업 ${basename(g.backup)}` : '') + (r.created ? ' · 대기중 등록' : ' · 기존 프로젝트 재사용') + ` — ${url}`);
+    return { ok: true, name: r.project.name, created: r.created, action: g.action, backup: g.backup ? basename(g.backup) : null, git: g.git };
   },
   'POST /roles': async (b) => {
     if (b.action !== 'remove') throw err(400, 'unknown-action'); // 추가는 POST /create 병합 경로

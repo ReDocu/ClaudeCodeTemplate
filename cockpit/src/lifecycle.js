@@ -24,52 +24,81 @@ export function matchWorkspace(state, proj) {
 }
 export const agentsOfWs = (state, wsId) => state.agents.filter((a) => a.workspaceId === wsId);
 
-// POST /activate — 멱등 수렴. 반환 {wsId, spawned, reused}. [세션 복구]도 같은 경로.
+// 워크스페이스 보장 — 없으면 생성(스폰은 안 함). 반환 {ws, wsCreated}.
+async function ensureWorkspace(p, state) {
+  let ws = matchWorkspace(state, p);
+  if (ws) return { ws, wsCreated: false };
+  const r = await createWorkspace({ title: p.name, cwd: p._dir });
+  const raw = r && (r.workspace || r);
+  ws = { id: raw.id || raw.workspaceId, title: p.name };
+  if (!ws.id) throw err(502, 'workspace-create-failed');
+  invalidate();
+  return { ws, wsCreated: true };
+}
+
+// POST /activate — 워크스페이스만 보장하고 status=active. **세션(pane)은 스폰하지 않는다**(초기 미연결).
+// 세션은 대시보드 [＋ 세션 활성화] → POST /spawn 으로 역할별 개별 스폰(사용자 개편 결정). 반환 {wsId, spawned:0}.
 export async function activate(name) {
   const p = requireProject(name);
   if (p.status === 'archived') throw err(409, 'project-archived'); // 재개 후 활성화(FS-7 경유 강제)
+  const state = await getFresh();
+  if (!state.live) throw err(503, 'wmux-offline');
+  const { ws, wsCreated } = await ensureWorkspace(p, state);
+  p.status = 'active'; p.wsId = ws.id;
+  writeProject(p);
+  logEvent('info', p.name, 'activate', `workspace ${wsCreated ? '생성' : '재사용'} · 세션 스폰 없음(개별 활성화 대기)`);
+  return { ok: true, wsId: ws.id, spawned: 0, reused: 0 };
+}
 
+// POST /spawn — 세션(pane) 스폰. role 지정=그 역할 하나([＋ 세션 활성화]), 생략=빠진 선언 역할 전부(멱등 수렴).
+// 스폰 결정은 매 회 getFresh()(계승 규칙 ① — stale로 중복 스폰 금지). 중복(label/채택 일치)은 재사용.
+export async function spawnRole(name, role) {
+  const p = requireProject(name);
+  if (p.status === 'archived') throw err(409, 'project-archived');
   let state = await getFresh();
   if (!state.live) throw err(503, 'wmux-offline');
-
-  let ws = matchWorkspace(state, p);
-  let wsCreated = false;
-  if (!ws) {
-    const r = await createWorkspace({ title: p.name, cwd: p._dir });
-    const raw = r && (r.workspace || r);
-    ws = { id: raw.id || raw.workspaceId, title: p.name };
-    if (!ws.id) throw err(502, 'workspace-create-failed');
-    wsCreated = true;
-    invalidate();
-  }
-
-  // ops 항상 1번(먼저), 이후 선언 roles 순서(FS-5-1). 각 스폰 결정 직전 fresh 재확인.
-  const order = [{ id: 'ops' }, ...(p.roles || []).filter((r) => r && r.id && r.id !== 'ops')];
-  const adopted = p.adopted || {}; // 채택된 세션(agentId→role)은 그 역할을 이미 채운 것으로 간주(중복 스폰 방지)
-  let spawned = 0, reused = 0;
-  const spawnedIds = [], failed = [];
-  for (const role of order) {
+  const declared = ['ops', ...(p.roles || []).map((r) => r.id)];
+  if (role && !declared.includes(role)) throw err(400, 'unknown-role');
+  const targets = role ? [role] : declared;
+  const { ws } = await ensureWorkspace(p, state);
+  const adopted = p.adopted || {};
+  let spawned = 0, reused = 0; const spawnedIds = [], failed = [];
+  for (const r of targets) {
     state = await getFresh();
-    const dup = agentsOfWs(state, ws.id).find((a) => a.label === role.id || adopted[a.agentId] === role.id);
+    const dup = agentsOfWs(state, ws.id).find((a) => a.label === r || adopted[a.agentId] === r);
     if (dup) { reused++; continue; }
-    const cwd = ensureRoleDir(p._dir, role.id);
+    const cwd = ensureRoleDir(p._dir, r);
     try {
-      await spawnAgent({ workspaceId: ws.id, label: role.id, cwd, cmd: resolveShell() });
-      spawned++; spawnedIds.push(role.id);
+      await spawnAgent({ workspaceId: ws.id, label: r, cwd, cmd: resolveShell() });
+      spawned++; spawnedIds.push(r);
     } catch (e) {
-      failed.push(role.id);
-      logEvent('error', p.name, 'spawn', `${role.id} 스폰 실패 — ${e.message}`);
+      failed.push(r);
+      logEvent('error', p.name, 'spawn', `${r} 스폰 실패 — ${e.message}`);
     }
     invalidate();
   }
-
-  p.status = 'active'; p.wsId = ws.id;
+  if (p.status !== 'active') p.status = 'active';
+  p.wsId = ws.id;
   writeProject(p);
-  logEvent('info', p.name, 'activate',
-    `workspace ${wsCreated ? '생성' : '재사용'} · 스폰 ${spawned} · 재사용 ${reused}`
-    + (spawnedIds.length ? ` (${spawnedIds.join('·')})` : '')
-    + (failed.length ? ` · 실패 ${failed.join('·')}` : ''));
+  logEvent('info', p.name, 'spawn',
+    `세션 스폰 ${spawned}${spawnedIds.length ? ` (${spawnedIds.join('·')})` : ''}`
+    + (reused ? ` · 재사용 ${reused}` : '') + (failed.length ? ` · 실패 ${failed.join('·')}` : ''));
   return { ok: true, wsId: ws.id, spawned, reused, failed };
+}
+
+// POST /kill-session — 세션 하나 종료(개별 비활성화). 카드 [비활성화](전체 kill)와 별개의 세밀 경로.
+export async function killSession(name, agentId) {
+  const p = requireProject(name);
+  const state = await getFresh();
+  if (!state.live) throw err(503, 'wmux-offline');
+  const ws = matchWorkspace(state, p);
+  if (!ws) throw err(409, 'project-inactive');
+  const a = agentsOfWs(state, ws.id).find((x) => x.agentId === agentId);
+  if (!a) throw err(404, 'session-not-found');
+  await killAgent(agentId);
+  invalidate();
+  logEvent('info', p.name, 'kill', `세션 종료 — ${a.label || agentId} (개별 비활성화)`);
+  return { ok: true, killed: agentId, role: a.label || null };
 }
 
 // POST /deactivate — 확인 필수(서버가 confirm 검사, §9-3). ws의 살아있는 세션 전부 kill(ops 포함)

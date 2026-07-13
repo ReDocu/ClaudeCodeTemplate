@@ -45,12 +45,38 @@ function exchange(line, timeoutMs = TIMEOUT) {
   });
 }
 
+// ── 서버 콘솔 디버그 로깅 — wmux로 나가는 명령·설명·결과/실패를 stdout/stderr에 출력 ──
+// 고빈도 폴링 read(workspace.list·agent.list)는 소음이라 성공 로그 제외(실패는 오프라인 진단상 항상 출력).
+// COCKPIT_WMUX_LOG=0 으로 끄기. 콘솔이 보이는 곳에서 실행해야 보임(`node cockpit/bin/cockpit.js serve`).
+const QUIET = new Set(['workspace.list', 'agent.list']);
+const LOG_WMUX = process.env.COCKPIT_WMUX_LOG !== '0';
+const CMD_DESC = {
+  'workspace.create': (p) => `워크스페이스 생성 — title=${p.title || '?'} · cwd=${p.cwd || '?'}`,
+  'workspace.close': (p) => `워크스페이스 닫기 — ${p.id || p.workspaceId || '?'}`,
+  'workspace.select': (p) => `워크스페이스 포커스 이동 — ${p.id || '?'}`,
+  'agent.spawn': (p) => `세션(pane) 스폰 — label=${p.label || '?'} · cmd=${p.cmd || '?'} · cwd=${p.cwd || '?'} · ws=${p.workspaceId || '?'}`,
+  'agent.kill': (p) => `세션 종료(kill) — ${p.agentId || '?'}`,
+  'pane.focus': (p) => `pane 포커스 — ${p.id || '?'}`,
+  'surface.send_text': (p) => `텍스트 전송 — surface=${p.surfaceId || '?'} · text=${JSON.stringify(p.text ?? '')}`,
+  'surface.send_key': (p) => `키 전송 — surface=${p.surfaceId || '?'} · key=${p.key || '?'}`,
+};
+const _hms = () => { try { return new Date().toLocaleTimeString(); } catch { return ''; } };
+const _resId = (r) => r && (r.workspace?.id || r.workspaceId || r.agent?.agentId || r.agentId || r.id) || null;
+
 let _seq = 0;
 export async function request(method, params = {}, timeoutMs = TIMEOUT) {
-  const raw = await exchange(JSON.stringify({ method, params, id: ++_seq, token: token() }), timeoutMs);
+  const loud = LOG_WMUX && !QUIET.has(method);
+  if (loud) console.log(`${_hms()} [wmux→] ${method}  ${CMD_DESC[method] ? CMD_DESC[method](params) : JSON.stringify(params)}`);
+  let raw;
+  try { raw = await exchange(JSON.stringify({ method, params, id: ++_seq, token: token() }), timeoutMs); }
+  catch (e) { if (LOG_WMUX) console.error(`${_hms()} [wmux✗] ${method} 전송 실패 — ${e.message}`); throw e; }
   let res;
   try { res = JSON.parse(raw); } catch { return { raw }; }
-  if (res.error) throw new Error(res.error.message || String(res.error));
+  if (res.error) {
+    if (LOG_WMUX) console.error(`${_hms()} [wmux✗] ${method} — ${res.error.message || JSON.stringify(res.error)}`);
+    throw new Error(res.error.message || String(res.error));
+  }
+  if (loud) { const id = _resId(res.result); console.log(`${_hms()} [wmux✓] ${method}${id ? ` → ${id}` : ' ok'}`); }
   return res.result;
 }
 

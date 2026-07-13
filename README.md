@@ -1,117 +1,165 @@
 # Claude Cockpit
 
-> 여러 Claude Code 세션을 **프로젝트(팀)별 · 역할별**로 한 대시보드에서 관찰·제어·인수인계하는 로컬 관제 도구.
-> 새 mux나 터미널을 만들지 않고, **wmux 위에 얇게 얹는 오케스트레이션 레이어**.
+> 여러 Claude Code 세션을 **프로젝트별 · 역할별**로 한 대시보드에서 관찰·제어하는 로컬 관제 도구.
+> 새 터미널 멀티플렉서를 만들지 않고, **wmux 위에 얇게 얹는 오케스트레이션 레이어**.
 
-- **상태**: 실동작 — 대시보드가 실제 wmux에 붙어 세션 스폰·종료·상태 3분류·세션 상세·커넥터·usage·단체 핸드오버까지 라이브로 동작 (진행 기록: [handover.md](handover.md))
-- **환경**: Windows 11 · wmux 0.13.0 · Claude Code · Node 20+ · **npm 런타임 의존성 0**
+- **상태**: 실동작 — 대시보드가 실제 wmux에 붙어 프로젝트 생명주기·세션 개별 스폰·claude 켜짐 실측·**세션 활동 배지**·활성 포트맵·기능 인벤토리·usage 게이지까지 라이브로 동작
+- **환경**: Windows 11 · wmux · Claude Code · Node 20+ · **npm 런타임 의존성 0**
+- **정본 시스템**: `cockpit/` (구 `teamctl/`는 리라이트로 폐기 — 미추적 잔존물, 재배선 금지)
+
+---
+
+## 📖 어디서부터 읽을까
+
+| 나는… | 먼저 읽으세요 |
+|---|---|
+| **처음 써봐요** | **[Manual.md](Manual.md)** (초보자용 설명서) → **[ClaudeCockpit-Guide.html](ClaudeCockpit-Guide.html)** (화면 예시 시각 가이드) |
+| **책상에 붙여둘 요약이 필요해요** | **[ClaudeCockpit-Cheatsheet.html](ClaudeCockpit-Cheatsheet.html)** (인쇄용 1페이지 · `Ctrl+P`) |
+| **기능·API를 자세히 알고 싶어요** | **[Tech.md](Tech.md)** (기능명세서 — 전 기능·엔드포인트·규칙) |
+| **코드를 고칠 거예요** | **[CLAUDE.md](CLAUDE.md)** (코드맵·수정 지점·불변 규칙) |
+| **어디까지 됐는지 볼래요** | **[handover.md](handover.md)** (세션별 개발 기록 — 재개 시 여기부터) |
+| **문제가 생겼거나 제안이 있어요** | **[문의 폼][form]** 하나로 접수 (1분) |
+
+---
 
 ## 왜 만드는가
 
-Claude Code로 여러 작업을 동시에 굴리면 터미널이 흩어지고, 어느 프로젝트의 어떤 세션이 지금 무슨 상태인지 파악할 수 없다. 세션이 끝나면 "무엇을 했는지"도 휘발된다.
+Claude Code로 여러 작업을 동시에 굴리면 터미널이 흩어지고, 어느 프로젝트의 어떤 세션이 지금 켜져 있는지·무엇을 하는 중인지 파악하기 어렵다.
 
 **타깃**: 여러 프로젝트(또는 여러 클라이언트)를 병렬로 진행하는 1인 개발자·프리랜서.
 
-**핵심 가치**
-1. **트리아지 우선 관제** — 정상은 침묵하고, **조치가 필요한 세션(승인 대기·포트 다운)만** 상단에 띄운다
-2. **점프 없는 판단** — 세션 카드 클릭 → 드로어에서 "지금 하는 일·활동 피드·변경 파일"을 확인, 개입이 필요할 때만 wmux로 점프
-3. **선언적 팀 운영** — `root/<팀>/team.json` 폴더 선언이 진실. 부트 때 wmux를 선언에 수렴(멱등)시키고, 선언 밖 세션은 표시만(자동 종료 금지)
+**핵심 가치 3가지**
+
+1. **프로젝트 생명주기 관제** — 프로젝트를 **대기중 / 진행중 / 종료됨**으로 나열하고, 활성화한 프로젝트만 wmux 워크스페이스로 연다. 세션은 역할별로 하나씩 열고(개별 스폰), 종료도 개별/전체 두 경로뿐(자동 종료 없음).
+2. **점프 없는 판단** — 세션에 들어가지 않고도 **claude 켜짐 + 활동(진행중/대기중/입력 대기)** 을 배지로 보고, 개입이 필요할 때만 wmux로 점프한다.
+3. **선언적 · 격리 운영** — `root/<프로젝트>/project.json` 폴더 선언이 진실. 각 프로젝트는 `ops/` 안에 자체 git·CLAUDE.md를 가져 cockpit 정책과 **격리**된다.
+
+---
 
 ## 빠른 시작
 
-**`ClaudeCockpit.exe` 더블클릭** — wmux 보장 → 서버 → 팀 수렴 → 기본 브라우저에 대시보드. 멱등이라 몇 번 눌러도 안전. (막히면 `start.cmd`)
+**`ClaudeCockpit.exe` 더블클릭** — wmux 보장 → 서버 → active 프로젝트 재수렴 → 기본 브라우저에 대시보드. 멱등이라 몇 번 눌러도 안전 (막히면 `start.cmd`).
 
 CLI로 직접:
 
 ```bash
-node teamctl/bin/teamctl.js boot              # 콜드 부트 (위와 동일)
-node teamctl/bin/teamctl.js serve             # 서버만 (기본 포트 7420)
-node teamctl/bin/teamctl.js up [--dry]        # 폴더 선언 → wmux 수렴만
+node cockpit/bin/cockpit.js boot          # 콜드 부트 (위와 동일)
+node cockpit/bin/cockpit.js serve          # 서버만 (기본 포트 7420)
+node cockpit/bin/cockpit.js boot --setup   # wmux 설치 경로 재지정
 ```
 
-사용법은 **[Manual.md](Manual.md)** (초보자용 화면 안내·FAQ) 참조.
+대시보드 열리면: **[＋ 새 프로젝트]** → **[▶ 활성화]** → 각 역할 **[＋ 세션 활성화]** → **[▶ Claude 실행]**.
+(자세한 그림 설명은 [Manual.md](Manual.md) / [시각 가이드](ClaudeCockpit-Guide.html))
+
+---
+
+## 💬 문의하기
+
+버그·문의·제안이 있으면 **문의 폼 하나로** 받습니다 (1분).
+
+### 👉 [문의 폼 열기][form]
+
+빠른 처리를 위해 폼에 담아 주세요 — **유형(버그/문의/요청) · 앱 버전 · Windows 버전 · 내용**, 버그라면 **서버 콘솔의 마지막 `[wmux✗]` 줄**(원인 진단에 큰 도움).
+
+---
+
+## 핵심 기능
+
+| 분류 | 기능 |
+|---|---|
+| **관찰** | 프로젝트 카드(대기중/진행중/종료됨) · **claude 켜짐 실측**(on/off/unknown) · **세션 활동 배지**(⏳ 진행중 / ⌛ 대기중 / ⚠ 입력 대기 — Claude 훅) · 세션 드로어(상태·작업 폴더·기능 인벤토리·점프·폴더·세션 비활성화) · git 칩(원격 웹링크) · 활성 포트맵(프로젝트 귀속) · Global 기능 인벤토리 · usage 게이지 3윈도(5시간·주간·주간 Opus) · 미연결(외부) 세션 · 중앙 이벤트 로그 |
+| **행동** | 프로젝트 생성/연동/`＋ git 주소`(clone) · 역할 추가/제거 · `▶ 활성화`(워크스페이스만, 세션 스폰 없음) · `＋ 세션 활성화`(역할별 개별 스폰) · `＋ 모든 세션 활성화`(빠진 전체) · `▶ Claude 실행`(이미 켜져 있으면 생략) · `↗ 세션 열기`(wmux 점프) · `세션 비활성화`(개별) · `비활성화`(전체·확인) · `아카이브`/`재개` · `＋ 링크` · `＋ 원격`(ops에 git clone/연결) |
+| **운영** | 콜드 부트 exe · wmux 위치 자동 발견 · boot 시 active 자동 재수렴 · **wmux 명령 콘솔 로깅**(`[wmux→]`/`[wmux✗]` 진단) · offline/demo 배지 구분 |
+
+> 세션은 **3단계**로 연다: `○ 미연결` → `[＋ 세션 활성화]` → 연결 확인 → `[▶ Claude 실행]`. 활성화는 방을 여는 것일 뿐 세션을 자동 생성하지 않는다.
+
+---
 
 ## 개념 매핑
 
-모든 개념이 wmux 네이티브 프리미티브로 실현된다.
+| 개념 | 실체 |
+|---|---|
+| 프로젝트 | wmux workspace + `root/<프로젝트>/project.json` 선언 |
+| 역할(세션) | workspace 내 pane의 agent (터미널로 시작 → `▶` 로 claude 전환) |
+| ops | 프로젝트마다 1번 고정 역할 (`root/<프로젝트>/ops/` — **git 저장소·배포·운영 기준**) |
+| 관리자 | HTML 대시보드 (`cockpit/dashboard.html`, 기본 브라우저) |
 
-| 기획 개념 | 실체 |
-|-----------|------|
-| 팀 (프로젝트) | wmux workspace + `root/<팀>/team.json` 선언 |
-| 역할 (세션) | workspace 내 pane의 agent (터미널로 시작, ▶ 버튼으로 claude 전환) |
-| 관리자 | HTML 대시보드 (`dashboard-triage.html`, 기본 브라우저) |
-| 인수인계 | 각 세션의 `handover.md` 갱신 → `/exit` (⏻ 전체 핸드오버) |
+---
 
 ## 아키텍처
 
 ```
-root/<팀>/team.json (desired·폴더가 진실) ──reconcile(멱등)──▶ wmux (actual)
-                                                            drift는 표시만
+root/<프로젝트>/project.json (desired·폴더가 진실) ──lifecycle──▶ wmux (actual)
+      activate=워크스페이스 보장 · spawn=역할별 개별 스폰 · killSession/deactivate=명시 종료
 
-브라우저 대시보드 ── fetch(127.0.0.1:7420 + 토큰) ──▶ teamctl serve
-                                                       ├─ core/wmux.js (파이프 직결 — 모든 wmux 명령의 단일 창구)
-                                                       ├─ live/* (트랜스크립트 tail·프로세스 실측·usage·git diff)
-                                                       └─ connectors/* (git·env·node·ports 프로브)
+브라우저 대시보드 ── fetch(127.0.0.1:7420 + 토큰) ──▶ cockpit serve (src/server.js · buildState)
+       ├─ wmux.js   (파이프 직결 — 모든 wmux 명령의 단일 창구 · 명령 콘솔 로깅)
+       ├─ proc.js   (claude 켜짐/꺼짐 프로세스 실측)
+       ├─ activity.js  (세션 활동 — Claude Code 훅 상태 읽기)
+       ├─ ports·caps·usage·git  (온디맨드 프로브 · 논블로킹 캐시)
+       └─ log.js    (중앙 이벤트 로그 JSONL)
+
+Claude Code 훅(bin/activity-hook.mjs) ──▶ cockpit/workspace/activity/*.json ──▶ activity.js
 ```
 
-## 지금 동작하는 것
+핵심 데이터 계약: `GET /api/state = { projects, unlinked, ports }`. 자세히는 [Tech.md](Tech.md).
 
-| 분류 | 기능 |
-|------|------|
-| 관찰 | 팀/세션 카드 · 상태 분류(⏸입력대기/●작업중/◆명령대기/❯터미널 — 프로세스·트랜스크립트 실측) · 트리아지 존 · 드로어 세션 상세(now·피드·변경파일) · git/env/node/ports 커넥터 · 글로벌 포트맵 · usage 배지(오늘·5h·한도 비교) |
-| 행동 | 세션 스폰(중복이면 열려있는 세션 채택) · ▶ Claude 시작(이미 켜져 있으면 재실행 생략) · wmux 점프 · 종료(확인+실행취소) · ⏻ 전체 핸드오버 · 폴더/원격 저장소 열기 |
-| 운영 | 콜드 부트 exe(F12) · wmux 위치 자동 발견(F12b) · 새 팀에 ops 세션 디폴트(F13) · 오프라인 시 데모 폴백 |
-
-## 참고: Claude 토큰 소모
-
-대시보드의 **관찰·제어는 전부 로컬 동작이라 Claude 토큰을 쓰지 않는다.** 폴링(`/api/state`)·드로어 상세·usage 배지는 트랜스크립트 파일(`~/.claude/projects/*.jsonl`)과 wmux 파이프를 읽을 뿐 Claude API를 호출하지 않는다(usage 배지는 소비량의 *측정*이지 *소비*가 아님). 스폰·종료·점프·팀 생성/종료·선언 등재·커넥터·reconcile도 마찬가지.
-
-토큰이 관련되는 경로는 다음뿐:
-
-| 동작 | 토큰 |
-|------|------|
-| **⏻ 전체 핸드오버** | **소모함** — 실행 중인 모든 claude 세션에 handover.md 갱신 프롬프트를 넣어 세션당 턴 1회를 돌린다(그게 기능의 목적). 실행 전 확인 다이얼로그로 게이트 |
-| **▶ Claude 실행** | 켜기만 — claude 기동 자체는 API 호출 없음. 토큰은 그 세션에 첫 프롬프트를 줄 때부터 |
-| 드로어 "메시지" 버튼 | 현재 스텁(실제 전송 안 함). 실연결되면 claude가 켜진 pane으로의 메시지는 프롬프트가 되어 토큰 소모 경로가 됨 |
-
-릴리스 코어 모드(`config.json`의 `claudeLayer: false`)에서는 `/claude`·`/handover`가 비활성(404)이라 **토큰이 들 수 있는 경로가 0개**다. "폴링마다 토큰이 드는 구조는 만들지 않는다"가 설계 원칙(한 줄 요약 기능에서 세션 프롬프트 주입안을 보류한 이유).
+---
 
 ## 폴더 구조
 
 ```
-├─ dashboard-triage.html   # 대시보드 (단일 파일 — teamctl이 상대경로 참조, 이동 금지)
-├─ teamctl/                # 로컬 컨트롤 브리지 (bin/ · src/core|live|connectors|server)
-├─ root/                   # 팀 선언 (폴더=진실): <팀>/team.json · ops/ · roles/
+├─ cockpit/                     # 정본 시스템
+│  ├─ dashboard.html            #   대시보드 (단일 파일 · 인라인 JS · 의존 0)
+│  ├─ bin/cockpit.js            #   CLI: serve · boot
+│  ├─ bin/activity-hook.mjs     #   Claude Code 훅 런타임 + 전역 settings 설치/제거
+│  ├─ src/*.js                  #   registry·wmux·lifecycle·proc·activity·log·ports·caps·usage·git·server
+│  └─ workspace/                #   런타임(config·logs·usage·activity) — gitignore
+├─ root/                        # 프로젝트 선언(폴더=진실): <프로젝트>/project.json · ops/(git) · <역할>/
 ├─ ClaudeCockpit.exe · start.cmd · launcher/   # 콜드 부트 런처
-├─ doc/backup/planner/     # 연구·기획 체인 보관 (01 인터뷰 → … → 12 기능 매트릭스, 구 목업·프로토)
-├─ planner.md · Tech.md    # 제품 결정 로그(D#·F#) · 기술 설계
-├─ handover.md             # 세션별 개발 기록 (최신 상태의 진실)
-├─ CLAUDE.md               # Claude Code용 코드맵 (수정 지점 인덱스 · 불변 규칙)
-└─ Manual.md               # 초보자용 사용 설명서
+├─ README.md                    # (이 문서) 인트로 · 문서 허브
+├─ Manual.md                    # 초보자용 사용 설명서
+├─ ClaudeCockpit-Guide.html     # 시각 가이드 (화면 예시 + 주석)
+├─ ClaudeCockpit-Cheatsheet.html# 인쇄용 1페이지 치트시트
+├─ Tech.md                      # 기능명세서 (전 기능·API·규칙)
+├─ CLAUDE.md                    # Claude Code용 코드맵 (수정 지점·불변 규칙)
+├─ handover.md                  # 세션별 개발 기록 (재개 시 여기부터)
+├─ doc/                         # 재기획·리라이트 문서 · backup/planner/ 연구 체인
+└─ teamctl/                     # (폐기) 구 시스템 — 미추적 잔존물, 재배선 금지
 ```
+
+---
 
 ## 원칙
 
-- **재발명 금지** — PTY·렌더·detach는 wmux가 다 한다. Cockpit은 관찰·수렴·인수인계만.
+- **재발명 금지** — PTY·렌더·detach는 wmux가 다 한다. Cockpit은 관찰·수렴만.
 - **의존성 최소** — Node 내장 모듈 + wmux/git/claude CLI만. 런타임 npm 의존성 0.
-- **보안** — 서버는 `127.0.0.1` + 토큰 전용, 원격 비목표. `.env` 값은 절대 저장·표시하지 않음(키 존재만).
-- **파괴적 동작은 더 안전한 마찰** — 종료는 확인+실행취소. 선언 밖 세션 자동 종료 금지.
-- **우아한 성능 저하** — wmux 다운 시 데모 폴백, 프로브 실패 시 표시 생략. 어떤 프로브도 폴링을 막지 않는다.
+- **보안** — 서버는 `127.0.0.1` + 토큰 전용, 원격 비목표. `.env` 값은 저장·표시하지 않음(존재만).
+- **파괴적 동작은 안전한 마찰** — 세션 종료는 개별/전체 두 경로뿐, 둘 다 확인. 자동 종료 없음. **되돌리기 없음**.
+- **우아한 성능 저하** — wmux 다운 시 demo/offline 배지, 프로브 실패 시 표시 생략. 어떤 프로브도 폴링을 막지 않는다.
+- **프로젝트 격리** — `root/<프로젝트>/`는 cockpit과 무연계 독립 프로젝트. **git은 `ops/`에만**, 자체 CLAUDE.md로 cockpit 규칙을 상속하지 않는다.
 
-## 문서 안내
+---
 
-| 문서 | 내용 |
-|------|------|
-| [Manual.md](Manual.md) | 사용 설명서 — 시작법·화면 읽는 법·FAQ |
-| [handover.md](handover.md) | 세션별 개발 기록 — **재개 시 여기부터** |
-| [CLAUDE.md](CLAUDE.md) | 개발자/Claude용 코드맵 — 수정 지점·불변 규칙 |
-| [planner.md](planner.md) | 제품 기획 — 결정 로그(D1~D18) · 기능 맵(F1~F8) |
-| [Tech.md](Tech.md) | 기술 설계 — 데이터 모델·wmux 통합·API |
-| [teamctl/README.md](teamctl/README.md) | 브리지 API 상세 |
-| doc/backup/planner/01~12 | 연구 체인 보관 — 인터뷰→전략→레드팀→PRD→시장조사→기능 매트릭스 |
+## 참고: Claude 토큰 소모
 
-## 다음 작업 (요약 — 상세는 handover.md §9)
+대시보드의 **관찰·제어는 전부 로컬 동작이라 Claude 토큰을 쓰지 않는다.** 폴링·드로어·기능 인벤토리·usage 게이지는 wmux 파이프와 로컬 파일만 읽는다(usage 게이지는 소비량의 *측정*이지 *소비*가 아니다). 활동 배지도 Claude Code 훅이 남긴 로컬 상태 파일을 읽을 뿐이다.
 
-- 인수인계 accept/kick-back 루프(F6) · 드로어 포커스 이동/복귀(F9) · 온보딩 빈 상태(F23)
-- 검증 게이트: stale 라벨(E1)·인라인 승인(E2)·청구 롤업(E3)
-- optional 커넥터(supabase/github/docker) · `expectedPorts` 포트 다운 판정 · MCP 스캔(D15)
+토큰이 관련되는 경로는 **[▶ Claude 실행]** 뿐이며, 그것도 claude를 *켜기만* 한다(기동 자체는 API 호출 없음 — 토큰은 그 세션에 첫 프롬프트를 줄 때부터). "폴링마다 토큰이 드는 구조는 만들지 않는다"가 설계 원칙이다.
+
+---
+
+## 문서 지도 (전체)
+
+| 문서 | 대상 | 내용 |
+|---|---|---|
+| [Manual.md](Manual.md) | 사용자(초보자) | 시작법·화면 읽는 법·세션 3단계·FAQ |
+| [ClaudeCockpit-Guide.html](ClaudeCockpit-Guide.html) | 사용자 | 화면 예시 재현 + 번호 주석 시각 가이드 |
+| [ClaudeCockpit-Cheatsheet.html](ClaudeCockpit-Cheatsheet.html) | 사용자 | 인쇄용 1페이지 요약 |
+| [Tech.md](Tech.md) | 개발자 | 기능명세서 — FS·API·상태 전이·불변 규칙 |
+| [CLAUDE.md](CLAUDE.md) | 개발자/Claude | 코드맵·수정 지점 인덱스·불변 규칙 |
+| [handover.md](handover.md) | 개발자 | 세션별 개발 기록(최신 진실 — 재개 시 여기부터) |
+| [doc/](doc/) | 참고 | 재기획·리라이트 문서(prd_rewrite_v1.md 등)·연구 체인 |
+
+<!-- 문의 폼 링크(단일 교체 지점) — 바꾸려면 이 URL 한 줄만 수정하면 README 내 모든 "문의 폼" 링크에 반영됩니다. -->
+[form]: https://docs.google.com/forms/d/e/1FAIpQLSfdAAODOXSfYg8bQp-WLewENrP_otXglztMzfR7bL678wqdHg/viewform

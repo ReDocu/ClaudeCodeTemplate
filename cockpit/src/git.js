@@ -19,6 +19,15 @@ export function remoteToWeb(remote) {
   return null;
 }
 
+// git URL → 저장소(폴더) 이름 파생. `.git`·뒤 구분자 제거 후 마지막 경로 세그먼트.
+//   https://host/owner/repo(.git) · git@host:owner/repo(.git) · ssh://…/owner/repo(.git) → 'repo'
+export function repoNameFromUrl(url) {
+  if (!url) return null;
+  const s = String(url).trim().replace(/^["']|["']$/g, '').replace(/[/\\:]+$/, ''); // 뒤 구분자 먼저 제거
+  const seg = (s.split(/[/\\:]/).filter(Boolean).pop() || '').replace(/\.git$/i, ''); // 세그먼트 추출 후 .git 제거
+  return seg || null;
+}
+
 function probe(dir) {
   return new Promise((resolveP) => {
     const opt = { cwd: dir, timeout: 4000, windowsHide: true };
@@ -60,17 +69,21 @@ function run(args, opts = {}) {
     });
   });
 }
-// ops가 비어있거나 cockpit 스켈레톤(CLAUDE.md만)뿐인가 — clone 전 백업 여부 판단.
+// ops가 비었거나 cockpit 스켈레톤(.git·.gitignore·CLAUDE.md만)뿐인가 — clone 전 교체/백업 판단.
+// scaffoldOpsGit이 빈 ops를 git init 해두므로, .git이 있어도 '실내용 0'이면 스켈레톤으로 보고 clone이 교체한다.
+const SKELETON = new Set(['.git', '.gitignore', 'CLAUDE.md']);
 function isSkeletonOnly(dir) {
   let e; try { e = readdirSync(dir); } catch { return true; }
-  return e.length === 0 || (e.length === 1 && e[0] === 'CLAUDE.md');
+  return e.every((n) => SKELETON.has(n)); // 빈 배열도 true
 }
 
 // 원격 연결 + main을 opsDir로 clone (POST /git-remote). 설계: ops = 저장소. 사용자 선택: 백업 후 진행.
 //   · opsDir이 이미 저장소면 재-clone 없이 origin 갱신 + fetch(로컬 작업 보존).
 //   · 아니면 스켈레톤은 지우고, 실내용이면 ops_bak_<stamp>로 백업 → git clone. 실패 시 백업 복원(손실 0).
 export async function connectRemote(opsDir, url, stamp = Date.now()) {
-  if (existsSync(join(opsDir, '.git'))) {
+  // 실내용 있는 저장소면 재-clone 없이 원격만 갱신(로컬 작업 보존). 빈 스켈레톤 저장소
+  // (scaffoldOpsGit의 git init 뿐)이면 아래 clone 경로가 지우고 교체한다.
+  if (existsSync(join(opsDir, '.git')) && !isSkeletonOnly(opsDir)) {
     await run(['remote', 'add', 'origin', url], { cwd: opsDir })
       .catch(() => run(['remote', 'set-url', 'origin', url], { cwd: opsDir }));
     await run(['fetch', 'origin'], { cwd: opsDir, timeout: 120000, env: NOPROMPT }).catch(() => {}); // 네트워크 실패는 무시(원격은 설정됨)

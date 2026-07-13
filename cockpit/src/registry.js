@@ -77,8 +77,8 @@ Cockpit의 운영정책은 이 프로젝트와 무관하다.
 - 상위 폴더(ClaudeCockpit 저장소)의 CLAUDE.md는 **cockpit 도구 자체의 운영정책**이다 —
   불변 규칙·검증 컨벤션·handover 관례·커밋 컨벤션을 포함해 전부 **이 프로젝트에 적용하지 말 것**.
   이 프로젝트에서는 이 파일과 하위 문서만 따른다.
-- 이 폴더는 자체 git 저장소다. 커밋·브랜치·리뷰 등 모든 git 작업은 이 저장소 기준이며,
-  상위 cockpit 저장소를 대상으로 하지 않는다.
+- git 저장소는 이 폴더가 아니라 **\`ops/\`** 다. 코드베이스는 ops/에 두고, 커밋·브랜치·리뷰·원격(clone/push)은
+  전부 ops/ 저장소 기준이다. 프로젝트 루트(이 폴더)는 git 저장소가 아니며, 상위 cockpit 저장소도 대상이 아니다.
 - \`project.json\`은 cockpit 제어 파일(런타임 바인딩 되쓰기 포함) — 프로젝트 코드가 참조·수정하지
   않고, 이 저장소에서도 추적하지 않는다(.gitignore).
 
@@ -86,24 +86,31 @@ Cockpit의 운영정책은 이 프로젝트와 무관하다.
 
 (여기서부터 이 프로젝트 고유 규칙을 추가)
 `;
-const ISOLATION_GITIGNORE = `# ClaudeCockpit 제어 파일 — 이 머신의 런타임 바인딩(wsId)이 되써짐. 추적 금지.
-/project.json
-# 시크릿·로그 — 커밋 금지 (선제 규칙)
+// ops(=유일 git 저장소)용 .gitignore — 시크릿·로그 선제 차단. project.json은 프로젝트 루트에 있어
+// ops 저장소 범위 밖이므로 제외 대상 아님. 갓 만든 빈 ops에만 주입(clone된 실저장소엔 미주입).
+const OPS_GITIGNORE = `# 시크릿·로그 — 커밋 금지 (선제 규칙)
 deploy-keys/
 connections.json
 .env.*
 logs/
 `;
 
+// 프로젝트 루트 = cockpit 래퍼(격리 CLAUDE.md만). **git 저장소가 아니다** — git은 ops/에만(scaffoldOpsGit).
 export function scaffoldIsolation(dir, name) {
   const cm = join(dir, 'CLAUDE.md');
   if (!existsSync(cm)) writeFileSync(cm, ISOLATION_CLAUDE_MD(name));
-  const gi = join(dir, '.gitignore');
-  if (!existsSync(gi)) writeFileSync(gi, ISOLATION_GITIGNORE);
-  if (!existsSync(join(dir, '.git'))) {
-    try { execFileSync('git', ['init', '-b', 'main'], { cwd: dir, stdio: 'ignore' }); }
+}
+
+// ops = 프로젝트의 유일한 git 저장소. 빈 ops를 git init + 시크릿 .gitignore 주입(멱등 — 기존 .git/.gitignore
+// 절대 미덮어쓰기). clone으로 채워질 ops면 connectRemote가 이 빈 저장소를 스켈레톤으로 보고 교체한다(git.js).
+export function scaffoldOpsGit(opsDir) {
+  mkdirSync(opsDir, { recursive: true });
+  const gi = join(opsDir, '.gitignore');
+  if (!existsSync(gi)) writeFileSync(gi, OPS_GITIGNORE);
+  if (!existsSync(join(opsDir, '.git'))) {
+    try { execFileSync('git', ['init', '-b', 'main'], { cwd: opsDir, stdio: 'ignore' }); }
     catch {
-      try { execFileSync('git', ['init'], { cwd: dir, stdio: 'ignore' }); }
+      try { execFileSync('git', ['init'], { cwd: opsDir, stdio: 'ignore' }); }
       catch { /* git 미설치 — 문서 격리만으로 진행 */ }
     }
   }
@@ -157,7 +164,7 @@ export function createProject({ name, roles = [] } = {}) {
 
   mkdirSync(dir, { recursive: true });
   scaffoldIsolation(dir, folder);
-  ensureRoleDir(dir, 'ops');
+  scaffoldOpsGit(ensureRoleDir(dir, 'ops')); // ops = 유일 git 저장소(루트는 저장소 아님)
   for (const id of roleIds) ensureRoleDir(dir, id);
   const proj = {
     name: folder, status: 'idle', createdAt: new Date().toISOString(), archivedAt: null,
@@ -203,7 +210,7 @@ export function importProject({ path, name } = {}) {
     const folder = basename(src);
     if (existsSync(join(src, 'project.json'))) return { project: findProject(folder), already: true, inPlace: true, backup: null };
     scaffoldIsolation(src, folder);
-    ensureRoleDir(src, 'ops');
+    scaffoldOpsGit(ensureRoleDir(src, 'ops')); // 제자리 등록도 ops만 git(멱등 — 기존 ops .git 보존)
     const proj = newProj(src, folder);
     writeProject(proj);
     return { project: proj, already: false, inPlace: true, backup: null };
@@ -229,6 +236,7 @@ export function importProject({ path, name } = {}) {
     const cross = e && e.code === 'EXDEV';
     throw Object.assign(new Error(cross ? 'cross-device — 같은 드라이브로 수동 이동 후 재시도(v1은 동일 볼륨만)' : `move-failed(${e.code || e.message}) — 원본 무변경`), { status: 400 });
   }
+  scaffoldOpsGit(opsDir); // 이동한 코드가 저장소면 그대로 보존, 아니면 ops를 git init(멱등)
   const proj = newProj(projDir, folder);
   writeProject(proj);
   return { project: proj, already: false, inPlace: false, backup };
