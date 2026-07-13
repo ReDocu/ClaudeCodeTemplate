@@ -1,7 +1,7 @@
 // 프로젝트 레지스트리 — root/<프로젝트>/project.json 이 선언(진실). (FS-2·8·9, PRD §8.2)
 // 리라이트: 구 team.json과 비호환(마이그레이션 없음) — 구 팀은 importProject 제자리 등록으로 재등록.
 import {
-  readFileSync, writeFileSync, readdirSync, mkdirSync, existsSync, renameSync, statSync,
+  readFileSync, writeFileSync, readdirSync, mkdirSync, existsSync, renameSync, rmSync, statSync,
 } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
@@ -48,6 +48,7 @@ export function scanProjects() {
       if (obj.wsId === undefined) obj.wsId = null;
       if (!Array.isArray(obj.roles)) obj.roles = [];
       if (!Array.isArray(obj.links)) obj.links = [];
+      if (!obj.adopted || typeof obj.adopted !== 'object' || Array.isArray(obj.adopted)) obj.adopted = {}; // agentId→role 채택 매핑
       obj._dir = dir; obj._folder = e.name;
       projects.push(obj);
     } catch (err) { errors.push({ name: e.name, message: String(err.message || err) }); }
@@ -108,11 +109,24 @@ export function scaffoldIsolation(dir, name) {
   }
 }
 
-// 역할 작업 폴더 보장 — 폴더만(R8: root/<프로젝트>/<역할>/). ops 포함. 파일 스캐폴드는
-// 프로젝트 루트 .gitignore(시크릿 4규칙)가 담당 — 역할 지침·인수인계 템플릿은 범위 밖(§13).
+// 역할 지침 뼈대 — 역할 세션의 cwd(root/<프로젝트>/<역할>/)에서 claude가 자동 로드하며,
+// 조상인 프로젝트 루트 CLAUDE.md(격리 선언) 위에 층으로 얹힌다. 최소 뼈대만 두고 내용은 사용자가 채움.
+const ROLE_CLAUDE_MD = (project, role) => `# ${project} · ${role} 역할
+
+이 세션의 작업 폴더는 root/${project}/${role}. 상위 프로젝트 CLAUDE.md를 상속한다.
+
+## 역할 규칙
+
+(여기에 이 역할의 지침을 추가)
+`;
+
+// 역할 작업 폴더 보장 — root/<프로젝트>/<역할>/. 멱등. 역할 CLAUDE.md 뼈대는 **갓 만든 빈 폴더에만**
+// 넣는다 — clone된 저장소·import된 코드가 들어있는 폴더(ops 등)엔 cockpit 파일을 주입하지 않는다(오염 방지).
 export function ensureRoleDir(projDir, roleId) {
   const d = join(projDir, roleId);
   mkdirSync(d, { recursive: true });
+  let empty = true; try { empty = readdirSync(d).length === 0; } catch { /* 접근 불가 — 주입 생략 */ empty = false; }
+  if (empty) writeFileSync(join(d, 'CLAUDE.md'), ROLE_CLAUDE_MD(basename(projDir), roleId));
   return d;
 }
 
@@ -179,29 +193,43 @@ export function importProject({ path, name } = {}) {
   if (!st.isDirectory()) throw Object.assign(new Error('not-a-directory'), { status: 400 });
   if (norm(src) === norm(ROOT)) throw Object.assign(new Error('cannot-import-root'), { status: 400 });
 
-  const inPlace = underRoot(src);
-  const folder = inPlace ? basename(src) : validName(name || basename(src));
-  const dest = inPlace ? src : join(ROOT, folder);
-
-  if (!inPlace) {
-    if (existsSync(dest)) throw Object.assign(new Error('name-conflict'), { status: 409 });
-    // rename 원자성에 의존 — 실패(EXDEV·잠금·권한) 시 원본 무변경(A-2). 롤백 이동 없음.
-    try { renameSync(src, dest); }
-    catch (e) {
-      const cross = e && e.code === 'EXDEV';
-      throw Object.assign(new Error(cross ? 'cross-device — 같은 드라이브로 수동 이동 후 재시도(v1은 동일 볼륨만)' : `move-failed(${e.code || e.message}) — 원본 무변경`), { status: 400 });
-    }
-  }
-  // 이동/제자리 이후: 스캐폴드는 멱등(기존 .git·CLAUDE.md·.gitignore 보존), 이미 등록돼 있으면 그대로.
-  if (existsSync(join(dest, 'project.json'))) {
-    return { project: findProject(basename(dest)), already: true, inPlace };
-  }
-  scaffoldIsolation(dest, folder);
-  ensureRoleDir(dest, 'ops');
-  const proj = {
+  const newProj = (dir, folder) => ({
     name: folder, status: 'idle', createdAt: new Date().toISOString(), archivedAt: null,
-    wsId: null, roles: [], links: [], _dir: dest, _folder: folder,
-  };
+    wsId: null, roles: [], links: [], adopted: {}, _dir: dir, _folder: folder,
+  });
+
+  // 제자리 등록(root/ 아래 · 구 팀 재등록 B7) — 이동 없이 기존 동작 유지(ops 이동 대상 아님).
+  if (underRoot(src)) {
+    const folder = basename(src);
+    if (existsSync(join(src, 'project.json'))) return { project: findProject(folder), already: true, inPlace: true, backup: null };
+    scaffoldIsolation(src, folder);
+    ensureRoleDir(src, 'ops');
+    const proj = newProj(src, folder);
+    writeProject(proj);
+    return { project: proj, already: false, inPlace: true, backup: null };
+  }
+
+  // 외부 연동 — 기본 프로젝트를 root/<name>/ops/ 코드베이스로 이동(D: ops = 저장소).
+  const folder = validName(name || basename(src));
+  const projDir = join(ROOT, folder);
+  if (existsSync(join(projDir, 'project.json'))) return { project: findProject(folder), already: true, inPlace: false, backup: null };
+  mkdirSync(projDir, { recursive: true });
+  scaffoldIsolation(projDir, folder); // 프로젝트 루트 = cockpit 래퍼(CLAUDE.md·격리 git)
+  const opsDir = join(projDir, 'ops');
+  let backup = null;
+  if (existsSync(opsDir)) { // 스캐폴드가 만든 스켈레톤은 지우고, 실내용이 있으면 백업(사용자 선택)
+    let e = []; try { e = readdirSync(opsDir); } catch { /* 접근 불가 */ }
+    if (e.length === 0 || (e.length === 1 && e[0] === 'CLAUDE.md')) rmSync(opsDir, { recursive: true, force: true });
+    else { backup = `${opsDir}_bak_${Date.now()}`; renameSync(opsDir, backup); }
+  }
+  // src → ops 이동(원자적 rename). 실패 시 백업 복원(있으면) + 원본 무변경.
+  try { renameSync(src, opsDir); }
+  catch (e) {
+    if (backup && existsSync(backup) && !existsSync(opsDir)) renameSync(backup, opsDir);
+    const cross = e && e.code === 'EXDEV';
+    throw Object.assign(new Error(cross ? 'cross-device — 같은 드라이브로 수동 이동 후 재시도(v1은 동일 볼륨만)' : `move-failed(${e.code || e.message}) — 원본 무변경`), { status: 400 });
+  }
+  const proj = newProj(projDir, folder);
   writeProject(proj);
-  return { project: proj, already: false, inPlace };
+  return { project: proj, already: false, inPlace: false, backup };
 }

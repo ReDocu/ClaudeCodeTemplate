@@ -1,19 +1,20 @@
 // HTTP 레이어(유일) — FS-3 + 전 엔드포인트(§8.4, 이 목록이 전부):
 //   GET  / · /api/state · /api/log · /api/caps · /api/usage
 //   POST /activate · /deactivate · /archive · /reopen · /create · /import · /roles
-//        /claude · /attach · /open · /links
+//        /claude · /attach · /open · /links · /git-remote · /adopt
 // 127.0.0.1 바인드 + X-Cockpit-Token(GET / 제외 전부, A-5). 어떤 프로브도 응답을 막지 않는다(§9-⑥).
 import { createServer } from 'node:http';
-import { readFileSync, existsSync } from 'node:fs';
+import { readFileSync, existsSync, mkdirSync } from 'node:fs';
 import { spawn } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
-import { join } from 'node:path';
+import { join, basename } from 'node:path';
 import { ROOT, readConfig, patchConfig, scanProjects, findProject, createProject, importProject, removeRole, writeProject } from './registry.js';
 import { getState, getFresh, invalidate, selectWorkspace, focusPane, sendLine } from './wmux.js';
 import { activate, deactivate, archive, reopen, matchWorkspace, agentsOfWs } from './lifecycle.js';
 import { claudeAlive, claudeAliveFresh, invalidateProc } from './proc.js';
 import { getPorts } from './ports.js';
+import { getGit, connectRemote } from './git.js';
 import { globalCaps, sessionCaps } from './caps.js';
 import { getUsage } from './usage.js';
 import { logEvent, readLog } from './log.js';
@@ -29,30 +30,55 @@ function buildState(state) {
   const dirLc = (p) => (p._dir || '').toLowerCase();
   const payloadProjects = [];
   const portInfo = [];
+  const linkedWs = new Set(); // 프로젝트에 매칭된 workspace id — 나머지는 '미연결'로 분류
   for (const p of projects) {
     const ws = state.live ? matchWorkspace(state, p) : null;
+    if (ws) linkedWs.add(ws.id);
     const agents = ws ? agentsOfWs(state, ws.id) : [];
-    // 세션 정렬 — ops 먼저, 이후 선언 역할 순서, 나머지는 실측 순(FS-5의 스폰 순서와 동형).
-    const orderOf = (label) => label === 'ops' ? 0 : (() => {
-      const i = (p.roles || []).findIndex((r) => r && r.id === label);
+    // 세션→역할 해석: 채택 매핑(adopted[agentId]) 우선, 없으면 label. 선언 역할이면 connected.
+    const declaredRoles = new Set(['ops', ...(p.roles || []).map((r) => r.id)]);
+    const adopted = p.adopted || {};
+    const resolveRole = (a) => adopted[a.agentId] || a.label;
+    // 세션 정렬 — ops 먼저, 이후 선언 역할 순서, 미연결(orphan)은 뒤(FS-5의 스폰 순서와 동형).
+    const orderOf = (a) => { const role = resolveRole(a); return role === 'ops' ? 0 : (() => {
+      const i = (p.roles || []).findIndex((r) => r && r.id === role);
       return i === -1 ? 999 : i + 1;
-    })();
-    agents.sort((a, b) => orderOf(a.label) - orderOf(b.label));
+    })(); };
+    agents.sort((a, b) => orderOf(a) - orderOf(b));
     payloadProjects.push({
       name: p.name, status: p.status,
       createdAt: p.createdAt || null, archivedAt: p.archivedAt || null,
       links: p.links || [], roles: (p.roles || []).map((r) => ({ id: r.id })),
-      wsLive: !!ws,
+      // git 칩은 ops(코드베이스) 기준 — ops가 저장소면 ops, 아니면 프로젝트 루트로 폴백(레거시 호환).
+      wsLive: !!ws, git: getGit(existsSync(join(p._dir, 'ops', '.git')) ? join(p._dir, 'ops') : p._dir),
       sessions: agents.map((a) => {
         const alive = claudeAlive(a.pid);
-        return { role: a.label || a.agentId, agentId: a.agentId, alive: true, claude: alive === true ? 'on' : alive === false ? 'off' : 'unknown' };
+        const adoptedRole = adopted[a.agentId];
+        const connected = !!adoptedRole || declaredRoles.has(a.label); // 선언 역할 label 일치 또는 채택됨
+        return { role: adoptedRole || a.label || a.agentId, agentId: a.agentId, alive: true,
+          connected, adopted: !!adoptedRole, claude: alive === true ? 'on' : alive === false ? 'off' : 'unknown' };
       }),
     });
     if (p.status === 'active') {
       portInfo.push({ name: p.name, dir: dirLc(p), pids: new Set(agents.map((a) => a.pid).filter(Boolean)) });
     }
   }
-  return { projects: payloadProjects, ports: getPorts(portInfo) };
+  // 프로젝트에 연결되지 않은 wmux workspace(직접 연 외부 세션) — 연결 여부 구분용(FS-3-2 보강).
+  const unlinked = [];
+  if (state.live) {
+    for (const w of state.workspaces) {
+      if (linkedWs.has(w.id)) continue;
+      const agents = agentsOfWs(state, w.id);
+      unlinked.push({
+        wsId: w.id, title: w.title || '(제목 없음)',
+        sessions: agents.map((a) => {
+          const alive = claudeAlive(a.pid);
+          return { role: a.label || a.agentId, agentId: a.agentId, claude: alive === true ? 'on' : alive === false ? 'off' : 'unknown' };
+        }),
+      });
+    }
+  }
+  return { projects: payloadProjects, unlinked, ports: getPorts(portInfo) };
 }
 
 // 스캔 에러(깨진 project.json)는 변화가 있을 때만 1회 기록 — 폴링 스팸 방지.
@@ -107,8 +133,9 @@ const routes = {
   'POST /import': async (b) => {
     const r = importProject({ path: b.path, name: b.name });
     logEvent('info', r.project.name, 'import',
-      r.already ? '이미 등록됨(멱등)' : r.inPlace ? '제자리 등록 — 이동 없이 스캐폴드·선언 적용' : `${b.path} → root/${r.project.name}/ 이동 · 대기중 등록`);
-    return { ok: true, name: r.project.name, inPlace: r.inPlace, already: r.already };
+      r.already ? '이미 등록됨(멱등)' : r.inPlace ? '제자리 등록 — 이동 없이 스캐폴드·선언 적용'
+        : `${b.path} → root/${r.project.name}/ops/ 이동${r.backup ? ` · 기존 ops 백업 ${basename(r.backup)}` : ''} · 대기중 등록`);
+    return { ok: true, name: r.project.name, inPlace: r.inPlace, already: r.already, backup: r.backup ? basename(r.backup) : null };
   },
   'POST /roles': async (b) => {
     if (b.action !== 'remove') throw err(400, 'unknown-action'); // 추가는 POST /create 병합 경로
@@ -145,6 +172,37 @@ const routes = {
     if (!dir.toLowerCase().startsWith(ROOT.toLowerCase()) || !existsSync(dir)) throw err(400, 'bad-path');
     spawn('explorer.exe', [dir], { detached: true, stdio: 'ignore' }).unref();
     return { ok: true };
+  },
+  'POST /adopt': async (b) => {
+    // 미연결 세션(wmux 자동 첫 pane 등)을 빈 선언 역할에 바인딩 — adopted[agentId]=role 저장.
+    const p = requireProject(b.name);
+    const role = String(b.role || '').trim();
+    const agentId = String(b.agentId || '').trim();
+    if (!agentId) throw err(400, 'agentId-required');
+    if (!new Set(['ops', ...(p.roles || []).map((r) => r.id)]).has(role)) throw err(400, 'unknown-role');
+    const state = await getFresh();
+    if (!state.live) throw err(503, 'wmux-offline');
+    const ws = matchWorkspace(state, p);
+    if (!ws) throw err(409, 'project-inactive');
+    const wsAgents = agentsOfWs(state, ws.id);
+    if (!wsAgents.some((a) => a.agentId === agentId)) throw err(404, 'agent-not-in-workspace'); // 이 프로젝트 workspace의 세션만
+    const adopted = p.adopted || {};
+    // 역할이 이미 살아있는 다른 세션(label 일치 또는 다른 채택)으로 차 있으면 거부(이중 바인딩 방지).
+    if (wsAgents.some((a) => a.agentId !== agentId && (a.label === role || adopted[a.agentId] === role))) throw err(409, 'role-filled');
+    p.adopted = { ...adopted, [agentId]: role };
+    writeProject(p);
+    logEvent('info', p.name, 'adopt', `세션 ${agentId} → 역할 ${role} 채택 (동기화)`);
+    return { ok: true, agentId, role };
+  },
+  'POST /git-remote': async (b) => {
+    const p = requireProject(b.name);
+    const url = String(b.url || '').trim().replace(/^["']|["']$/g, '');
+    if (!/^(https?:\/\/|git@|ssh:\/\/|git:\/\/)/.test(url)) throw err(400, 'git-url-invalid'); // git URL 형태만
+    const opsDir = join(p._dir, 'ops');
+    mkdirSync(opsDir, { recursive: true });
+    const r = await connectRemote(opsDir, url); // ops에 clone(또는 기존 저장소면 원격 갱신) — 백업 후 진행
+    logEvent('info', p.name, 'git', `ops 원격 ${r.action === 'cloned' ? 'clone' : '갱신'}${r.backup ? ` · 기존 ops 백업 ${basename(r.backup)}` : ''} — ${url}`);
+    return { ok: true, action: r.action, backup: r.backup ? basename(r.backup) : null, git: r.git };
   },
   'POST /links': async (b) => {
     const p = requireProject(b.name);

@@ -45,11 +45,12 @@ export async function activate(name) {
 
   // ops 항상 1번(먼저), 이후 선언 roles 순서(FS-5-1). 각 스폰 결정 직전 fresh 재확인.
   const order = [{ id: 'ops' }, ...(p.roles || []).filter((r) => r && r.id && r.id !== 'ops')];
+  const adopted = p.adopted || {}; // 채택된 세션(agentId→role)은 그 역할을 이미 채운 것으로 간주(중복 스폰 방지)
   let spawned = 0, reused = 0;
   const spawnedIds = [], failed = [];
   for (const role of order) {
     state = await getFresh();
-    const dup = agentsOfWs(state, ws.id).find((a) => a.label === role.id);
+    const dup = agentsOfWs(state, ws.id).find((a) => a.label === role.id || adopted[a.agentId] === role.id);
     if (dup) { reused++; continue; }
     const cwd = ensureRoleDir(p._dir, role.id);
     try {
