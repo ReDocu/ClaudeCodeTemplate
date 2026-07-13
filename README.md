@@ -9,6 +9,19 @@
 
 ---
 
+## ⬇️ 다운로드 · 실행
+
+### 📥 [최신 릴리스 다운로드](https://github.com/ReDocu/ClaudeCodeTemplate/releases/latest)
+
+1. **`ClaudeCockpit-vX.Y.Z.zip`** 다운로드 → 압축 해제
+2. **`ClaudeCockpit.exe`** 더블클릭 (실행이 막히면 `start.cmd`)
+3. 자동으로 wmux 보장 → 서버 → 브라우저에 대시보드가 열립니다 (`http://127.0.0.1:7420/`)
+
+> **요구사항**: Windows 11 · Node.js 20+ · wmux · Claude Code(`claude` 명령). **설치할 패키지 없음**(npm 의존성 0).
+> 처음 사용이라면 [Manual.md](Manual.md)와 [시각 가이드](ClaudeCockpit-Guide.html)를 함께 보세요.
+
+---
+
 ## 📖 어디서부터 읽을까
 
 | 나는… | 먼저 읽으세요 |
@@ -16,7 +29,6 @@
 | **처음 써봐요** | **[Manual.md](Manual.md)** (초보자용 설명서) → **[ClaudeCockpit-Guide.html](ClaudeCockpit-Guide.html)** (화면 예시 시각 가이드) |
 | **책상에 붙여둘 요약이 필요해요** | **[ClaudeCockpit-Cheatsheet.html](ClaudeCockpit-Cheatsheet.html)** (인쇄용 1페이지 · `Ctrl+P`) |
 | **기능·API를 자세히 알고 싶어요** | **[Tech.md](Tech.md)** (기능명세서 — 전 기능·엔드포인트·규칙) |
-| **코드를 고칠 거예요** | **[CLAUDE.md](CLAUDE.md)** (코드맵·수정 지점·불변 규칙) |
 | **어디까지 됐는지 볼래요** | **[handover.md](handover.md)** (세션별 개발 기록 — 재개 시 여기부터) |
 | **문제가 생겼거나 제안이 있어요** | **[문의 폼][form]** 하나로 접수 (1분) |
 
@@ -122,7 +134,6 @@ Claude Code 훅(bin/activity-hook.mjs) ──▶ cockpit/workspace/activity/*.js
 ├─ ClaudeCockpit-Guide.html     # 시각 가이드 (화면 예시 + 주석)
 ├─ ClaudeCockpit-Cheatsheet.html# 인쇄용 1페이지 치트시트
 ├─ Tech.md                      # 기능명세서 (전 기능·API·규칙)
-├─ CLAUDE.md                    # Claude Code용 코드맵 (수정 지점·불변 규칙)
 ├─ handover.md                  # 세션별 개발 기록 (재개 시 여기부터)
 ├─ doc/                         # 재기획·리라이트 문서 · backup/planner/ 연구 체인
 └─ teamctl/                     # (폐기) 구 시스템 — 미추적 잔존물, 재배선 금지
@@ -157,7 +168,6 @@ Claude Code 훅(bin/activity-hook.mjs) ──▶ cockpit/workspace/activity/*.js
 | [ClaudeCockpit-Guide.html](ClaudeCockpit-Guide.html) | 사용자 | 화면 예시 재현 + 번호 주석 시각 가이드 |
 | [ClaudeCockpit-Cheatsheet.html](ClaudeCockpit-Cheatsheet.html) | 사용자 | 인쇄용 1페이지 요약 |
 | [Tech.md](Tech.md) | 개발자 | 기능명세서 — FS·API·상태 전이·불변 규칙 |
-| [CLAUDE.md](CLAUDE.md) | 개발자/Claude | 코드맵·수정 지점 인덱스·불변 규칙 |
 | [handover.md](handover.md) | 개발자 | 세션별 개발 기록(최신 진실 — 재개 시 여기부터) |
 | [doc/](doc/) | 참고 | 재기획·리라이트 문서(prd_rewrite_v1.md 등)·연구 체인 |
 
