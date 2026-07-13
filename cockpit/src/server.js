@@ -174,7 +174,7 @@ function readBody(req) {
 
 export async function serve({ port } = {}) {
   const cfg = readConfig();
-  const PORT = port || cfg.port || 7421; // 개발 기본 7421(A-1) — 교체(W4) 시 7420 전환
+  const PORT = port || cfg.port || 7420; // 기본 7420 (W4 교체 완료 — teamctl 폐기, cockpit이 7420 정본)
   const token = cfg.token || randomBytes(24).toString('hex');
   patchConfig({ port: PORT, token });
 

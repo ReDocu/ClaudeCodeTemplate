@@ -1,4 +1,4 @@
-// Claude Cockpit 런처(F12) — 더블클릭 진입점(.exe). 로직은 teamctl boot(JS)에 있고,
+// Claude Cockpit 런처(F12) — 더블클릭 진입점(.exe). 로직은 cockpit boot(JS)에 있고,
 // 이 스텁은 전제조건 검사 + 위임 + 실패 시 창 유지만 담당한다. 빌드: launcher/build.cmd
 // (Windows 동봉 .NET Framework csc.exe 사용 — C# 5 문법 제한: 문자열 보간 금지)
 using System;
@@ -13,11 +13,11 @@ class CockpitLauncher
         try { Console.OutputEncoding = Encoding.UTF8; } catch { } // 한국어 콘솔 출력(자식 node 포함)
         Console.Title = "Claude Cockpit";
         string baseDir = AppDomain.CurrentDomain.BaseDirectory; // exe 위치 = 템플릿 루트 가정
-        string bootJs = Path.Combine(baseDir, "teamctl", "bin", "teamctl.js");
+        string bootJs = Path.Combine(baseDir, "cockpit", "bin", "cockpit.js");
 
         if (!File.Exists(bootJs))
         {
-            Console.WriteLine("[launcher] teamctl\\bin\\teamctl.js 를 찾을 수 없습니다. 이 실행 파일은 템플릿 폴더 루트에 있어야 합니다.");
+            Console.WriteLine("[launcher] cockpit\\bin\\cockpit.js 를 찾을 수 없습니다. 이 실행 파일은 템플릿 폴더 루트에 있어야 합니다.");
             return Pause(1);
         }
         if (!CommandExists("node"))

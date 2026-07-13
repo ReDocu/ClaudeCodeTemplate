@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // cockpit CLI — serve · boot (FS-3·13). 리라이트: 구 teamctl boot/locate 참고 재작성.
-//   node cockpit/bin/cockpit.js serve [--port 7421]
-//   node cockpit/bin/cockpit.js boot  [--port 7421]
+//   node cockpit/bin/cockpit.js serve [--port 7420]
+//   node cockpit/bin/cockpit.js boot  [--port 7420]
 // boot 시퀀스(FS-13): ① wmux 보장(탐색 체인) ② 서버 보장(멱등 재사용)
 //                    ③ active 프로젝트 자동 재수렴(C3 — wmux 재시작 복원) ④ 기본 브라우저 오픈.
 import { spawn, spawnSync } from 'node:child_process';
@@ -26,7 +26,7 @@ function globRoots(dir) {
   try { names = readdirSync(dir); } catch { return []; }
   return names.filter((n) => /^wmux/i.test(n)).sort().reverse().map((n) => join(dir, n)).filter(isRoot);
 }
-function discoverWmuxBin(cfg) {
+function discoverRoots(cfg) {
   const out = [];
   const push = (root) => { if (root && isRoot(root) && !out.includes(root)) out.push(root); };
   if (process.env.WMUX_CLI) push(dirname(dirname(dirname(resolve(process.env.WMUX_CLI))))); // <root>/resources/cli/wmux.js 역산
@@ -41,16 +41,59 @@ function discoverWmuxBin(cfg) {
     if (!existsSync(drive)) continue;
     for (const pf of ['Program Files', 'Program Files (x86)']) for (const r of globRoots(join(drive, pf))) push(r);
   }
-  return out.length ? join(out[0], EXE) : null;
+  return out;
+}
+const binFromRoot = (root) => join(root, EXE);
+function discoverWmuxBin(cfg) { const roots = discoverRoots(cfg); return roots.length ? binFromRoot(roots[0]) : null; }
+
+// 콘솔 프롬프트(구 teamctl locate.js 이식) — 자동 발견 0건(최후 수단) 또는 --setup(강제) + TTY일 때만.
+// 후보는 번호로 선택, 직접 경로 입력도 허용. 따옴표 제거, 폴더 입력 시 wmux.exe 자동 결합,
+// s=건너뛰기, 3회 재시도. 실패/건너뛰기 = null.
+async function promptForRoot({ candidates = [], current } = {}) {
+  const { createInterface } = await import('node:readline/promises');
+  const rl = createInterface({ input: process.stdin, output: process.stdout });
+  try {
+    if (current) console.log(`  현재 설정: ${current}`);
+    candidates.forEach((r, i) => console.log(`  [${i + 1}] ${binFromRoot(r)}`));
+    const hint = candidates.length ? `번호(1-${candidates.length}), ` : '';
+    for (let i = 3; i > 0; i--) {
+      const raw = (await rl.question(`wmux 위치 — ${hint}설치 폴더 또는 ${EXE} 경로 (s=건너뛰기): `))
+        .trim().replace(/^["']|["']$/g, '');
+      if (raw.toLowerCase() === 's') return null;
+      if (/^\d+$/.test(raw) && Number(raw) >= 1 && Number(raw) <= candidates.length)
+        return candidates[Number(raw) - 1];
+      if (raw) {
+        const p = resolve(raw);
+        const root = p.toLowerCase().endsWith(EXE) ? dirname(p) : p;
+        if (isRoot(root)) return root;
+        console.error(`  ✗ ${binFromRoot(root)} 가 없습니다 (남은 시도 ${i - 1}회)`);
+      }
+    }
+    return null;
+  } finally { rl.close(); }
 }
 
-// wmux 보장 — 있으면 재사용, 없으면 발견→detached 스폰→ready 폴링. wmux 수명은 소유하지 않는다.
-async function ensureWmux() {
+// wmux 보장 — 있으면 재사용, 없으면 발견/프롬프트→detached 스폰→ready 폴링. wmux 수명은 소유하지 않는다.
+// setup(--setup): ping 상태와 무관하게 경로 설정 프롬프트부터(후보 번호 제시) — 저장 후 정상 흐름 계속.
+async function ensureWmux({ setup = false } = {}) {
+  const tty = process.stdin.isTTY && process.stdout.isTTY;
+  if (setup && tty) {
+    const cfg = readConfig();
+    console.log('[boot]    wmux 경로 설정(--setup) — 후보를 번호로 고르거나 직접 입력하세요.');
+    const root = await promptForRoot({ candidates: discoverRoots(cfg), current: cfg.wmuxBin });
+    if (root) { patchConfig({ wmuxBin: binFromRoot(root) }); console.log(`[boot]    wmuxBin 저장: ${binFromRoot(root)}`); }
+    else if (cfg.wmuxBin && existsSync(cfg.wmuxBin)) console.log(`[boot]    건너뜀 — 기존 설정 유지: ${cfg.wmuxBin}`);
+  }
   if (await isAvailable()) return { action: 'reused' };
   const cfg = readConfig();
   let bin = cfg.wmuxBin && existsSync(cfg.wmuxBin) ? cfg.wmuxBin : discoverWmuxBin(cfg);
-  if (!bin) throw new Error('wmux를 찾을 수 없습니다 — cockpit/workspace/config.json에 "wmuxBin": "<wmux.exe 절대경로>"를 지정하세요. (탐색 순서: WMUX_CLI → PATH → config → Programs/Program Files 글롭)');
-  if (bin !== cfg.wmuxBin) { patchConfig({ wmuxBin: bin }); console.log(`[boot]    wmux 자동 발견 · 저장: ${bin}`); }
+  if (!bin && tty && !setup) { // --setup은 이미 위에서 프롬프트함 — 재질문 방지
+    console.log('[boot]    wmux를 자동으로 찾지 못했습니다 — 설치 위치를 알려주세요 (최초 1회, config에 저장됩니다).');
+    const root = await promptForRoot({ candidates: discoverRoots(cfg), current: cfg.wmuxBin });
+    if (root) bin = binFromRoot(root);
+  }
+  if (!bin) throw new Error('wmux를 찾을 수 없습니다 — 콘솔(TTY)에서 boot를 실행해 경로를 입력하거나, cockpit/workspace/config.json에 "wmuxBin": "<wmux.exe 절대경로>"를 지정하세요. (탐색 순서: WMUX_CLI → PATH → config → Programs/Program Files 글롭)');
+  if (bin !== cfg.wmuxBin) { patchConfig({ wmuxBin: bin }); console.log(`[boot]    wmuxBin 저장: ${bin}`); }
   let spawnErr = null;
   const child = spawn(bin, [], { detached: true, stdio: 'ignore' });
   child.on('error', (e) => { spawnErr = e; });
@@ -76,12 +119,13 @@ async function serverAlive(port, token) {
 }
 
 async function boot() {
+  const setup = args.includes('--setup');
   console.log('[boot] ① wmux 확인/기동');
-  const w = await ensureWmux();
+  const w = await ensureWmux({ setup });
   console.log(`[boot]    wmux ${w.action === 'reused' ? '이미 실행 중 — 재사용' : `기동 완료 (pid ${w.pid})`}`);
 
   const cfg = readConfig();
-  const PORT = Number(flag('--port')) || cfg.port || 7421;
+  const PORT = Number(flag('--port')) || cfg.port || 7420;
   const url = `http://127.0.0.1:${PORT}/`;
 
   console.log('[boot] ② 서버 확인');
@@ -121,6 +165,6 @@ if (cmd === 'serve') {
 } else if (cmd === 'boot') {
   await boot().catch((e) => { console.error(`[boot] 실패 — ${e.message}`); process.exitCode = 1; });
 } else {
-  console.log('사용법: cockpit.js serve [--port 7421] | boot [--port 7421]');
+  console.log('사용법: cockpit.js serve [--port 7420] | boot [--port 7420] [--setup]');
   process.exitCode = cmd ? 1 : 0;
 }
