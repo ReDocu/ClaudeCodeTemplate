@@ -7,6 +7,10 @@
 - **환경**: Windows 11 · wmux · Claude Code · Node 20+ · **npm 런타임 의존성 0**
 - **정본 시스템**: `cockpit/` (구 `teamctl/`는 리라이트로 폐기 — 미추적 잔존물, 재배선 금지)
 
+![ClaudeCockpit 대시보드 개요](screenshot/overview.png)
+
+*한 화면 관제: 프로젝트 카드(진행중/대기중/종료) · 세션 3단계(○ 미연결 → [＋ 세션 활성화] → [▶ Claude 실행]) · 활성 포트맵 · 기능 인벤토리*
+
 ---
 
 ## ⬇️ 다운로드 · 실행
