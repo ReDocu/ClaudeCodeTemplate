@@ -1,7 +1,8 @@
 // 활성 포트맵 (FS-14) — 리스닝 포트 실측 + 프로젝트 귀속. 구 connectors/ports 참고 재작성.
 // 귀속: ① 리스너 프로세스의 부모 트리에 프로젝트 세션 pid가 있으면 그 프로젝트
 //      ② 커맨드라인에 root/<프로젝트>/ 경로가 보이면 그 프로젝트 — 그 외 null(기타).
-// 논블로킹 캐시(TTL·single-flight, §9-⑥) — /api/state 응답을 절대 막지 않는다(캐시 값만 병합).
+// 스냅샷: win32=PowerShell(Get-NetTCPConnection+CIM) · darwin=lsof+ps — 동일 {listeners, procs} 형태로
+// 귀속 로직 공유. 논블로킹 캐시(TTL·single-flight, §9-⑥) — /api/state 응답을 절대 막지 않는다.
 import { execFile } from 'node:child_process';
 
 const TTL = 15_000;
@@ -17,9 +18,52 @@ $p = Get-CimInstance Win32_Process -ErrorAction SilentlyContinue | Select-Object
 
 let _snap = null, _at = 0, _inflight = null; // { listeners:[{port,pid}], procs: pid→{ppid,name,cmd} }
 
+// darwin 리스너 파서 — lsof -nP -iTCP -sTCP:LISTEN -Fpn: p<pid> 행 뒤에 n<addr> 행들이 따라온다.
+// 로컬 바인드(127.0.0.1/::1/*/0.0.0.0/[::])만 채택, 포트 중복(v4/v6) 제거, 포트 오름차순.
+export function parseLsof(text) {
+  const seen = new Set(); const out = [];
+  let pid = null;
+  for (const line of String(text).split('\n')) {
+    if (line[0] === 'p') { pid = Number(line.slice(1)); continue; }
+    if (line[0] !== 'n' || pid === null) continue;
+    const m = /^(\*|0\.0\.0\.0|127\.0\.0\.1|\[::\]|\[::1\]):(\d+)$/.exec(line.slice(1));
+    if (!m) continue;
+    const port = Number(m[2]);
+    if (seen.has(port)) continue;
+    seen.add(port);
+    out.push({ port, pid });
+  }
+  return out.sort((a, b) => a.port - b.port);
+}
+
+// darwin ps → pid→{ppid,name,cmd} (귀속의 부모 트리·커맨드라인 입력 — win32 procs와 동일 형태).
+// 이름은 args 첫 토큰 basename(comm 16자 절단 회피 — proc.js parsePs와 동일 근거).
+function psToPortProcs(text) {
+  const procs = new Map();
+  for (const line of String(text).split('\n')) {
+    const m = /^\s*(\d+)\s+(\d+)\s+(.*)$/.exec(line);
+    if (!m) continue;
+    const cmd = m[3] || '';
+    procs.set(Number(m[1]), { ppid: Number(m[2]), name: (cmd.split(/\s+/)[0] || '').replace(/^-/, '').split('/').pop(), cmd });
+  }
+  return procs;
+}
+
 function refresh() {
   if (_inflight) return _inflight;
   _inflight = new Promise((resolveP) => {
+    const done = (snap) => { if (snap) _snap = snap; _at = Date.now(); resolveP(_snap); };
+    if (process.platform === 'darwin') {
+      // lsof는 일부 소켓 접근 실패 시에도 부분 출력 + 비0 종료가 흔함 — 출력이 있으면 사용.
+      execFile('/usr/sbin/lsof', ['-nP', '-iTCP', '-sTCP:LISTEN', '-Fpn'], { maxBuffer: 16 * 1024 * 1024 }, (e1, lsofOut) => {
+        if (!lsofOut) return done(null);
+        execFile('/bin/ps', ['-axo', 'pid=,ppid=,args='], { maxBuffer: 16 * 1024 * 1024 }, (e2, psOut) => {
+          if (e2) return done(null);
+          done({ listeners: parseLsof(lsofOut), procs: psToPortProcs(psOut) });
+        });
+      });
+      return;
+    }
     execFile('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', PS],
       { maxBuffer: 64 * 1024 * 1024, windowsHide: true }, (errIgn, stdout) => {
         try {
@@ -34,10 +78,8 @@ function refresh() {
             seen.add(l.LocalPort);
             listeners.push({ port: l.LocalPort, pid: l.OwningProcess });
           }
-          _snap = { listeners, procs };
-        } catch { /* 파싱 실패 — 이전 스냅샷 유지 */ }
-        _at = Date.now();
-        resolveP(_snap);
+          done({ listeners, procs });
+        } catch { done(null); /* 파싱 실패 — 이전 스냅샷 유지 */ }
       });
   }).finally(() => { _inflight = null; });
   return _inflight;
@@ -46,7 +88,7 @@ function refresh() {
 // 논블로킹 조회 — attribution 입력: [{name, dir, pids:Set}] (active 프로젝트만).
 // 콜드 스냅샷은 [] 반환(다음 폴링에 채워짐).
 export function getPorts(projInfo = []) {
-  if (process.platform !== 'win32') return [];
+  if (!['win32', 'darwin'].includes(process.platform)) return [];
   if (Date.now() - _at >= TTL) refresh();
   if (!_snap) return [];
   const { listeners, procs } = _snap;
