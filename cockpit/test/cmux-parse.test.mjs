@@ -3,6 +3,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { parseNewPane, parseTop, buildInitLine } from '../src/cmux.js';
 import { parsePs } from '../src/proc.js';
+import { parseLsof } from '../src/ports.js';
 
 test('parseNewPane — 실측 출력에서 surface/pane UUID 추출', () => {
   const out = 'OK surface:32 (66E196A2-295F-4B40-9803-FC654D6B65BD) pane:22 (1BBC91C0-E2D8-4C9B-A56C-3BC3D41B1475) workspace:4 (985D0B55-62F0-456D-8C36-88708B75F0FA)';
@@ -49,6 +50,12 @@ test('parsePs — ps -axo pid,ppid,tty,args 해석 (tty 세션 그룹 포함)', 
   assert.deepEqual(kids.get(100), [49662]);
   assert.deepEqual(ttys.get('ttys003'), [100, 49662, 200]); // 같은 pty = 같은 세션
   assert.equal(procs.get(300).tty, null);              // tty 없음(??)은 세션 그룹 제외
+});
+
+test('parseLsof — -Fpn 출력에서 로컬 리스너 (port,pid) 추출·중복 제거', () => {
+  const txt = ['p100', 'n127.0.0.1:7420', 'p200', 'n*:3000', 'n[::1]:3000', 'p300', 'n192.168.0.5:9999'].join('\n');
+  assert.deepEqual(parseLsof(txt), [{ port: 3000, pid: 200 }, { port: 7420, pid: 100 }]);
+  // 192.168.x 바인드는 로컬 대역 아님 — 제외. 같은 포트 중복(v4/v6)은 1회. 포트 오름차순.
 });
 
 test('buildInitLine — cd + env export + 셸 cmd 생략', () => {
