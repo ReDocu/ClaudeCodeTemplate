@@ -14,6 +14,8 @@ if errorlevel 1 (
 )
 
 rem Extra args pass through to cockpit boot (e.g. "start.cmd --setup" forces the wmux path prompt).
+rem On success the window closes by itself (dashboard [power] shutdown ends the server with exit 0).
+rem Only failures pause so the error message stays readable.
 node "cockpit\bin\cockpit.js" boot %*
 if errorlevel 1 (
   echo.
@@ -21,4 +23,3 @@ if errorlevel 1 (
   pause
   exit /b 1
 )
-pause

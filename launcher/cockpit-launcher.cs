@@ -47,7 +47,7 @@ class CockpitLauncher
             Console.WriteLine("[launcher] node 실행 실패: " + e.Message);
             return Pause(1);
         }
-        return Pause(0); // 기존 서버 재사용으로 즉시 끝난 경우, 결과를 읽을 시간을 준다
+        return 0; // 정상 종료(대시보드 ⏻ 전체 종료·기존 서버 재사용) — 창을 바로 닫는다. 실패만 Pause로 잡아둔다.
     }
 
     static bool CommandExists(string name)

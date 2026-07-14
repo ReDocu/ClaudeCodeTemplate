@@ -5,10 +5,26 @@
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { join } from 'node:path';
+import { homedir } from 'node:os';
 
 const ACT_DIR = fileURLToPath(new URL('../workspace/activity/', import.meta.url));
 const WORKING_STALE = 10 * 60 * 1000; // working이 이보다 오래되면 미상(크래시/이탈 방어)
 const sanitize = (s) => String(s).replace(/[^A-Za-z0-9._-]/g, '_');
+
+// 훅 설치 여부 실측 — ~/.claude/settings.json에 activity-hook.mjs 항목이 있는지(대시보드 설치 안내 배너용).
+//   판정은 activity-hook.mjs isOurs와 동일 근거(command 문자열에 파일명 포함). TTL 캐시로 폴링당 홈 read 방지,
+//   설치 직후에는 invalidateHook()으로 즉시 재실측. settings.json 없음/읽기 실패=미설치.
+const SETTINGS = join(homedir(), '.claude', 'settings.json');
+const HOOK_TTL = 30 * 1000;
+let _hook = { v: false, at: 0 };
+export function invalidateHook() { _hook.at = 0; }
+export function hookInstalled() {
+  if (_hook.at && Date.now() - _hook.at < HOOK_TTL) return _hook.v;
+  let v = false;
+  try { v = /activity-hook\.mjs/.test(readFileSync(SETTINGS, 'utf8')); } catch { /* 없음=미설치 */ }
+  _hook = { v, at: Date.now() };
+  return v;
+}
 
 // project 폴더명 · role → 'working'|'waiting'|'attention'|null. 훅 키(activity-hook.mjs)와 동일 규칙.
 export function getActivity(project, role) {

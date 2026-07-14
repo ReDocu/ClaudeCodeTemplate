@@ -1,7 +1,7 @@
 // HTTP 레이어(유일) — FS-3 + 전 엔드포인트(§8.4, 이 목록이 전부):
 //   GET  / · /api/state · /api/log · /api/caps · /api/usage
 //   POST /activate · /spawn · /kill-session · /deactivate · /archive · /reopen · /create · /import · /create-git · /roles
-//        /claude · /attach · /open · /links · /git-remote · /adopt · /pick-folder · /console · /shutdown
+//        /claude · /attach · /open · /links · /git-remote · /adopt · /pick-folder · /console · /hook-install · /shutdown
 // 127.0.0.1 바인드 + X-Cockpit-Token(GET / 제외 전부, A-5). 어떤 프로브도 응답을 막지 않는다(§9-⑥).
 import { createServer } from 'node:http';
 import { readFileSync, existsSync, mkdirSync, writeFileSync, rmSync } from 'node:fs';
@@ -11,7 +11,7 @@ import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { join, basename } from 'node:path';
 import { ROOT, readConfig, patchConfig, scanProjects, findProject, createProject, importProject, removeRole, writeProject } from './registry.js';
-import { getState, getFresh, invalidate, selectWorkspace, focusPane, sendLine } from './wmux.js';
+import { getState, getFresh, invalidate, selectWorkspace, focusPane, sendLine, killApp } from './wmux.js';
 import {
   activate, deactivate, archive, reopen, spawnRole, killSession,
   matchWorkspace, matchWorkspaceInfo, agentsOfWs, reconcile, parseLabel, roleOf,
@@ -19,12 +19,13 @@ import {
 import { claudeAlive, claudeAliveFresh, invalidateProc } from './proc.js';
 import { getPorts } from './ports.js';
 import { getGit, connectRemote, repoNameFromUrl } from './git.js';
-import { getActivity } from './activity.js';
+import { getActivity, hookInstalled, invalidateHook } from './activity.js';
 import { globalCaps, sessionCaps } from './caps.js';
 import { getUsage } from './usage.js';
 import { logEvent, readLog, logConsole } from './log.js';
 
 const DASHBOARD = fileURLToPath(new URL('../dashboard.html', import.meta.url));
+const HOOK_SCRIPT = fileURLToPath(new URL('../bin/activity-hook.mjs', import.meta.url));
 const err = (status, code) => Object.assign(new Error(code), { status });
 
 // 프로젝트 선언 ⊕ wmux 실측 병합 — GET /api/state 페이로드(FS-3-2).
@@ -92,7 +93,8 @@ function buildState(state) {
       });
     }
   }
-  return { projects: payloadProjects, unlinked, ports: getPorts(portInfo) };
+  // hookInstalled=false면 대시보드가 활동 배지(FS-7) 훅 설치 안내 배너를 띄운다 — 설치 방법·원클릭 버튼 포함.
+  return { projects: payloadProjects, unlinked, ports: getPorts(portInfo), hookInstalled: hookInstalled() };
 }
 
 // 스캔 에러(깨진 project.json)는 변화가 있을 때만 1회 기록 — 폴링 스팸 방지.
@@ -184,12 +186,17 @@ $owner.Close()
   });
 }
 
-// POST /shutdown 전용 — 응답이 플러시된 뒤 서버를 닫고 프로세스를 내린다. _server는 serve()가 등록.
-// wmux 수명은 소유하지 않으므로(FS-13) wmux 자체는 그대로 둔다 — 내리는 건 cockpit 서버뿐.
+// POST /shutdown 전용 — 응답이 플러시된 뒤 wmux 앱을 내리고 서버를 닫는다. _server는 serve()가 등록.
+// 평시 wmux 수명은 소유하지 않지만(FS-13), 전체 종료(⏻)만은 예외 — 사용자 의도가 '다 끄기'이므로
+// wmux도 함께 내린다(세션은 이미 비활성화로 정리됨). wmux 종료는 응답 플러시 뒤에 — 서버가 wmux
+// pane 안에서 돌 때 응답 전에 wmux를 죽이면 응답이 유실된다.
 let _server = null;
 function scheduleExit() {
-  setTimeout(() => {
-    console.log('[cockpit] 전체 종료 — 프로젝트 비활성화(대기중 전환) 완료, 서버를 내립니다.');
+  setTimeout(async () => {
+    const r = await killApp();
+    console.log(r.ok
+      ? `[cockpit] 전체 종료 — 프로젝트 비활성화 완료 · wmux(${r.image}) 종료 · 서버를 내립니다.`
+      : `[cockpit] 전체 종료 — 프로젝트 비활성화 완료 · wmux 종료 실패(${r.error} — 이미 꺼져 있으면 정상) · 서버를 내립니다.`);
     try { if (_server) _server.close(); } catch { /* 이미 닫힘 — 종료는 계속 */ }
     setTimeout(() => process.exit(0), 200);
   }, 400);
@@ -223,8 +230,9 @@ const routes = {
   },
   'POST /archive': async (b) => archive(b.name),
   'POST /reopen': async (b) => reopen(b.name),
-  // 전체 종료 — active 프로젝트 전부 비활성화(세션 kill → 대기중)한 뒤 서버 프로세스를 내린다.
+  // 전체 종료 — active 프로젝트 전부 비활성화(세션 kill → 대기중)한 뒤 wmux 앱과 서버를 내린다.
   // kill 경유이므로 confirm 필수(§9-3 — /deactivate와 동형). 실패 프로젝트는 응답·로그로 보고하고 종료는 계속.
+  // 비활성화(파이프 사용)가 먼저, wmux 종료는 scheduleExit(응답 플러시 후) — 순서 뒤집으면 세션 정리 불가.
   'POST /shutdown': async (b) => {
     if (b.confirm !== true) throw err(400, 'confirm-required');
     const actives = scanProjects().projects.filter((p) => p.status === 'active');
@@ -234,7 +242,7 @@ const routes = {
       catch (e) { failed.push(p.name); logEvent('error', p.name, 'shutdown', `비활성화 실패 — ${e.message}`); }
     }
     logEvent('info', null, 'shutdown',
-      `전체 종료 — 프로젝트 ${deactivated.length}개 비활성화(대기중)${failed.length ? ` · 실패 ${failed.join('·')}` : ''} · 서버 종료`);
+      `전체 종료 — 프로젝트 ${deactivated.length}개 비활성화(대기중)${failed.length ? ` · 실패 ${failed.join('·')}` : ''} · wmux 종료 · 서버 종료`);
     scheduleExit();
     return { ok: true, deactivated, failed };
   },
@@ -310,6 +318,17 @@ const routes = {
   'POST /pick-folder': async (b) => pickFolder({ title: b && b.title }),
   // 대시보드 토스트 미러 — 화면에 뜬 토스트 내용을 서버 콘솔에 '[오류]내용 : …'로 출력(관측용). msg는 500자 컷.
   'POST /console': async (b) => { logConsole(String((b && b.msg) || '').slice(0, 500)); return { ok: true }; },
+  // 활동 배지 훅 설치(FS-7) — 대시보드 안내 배너의 [훅 설치]가 호출. bin/activity-hook.mjs install을
+  // 자식 프로세스로 실행(스크립트는 top-level 실행형 — import하면 process.exit(0)이 서버를 내린다).
+  // 병합·백업·멱등(기존 wmux 훅 보존)은 스크립트 소관. 반영은 새로 시작하는 Claude 세션부터.
+  'POST /hook-install': () => new Promise((resolveP, rejectP) => {
+    execFile(process.execPath, [HOOK_SCRIPT, 'install'], { timeout: 15_000, windowsHide: true }, (e, _stdout, stderr) => {
+      invalidateHook(); // 성공/실패 무관 즉시 재실측 — 다음 /api/state 폴링에 배너 상태 반영
+      if (e) { logEvent('error', null, 'hook', `활동 배지 훅 설치 실패 — ${(stderr || e.message).trim()}`); return rejectP(err(500, 'hook-install-failed')); }
+      logEvent('info', null, 'hook', '활동 배지 훅 설치 — ~/.claude/settings.json 병합(백업 settings.json.cockpit-bak)');
+      resolveP({ ok: true });
+    });
+  }),
   'POST /adopt': async (b) => {
     // 미연결 세션(wmux 자동 첫 pane 등)을 빈 선언 역할에 바인딩 — adopted[agentId]=role 저장.
     const p = requireProject(b.name);

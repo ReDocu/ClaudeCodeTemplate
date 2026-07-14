@@ -162,7 +162,8 @@ root/<프로젝트>/project.json  (desired — 폴더가 진실)      wmux  (act
 | 노출 | buildState가 **claude on일 때만** `activity` 필드 부착(꺼진 세션 잔존 파일 무시) |
 | 배지 | `⏳ 진행중`(accent) · `⌛ 대기중`(faint) · `⚠ 입력 대기`(warn) |
 | 설치 | `activity-hook.mjs install|uninstall` — 전역 `~/.claude/settings.json` 병합(백업·멱등, 기존 wmux 훅 보존) |
-| 관련 | `bin/activity-hook.mjs`, `src/activity.js`, `server.js`(buildState) |
+| 설치 안내 | 미설치 실측(`hookInstalled()` — settings.json에 항목 없음) 시 대시보드가 배너 노출: 수동 설치 명령 표기 + **[🪝 훅 설치]** 원클릭(`POST /hook-install` — install을 자식 프로세스로 실행) · [숨기기]=localStorage `ck-hook-hide` · 반영은 새로 시작하는 Claude 세션부터 |
+| 관련 | `bin/activity-hook.mjs`, `src/activity.js`(`getActivity`·`hookInstalled`), `server.js`(buildState·`POST /hook-install`), `dashboard.html`(`hook-banner`) |
 
 ### FS-8 · 미연결 세션 & 채택 (adopt)
 
@@ -301,7 +302,7 @@ root/<프로젝트>/project.json  (desired — 폴더가 진실)      wmux  (act
 | 경로 | 반환 | 비고 |
 |---|---|---|
 | `/` | 대시보드 HTML | 토큰 주입 |
-| `/api/state` | `{projects, unlinked, ports}` | 폴링 진입점 |
+| `/api/state` | `{projects, unlinked, ports, hookInstalled}` | 폴링 진입점 · `hookInstalled=false`면 대시보드가 훅 설치 안내 배너 노출(FS-7) |
 | `/api/log?project=&limit=` | `{events}` | limit 최대 100 |
 | `/api/usage` | `{windows[...]}` | 3윈도 |
 | `/api/caps?project=&role=` | `{global}` 또는 세션 caps | project 없으면 global |
@@ -320,6 +321,7 @@ root/<프로젝트>/project.json  (desired — 폴더가 진실)      wmux  (act
 | `/import` | `{path, name?}` | `{name, inPlace, backup}` | 400 path/이동 실패 |
 | `/pick-folder` | `{title?}` | `{path}` (취소=`null` · 비Win=`unsupported`) | — (네이티브 탐색창) |
 | `/console` | `{msg}` | `{ok}` | — (대시보드 토스트를 서버 콘솔 `[오류]내용 : …`로 미러) |
+| `/hook-install` | — | `{ok}` | 500 hook-install-failed (활동 배지 훅 설치 — FS-7 배너 [🪝 훅 설치]) |
 | `/create-git` | `{url, name?}` | `{name, action, git}` | 400 git-url-invalid · name-underivable |
 | `/roles` | `{name, role, action:'remove'}` | `{removed}` | 400 ops-fixed · 409 role-alive |
 | `/claude` | `{agentId}` | `{ok, already?}` | 502 no-surface |
@@ -328,6 +330,7 @@ root/<프로젝트>/project.json  (desired — 폴더가 진실)      wmux  (act
 | `/adopt` | `{name, agentId, role}` | `{agentId, role}` | 409 role-filled · 404 · 400 |
 | `/git-remote` | `{name, url}` | `{action, backup, git}` | 400 git-url-invalid |
 | `/links` | `{name, action, url, label?}` | `{links}` | 400 http-only |
+| `/shutdown` | `{confirm:true}` | `{deactivated, failed}` | **400 confirm-required** — 전 프로젝트 비활성화 → 응답 플러시 → **wmux 앱 종료(taskkill)** → 서버 종료. 평시엔 wmux 수명 비소유, ⏻ 전체 종료만 예외 |
 
 공통 에러: 401(토큰) · 413(body>1MB) · 400 bad-json · 404 unknown-project · 503 wmux-offline.
 

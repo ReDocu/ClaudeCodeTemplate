@@ -7,9 +7,9 @@
 // dead 필터(계승 규칙 ②): agent kill은 리스트에서 안 지워진다 — 어댑터가 걸러 상위는 산 것만 본다.
 import net from 'node:net';
 import { readFileSync } from 'node:fs';
-import { spawnSync } from 'node:child_process';
+import { spawnSync, execFile } from 'node:child_process';
 import { homedir } from 'node:os';
-import { join } from 'node:path';
+import { join, basename } from 'node:path';
 import { readConfig, patchConfig } from './registry.js';
 import { logConsole } from './log.js';
 
@@ -157,6 +157,20 @@ export async function refreshState() {
 export const selectWorkspace = (id) => request('workspace.select', { id });
 export const focusPane = (id) => request('pane.focus', { id });
 export const killAgent = (id) => request('agent.kill', { agentId: id });
+
+// wmux 앱 종료 — 전체 종료(⏻)가 서버와 함께 wmux도 내릴 때 사용. 파이프에 quit 메서드가 없어
+// 프로세스 종료로 내린다(이미지 이름은 config.wmuxBin 기준 · Electron 자식들도 같은 이름이라 함께 종료).
+// 실패해도 던지지 않는다 — 전체 종료 흐름을 막지 않는 게 우선(호출자는 로그만 남긴다).
+export function killApp() {
+  const cfg = readConfig();
+  const image = cfg.wmuxBin ? basename(cfg.wmuxBin) : 'wmux.exe';
+  return new Promise((resolveP) => {
+    const args = process.platform === 'win32' ? ['/F', '/IM', image] : ['-f', image];
+    execFile(process.platform === 'win32' ? 'taskkill' : 'pkill', args,
+      { windowsHide: true, timeout: 10_000 },
+      (e, _stdout, stderr) => resolveP(e ? { ok: false, error: (stderr || e.message).trim() } : { ok: true, image }));
+  });
+}
 
 export function createWorkspace({ title, cwd } = {}) {
   const params = {};
