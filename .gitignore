@@ -9,6 +9,7 @@
 # cockpit root/: 팀 폴더는 로컬 런타임 상태(워크스페이스·에이전트 바인딩 되쓰기 포함) — 추적 안 함.
 # 스캐폴드 원본(.templates)만 추적. .manager(런타임 캐시)도 제외.
 root/*
+claudecockpit_backup/*
 !root/.templates/
 
 # cockpit(리라이트) 런타임 — 토큰·로그·학습값(config.json·logs/·usage-max.json). 새 클론엔 없음.
