@@ -22,7 +22,7 @@ export function logEvent(level, project, event, detail) {
 export function logConsole(content) {
   const s = String(content == null ? '' : content).replace(/\s+/g, ' ').trim();
   if (!s) return;
-  console.log(`[오류]내용 : ${s}`);
+  console.log(`내용 : ${s}`);
 }
 
 // 최신순 조회 — GET /api/log?project=&limit=. 파일 없음 = 빈 목록(수동 삭제 무해).
