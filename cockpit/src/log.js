@@ -17,6 +17,14 @@ export function logEvent(level, project, event, detail) {
   return entry;
 }
 
+// 서버 콘솔 통합 싱크 — 대시보드 토스트(POST /console)와 wmux 파이프에 나오는 내용을 한 형식으로 콘솔에 출력.
+// 사용자 요청: 토스트/ wmux에 나오는 내용 전부 '[오류]내용 : …'로 서버 콘솔에 기록(관측용). 여러 줄·중복 공백은 한 줄로.
+export function logConsole(content) {
+  const s = String(content == null ? '' : content).replace(/\s+/g, ' ').trim();
+  if (!s) return;
+  console.log(`[오류]내용 : ${s}`);
+}
+
 // 최신순 조회 — GET /api/log?project=&limit=. 파일 없음 = 빈 목록(수동 삭제 무해).
 export function readLog({ project, limit = 20 } = {}) {
   let lines;

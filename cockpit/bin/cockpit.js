@@ -2,8 +2,9 @@
 // cockpit CLI — serve · boot (FS-3·13). 리라이트: 구 teamctl boot/locate 참고 재작성.
 //   node cockpit/bin/cockpit.js serve [--port 7420]
 //   node cockpit/bin/cockpit.js boot  [--port 7420]
-// boot 시퀀스(FS-13): ① wmux 보장(탐색 체인) ② 서버 보장(멱등 재사용)
-//                    ③ active 프로젝트 자동 재수렴(C3 — wmux 재시작 복원) ④ 기본 브라우저 오픈.
+// boot 시퀀스(FS-13): ① wmux 보장(탐색 체인) — 갓 기동했으면 ①-b 클린 슬레이트(복원분 정리)
+//                    ② 서버 보장(멱등 재사용) ③ active 프로젝트 자동 재수렴(C3 — wmux 재시작 복원)
+//                    ④ 기본 브라우저 오픈.
 import { spawn, spawnSync } from 'node:child_process';
 import { existsSync, readdirSync } from 'node:fs';
 import { join, dirname, resolve } from 'node:path';
@@ -123,6 +124,18 @@ async function boot() {
   console.log('[boot] ① wmux 확인/기동');
   const w = await ensureWmux({ setup });
   console.log(`[boot]    wmux ${w.action === 'reused' ? '이미 실행 중 — 재사용' : `기동 완료 (pid ${w.pid})`}`);
+
+  // ①-b 클린 슬레이트 — boot이 wmux를 **직접 기동한 경우에만**. wmux가 자동 복원한 이전
+  // 세션·워크스페이스(같은 제목 중복 → 순서 따라 오바인딩)를 전부 걷어내고 대시보드 선언 기준으로
+  // 재구성한다. 이미 실행 중이던 wmux(reused)는 살아있는 작업일 수 있어 절대 건드리지 않는다.
+  if (w.action === 'started') {
+    console.log('[boot] ①-b wmux 초기화 — 자동 복원된 이전 세션·워크스페이스 정리');
+    try {
+      const { cleanSlate } = await import('../src/lifecycle.js');
+      const r = await cleanSlate();
+      console.log(`[boot]    복원 세션 ${r.killed}개 종료 · 워크스페이스 ${r.closed}개 닫음 — 대시보드 상태로 재구성`);
+    } catch (e) { console.warn(`[boot]    초기화 실패 — ${e.message} (그대로 진행)`); }
+  }
 
   const cfg = readConfig();
   const PORT = Number(flag('--port')) || cfg.port || 7420;

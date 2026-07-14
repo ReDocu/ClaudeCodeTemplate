@@ -11,6 +11,7 @@ import { spawnSync } from 'node:child_process';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
 import { readConfig, patchConfig } from './registry.js';
+import { logConsole } from './log.js';
 
 const PIPE = process.env.WMUX_PIPE || '\\\\.\\pipe\\wmux';
 const TIMEOUT = 10_000;
@@ -25,7 +26,7 @@ function token() {
     const suffix = process.env.WMUX_INSTANCE?.trim() ? `-${process.env.WMUX_INSTANCE.trim()}` : '';
     const base = process.env.APPDATA || join(homedir(), 'AppData', 'Roaming');
     return (_token = readFileSync(join(base, `wmux${suffix}`, 'pipe-token'), 'utf8').trim());
-  } catch { return (_token = ''); }
+  } catch { return ''; } // 실패는 캐시하지 않음 — 갓 기동한 wmux가 토큰 파일을 아직 안 썼을 수 있어 다음 요청에서 재시도
 }
 
 // 한 연결 = 한 요청 — 첫 개행(또는 서버 종료)까지 읽고 즉시 소켓·타이머 정리.
@@ -45,7 +46,8 @@ function exchange(line, timeoutMs = TIMEOUT) {
   });
 }
 
-// ── 서버 콘솔 디버그 로깅 — wmux로 나가는 명령·설명·결과/실패를 stdout/stderr에 출력 ──
+// ── 서버 콘솔 디버그 로깅 — wmux로 나가는 명령·설명·결과/실패를 서버 콘솔에 출력 ──
+// 사용자 요청대로 logConsole 경유로 '[오류]내용 : …' 통일 형식(wmux 상세는 내용에 그대로 보존).
 // 고빈도 폴링 read(workspace.list·agent.list)는 소음이라 성공 로그 제외(실패는 오프라인 진단상 항상 출력).
 // COCKPIT_WMUX_LOG=0 으로 끄기. 콘솔이 보이는 곳에서 실행해야 보임(`node cockpit/bin/cockpit.js serve`).
 const QUIET = new Set(['workspace.list', 'agent.list']);
@@ -66,17 +68,17 @@ const _resId = (r) => r && (r.workspace?.id || r.workspaceId || r.agent?.agentId
 let _seq = 0;
 export async function request(method, params = {}, timeoutMs = TIMEOUT) {
   const loud = LOG_WMUX && !QUIET.has(method);
-  if (loud) console.log(`${_hms()} [wmux→] ${method}  ${CMD_DESC[method] ? CMD_DESC[method](params) : JSON.stringify(params)}`);
+  if (loud) logConsole(`${_hms()} [wmux→] ${method}  ${CMD_DESC[method] ? CMD_DESC[method](params) : JSON.stringify(params)}`);
   let raw;
   try { raw = await exchange(JSON.stringify({ method, params, id: ++_seq, token: token() }), timeoutMs); }
-  catch (e) { if (LOG_WMUX) console.error(`${_hms()} [wmux✗] ${method} 전송 실패 — ${e.message}`); throw e; }
+  catch (e) { if (LOG_WMUX) logConsole(`${_hms()} [wmux✗] ${method} 전송 실패 — ${e.message}`); throw e; }
   let res;
   try { res = JSON.parse(raw); } catch { return { raw }; }
   if (res.error) {
-    if (LOG_WMUX) console.error(`${_hms()} [wmux✗] ${method} — ${res.error.message || JSON.stringify(res.error)}`);
+    if (LOG_WMUX) logConsole(`${_hms()} [wmux✗] ${method} — ${res.error.message || JSON.stringify(res.error)}`);
     throw new Error(res.error.message || String(res.error));
   }
-  if (loud) { const id = _resId(res.result); console.log(`${_hms()} [wmux✓] ${method}${id ? ` → ${id}` : ' ok'}`); }
+  if (loud) { const id = _resId(res.result); logConsole(`${_hms()} [wmux✓] ${method}${id ? ` → ${id}` : ' ok'}`); }
   return res.result;
 }
 
@@ -103,6 +105,7 @@ const normWs = (w) => ({ id: w.id || w.workspaceId || null, title: w.title || w.
 
 const TTL = 1500;
 let _cache = null, _at = 0, _inflight = null;
+let _epoch = 0; // 연결 세대(신뢰성 개편 ④) — offline→online 전환마다 증가. wmux 재시작 감지 신호.
 
 function _refetch() {
   if (_inflight) return _inflight; // single-flight
@@ -112,13 +115,14 @@ function _refetch() {
         request('workspace.list'),
         request('agent.list').catch(() => ({ agents: [] })),
       ]);
+      if (!_cache || !_cache.live) _epoch++; // 첫 연결·재연결 — id 공간이 갈렸을 수 있음(reconcile이 재검증)
       _cache = {
         workspaces: (ws.workspaces || []).map(normWs),
         agents: (ag.agents || []).filter((a) => !isDead(a)).map(normAgent),
-        live: true,
+        live: true, epoch: _epoch, at: Date.now(), // at = 스냅샷 시각(reconcile의 스냅샷당 1회 판정용)
       };
     } catch {
-      _cache = { workspaces: [], agents: [], live: false }; // 오프라인
+      _cache = { workspaces: [], agents: [], live: false, epoch: _epoch, at: Date.now() }; // 오프라인
     }
     _at = Date.now();
     return _cache;
@@ -140,6 +144,14 @@ export async function getFresh() {
   return _refetch();
 }
 export function invalidate() { _at = 0; _refetch().catch(() => {}); }
+// 변이 직후 read-your-writes(신뢰성 개편 ①) — 변이 **이후에 시작된** 실왕복이 끝날 때까지 기다린다.
+// 진행 중이던 refetch는 변이 전에 시작됐을 수 있어 결과를 신뢰하지 않고, 끝나길 기다렸다가 새로 왕복.
+// 변이 핸들러가 이걸 await하고 응답하면 직후 폴링이 이전 화면을 보는 창이 사라진다.
+export async function refreshState() {
+  _at = 0;
+  if (_inflight) { try { await _inflight; } catch { /* 실패해도 새 왕복은 진행 */ } _at = 0; }
+  return _refetch();
+}
 
 // ── 제어 ──
 export const selectWorkspace = (id) => request('workspace.select', { id });
@@ -159,11 +171,14 @@ export async function closeWorkspace(id) {
 }
 
 // 스폰 — cwd 항상 명시(계승 규칙 ③ — cwd 드리프트 원천 차단).
-export function spawnAgent({ workspaceId, label, cwd, cmd } = {}) {
+// env(신뢰성 개편 ⑥): 세션 신원(COCKPIT_PROJECT/ROLE)을 pane 환경에 주입 — wmux 미지원 시
+// 호출자(lifecycle)가 env 없이 재시도한다. 지원 여부와 무관하게 스폰 자체는 동일.
+export function spawnAgent({ workspaceId, label, cwd, cmd, env } = {}) {
   if (!cmd) throw new Error('cmd 필요');
   if (!cwd) throw new Error('cwd 필요(드리프트 방지 — 항상 명시)');
   const params = { cmd, label: label || cmd.split(/\s+/)[0], cwd };
   if (workspaceId) params.workspaceId = workspaceId;
+  if (env) params.env = env;
   return request('agent.spawn', params);
 }
 

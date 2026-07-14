@@ -1,24 +1,28 @@
 // HTTP 레이어(유일) — FS-3 + 전 엔드포인트(§8.4, 이 목록이 전부):
 //   GET  / · /api/state · /api/log · /api/caps · /api/usage
 //   POST /activate · /spawn · /kill-session · /deactivate · /archive · /reopen · /create · /import · /create-git · /roles
-//        /claude · /attach · /open · /links · /git-remote · /adopt
+//        /claude · /attach · /open · /links · /git-remote · /adopt · /pick-folder · /console · /shutdown
 // 127.0.0.1 바인드 + X-Cockpit-Token(GET / 제외 전부, A-5). 어떤 프로브도 응답을 막지 않는다(§9-⑥).
 import { createServer } from 'node:http';
-import { readFileSync, existsSync, mkdirSync } from 'node:fs';
-import { spawn } from 'node:child_process';
+import { readFileSync, existsSync, mkdirSync, writeFileSync, rmSync } from 'node:fs';
+import { spawn, execFile } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
+import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { join, basename } from 'node:path';
 import { ROOT, readConfig, patchConfig, scanProjects, findProject, createProject, importProject, removeRole, writeProject } from './registry.js';
 import { getState, getFresh, invalidate, selectWorkspace, focusPane, sendLine } from './wmux.js';
-import { activate, deactivate, archive, reopen, spawnRole, killSession, matchWorkspace, agentsOfWs } from './lifecycle.js';
+import {
+  activate, deactivate, archive, reopen, spawnRole, killSession,
+  matchWorkspace, matchWorkspaceInfo, agentsOfWs, reconcile, parseLabel, roleOf,
+} from './lifecycle.js';
 import { claudeAlive, claudeAliveFresh, invalidateProc } from './proc.js';
 import { getPorts } from './ports.js';
 import { getGit, connectRemote, repoNameFromUrl } from './git.js';
 import { getActivity } from './activity.js';
 import { globalCaps, sessionCaps } from './caps.js';
 import { getUsage } from './usage.js';
-import { logEvent, readLog } from './log.js';
+import { logEvent, readLog, logConsole } from './log.js';
 
 const DASHBOARD = fileURLToPath(new URL('../dashboard.html', import.meta.url));
 const err = (status, code) => Object.assign(new Error(code), { status });
@@ -28,18 +32,19 @@ const err = (status, code) => Object.assign(new Error(code), { status });
 function buildState(state) {
   const { projects, errors } = scanProjects();
   reportScanErrors(errors);
+  reconcile(state, projects); // 자기치유(②④) — stale wsId 되쓰기/해제·stale 채택 청소(그레이스 경유)
   const dirLc = (p) => (p._dir || '').toLowerCase();
   const payloadProjects = [];
   const portInfo = [];
   const linkedWs = new Set(); // 프로젝트에 매칭된 workspace id — 나머지는 '미연결'로 분류
   for (const p of projects) {
-    const ws = state.live ? matchWorkspace(state, p) : null;
+    const { ws, via: wsVia } = state.live ? matchWorkspaceInfo(state, p) : { ws: null, via: null };
     if (ws) linkedWs.add(ws.id);
     const agents = ws ? agentsOfWs(state, ws.id) : [];
-    // 세션→역할 해석: 채택 매핑(adopted[agentId]) 우선, 없으면 label. 선언 역할이면 connected.
+    // 세션→역할 해석(③): 채택 > 네임스페이스 label(같은 프로젝트) > plain label(구 형식). 선언 역할이면 connected.
     const declaredRoles = new Set(['ops', ...(p.roles || []).map((r) => r.id)]);
     const adopted = p.adopted || {};
-    const resolveRole = (a) => adopted[a.agentId] || a.label;
+    const resolveRole = (a) => roleOf(p, a);
     // 세션 정렬 — ops 먼저, 이후 선언 역할 순서, 미연결(orphan)은 뒤(FS-5의 스폰 순서와 동형).
     const orderOf = (a) => { const role = resolveRole(a); return role === 'ops' ? 0 : (() => {
       const i = (p.roles || []).findIndex((r) => r && r.id === role);
@@ -51,14 +56,18 @@ function buildState(state) {
       createdAt: p.createdAt || null, archivedAt: p.archivedAt || null,
       links: p.links || [], roles: (p.roles || []).map((r) => ({ id: r.id })),
       // git 칩은 ops(코드베이스) 기준 — ops가 저장소면 ops, 아니면 프로젝트 루트로 폴백(레거시 호환).
-      wsLive: !!ws, git: getGit(existsSync(join(p._dir, 'ops', '.git')) ? join(p._dir, 'ops') : p._dir),
+      wsLive: !!ws, wsVia, git: getGit(existsSync(join(p._dir, 'ops', '.git')) ? join(p._dir, 'ops') : p._dir),
       sessions: agents.map((a) => {
         const alive = claudeAlive(a.pid);
         const adoptedRole = adopted[a.agentId];
-        const connected = !!adoptedRole || declaredRoles.has(a.label); // 선언 역할 label 일치 또는 채택됨
-        const role = adoptedRole || a.label || a.agentId;
+        const ns = parseLabel(a.label);
+        const resolved = resolveRole(a);
+        const connected = !!adoptedRole || (resolved !== null && declaredRoles.has(resolved));
+        const role = resolved || (ns ? `${ns.project}/${ns.role}` : a.label) || a.agentId;
         return { role, agentId: a.agentId, alive: true,
-          connected, adopted: !!adoptedRole, claude: alive === true ? 'on' : alive === false ? 'off' : 'unknown',
+          connected, adopted: !!adoptedRole,
+          via: adoptedRole ? 'adopted' : ns ? 'label-ns' : 'label', // 매칭 근거(⑦) — 드로어 표시·진단용
+          claude: alive === true ? 'on' : alive === false ? 'off' : 'unknown',
           // 활동 상태(FS-훅): claude 실행 중일 때만 의미 — 훅이 쓴 상태 파일 실측(없으면 null).
           activity: alive === true ? getActivity(p._folder, role) : null };
       }),
@@ -77,7 +86,8 @@ function buildState(state) {
         wsId: w.id, title: w.title || '(제목 없음)',
         sessions: agents.map((a) => {
           const alive = claudeAlive(a.pid);
-          return { role: a.label || a.agentId, agentId: a.agentId, claude: alive === true ? 'on' : alive === false ? 'off' : 'unknown' };
+          const ns = parseLabel(a.label); // 네임스페이스 label은 사람이 읽게 프로젝트/역할로 풀어 표시
+          return { role: ns ? `${ns.project}/${ns.role}` : (a.label || a.agentId), agentId: a.agentId, claude: alive === true ? 'on' : alive === false ? 'off' : 'unknown' };
         }),
       });
     }
@@ -98,6 +108,91 @@ function requireProject(name) {
   const p = findProject(name);
   if (!p) throw err(404, 'unknown-project');
   return p;
+}
+
+// 네이티브 폴더 선택창(Windows) — 대시보드 "찾아보기"가 절대경로 타이핑 대신 클릭으로 폴더를 고르게(FS-9 보조).
+// 서버(127.0.0.1)와 브라우저가 같은 머신이라 서버가 사용자 데스크톱에 모달 대화상자를 띄운다 — /open의 explorer 스폰과 동형.
+//
+// 포그라운드 문제: 브라우저 클릭으로 서버가 백그라운드에서 PowerShell을 띄우면 Windows 포그라운드 잠금 때문에
+// 대화상자가 다른 창 뒤로 간다. 그래서 보이지 않는(opacity 0) TopMost 소유자 폼을 정상 표시한 뒤,
+// Win32(AttachThreadInput+SetForegroundWindow+SetWindowPos TOPMOST)로 잠금을 우회해 맨 앞으로 끌어올린다.
+// -File로 임시 .ps1 실행(C# 인라인·한글 설명 인용 안전). 취소=path:null · 비Windows=unsupported(수동 입력 폴백).
+function pickFolder({ title } = {}) {
+  if (process.platform !== 'win32') return Promise.resolve({ path: null, unsupported: true });
+  const desc = String(title || '연동할 기존 프로젝트 폴더를 선택하세요').replace(/[\r\n]/g, ' ').replace(/'/g, "''").slice(0, 120);
+  const script = `$ErrorActionPreference = 'Stop'
+Add-Type -AssemblyName System.Windows.Forms
+Add-Type -AssemblyName System.Drawing
+Add-Type -TypeDefinition @'
+using System;
+using System.Runtime.InteropServices;
+public static class CockpitFg {
+  [DllImport("user32.dll")] static extern IntPtr GetForegroundWindow();
+  [DllImport("user32.dll")] static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint pid);
+  [DllImport("kernel32.dll")] static extern uint GetCurrentThreadId();
+  [DllImport("user32.dll")] static extern bool AttachThreadInput(uint idAttach, uint idAttachTo, bool fAttach);
+  [DllImport("user32.dll")] static extern bool SetForegroundWindow(IntPtr hWnd);
+  [DllImport("user32.dll")] static extern bool BringWindowToTop(IntPtr hWnd);
+  [DllImport("user32.dll")] static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
+  [DllImport("user32.dll")] static extern bool SetWindowPos(IntPtr hWnd, IntPtr after, int X, int Y, int cx, int cy, uint flags);
+  static IntPtr HWND_TOPMOST = new IntPtr(-1);
+  static IntPtr HWND_NOTOPMOST = new IntPtr(-2);
+  const uint SWP_NOMOVE = 0x0002;
+  const uint SWP_NOSIZE = 0x0001;
+  const uint SWP_SHOWWINDOW = 0x0040;
+  public static void Bring(IntPtr hWnd) {
+    IntPtr fg = GetForegroundWindow();
+    uint pid;
+    uint fgThread = GetWindowThreadProcessId(fg, out pid);
+    uint our = GetCurrentThreadId();
+    AttachThreadInput(our, fgThread, true);
+    ShowWindow(hWnd, 5);
+    SetWindowPos(hWnd, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_SHOWWINDOW);
+    SetWindowPos(hWnd, HWND_NOTOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_SHOWWINDOW);
+    BringWindowToTop(hWnd);
+    SetForegroundWindow(hWnd);
+    AttachThreadInput(our, fgThread, false);
+  }
+}
+'@
+$owner = New-Object System.Windows.Forms.Form
+$owner.Text = 'Cockpit 폴더 선택'
+$owner.StartPosition = 'CenterScreen'
+$owner.Size = New-Object System.Drawing.Size(1, 1)
+$owner.Opacity = 0
+$owner.ShowInTaskbar = $false
+$owner.TopMost = $true
+$owner.Show()
+[System.Windows.Forms.Application]::DoEvents()
+[CockpitFg]::Bring($owner.Handle)
+$d = New-Object System.Windows.Forms.FolderBrowserDialog
+$d.Description = '${desc}'
+$d.ShowNewFolderButton = $false
+$res = $d.ShowDialog($owner)
+if ($res -eq [System.Windows.Forms.DialogResult]::OK) { [Console]::Out.Write($d.SelectedPath) }
+$owner.Close()
+`;
+  const file = join(tmpdir(), `cockpit-pick-${randomBytes(6).toString('hex')}.ps1`);
+  return new Promise((resolveP) => {
+    let done = false;
+    const finish = (path) => { if (done) return; done = true; try { rmSync(file, { force: true }); } catch { /* temp 정리 실패 무시 */ } resolveP({ path }); };
+    try { writeFileSync(file, '﻿' + script, 'utf8'); } // UTF-8 BOM — PowerShell 5.1이 한글 설명을 UTF-8로 읽게
+    catch { return resolveP({ path: null }); }
+    execFile('powershell.exe', ['-NoProfile', '-STA', '-ExecutionPolicy', 'Bypass', '-File', file],
+      { windowsHide: true, timeout: 5 * 60 * 1000 }, // 5분 방치 시 kill → path:null
+      (_e, stdout) => finish((stdout || '').trim() || null));
+  });
+}
+
+// POST /shutdown 전용 — 응답이 플러시된 뒤 서버를 닫고 프로세스를 내린다. _server는 serve()가 등록.
+// wmux 수명은 소유하지 않으므로(FS-13) wmux 자체는 그대로 둔다 — 내리는 건 cockpit 서버뿐.
+let _server = null;
+function scheduleExit() {
+  setTimeout(() => {
+    console.log('[cockpit] 전체 종료 — 프로젝트 비활성화(대기중 전환) 완료, 서버를 내립니다.');
+    try { if (_server) _server.close(); } catch { /* 이미 닫힘 — 종료는 계속 */ }
+    setTimeout(() => process.exit(0), 200);
+  }, 400);
 }
 
 async function findAgent(agentId, fresh = false) {
@@ -121,13 +216,28 @@ const routes = {
 
   'POST /activate': async (b) => activate(b.name),
   'POST /spawn': async (b) => spawnRole(b.name, b.role), // role 지정=개별([＋ 세션 활성화]) · 생략=전체 수렴
-  'POST /kill-session': async (b) => killSession(b.name, b.agentId), // 개별 비활성화(세밀 kill — 대시보드가 claude 실행 중이면 확인)
+  'POST /kill-session': async (b) => killSession(b.name, b.agentId, b.role), // 개별 비활성화 — role은 낙관적 재검증(⑤, 불일치=409)
   'POST /deactivate': async (b) => {
     if (b.confirm !== true) throw err(400, 'confirm-required'); // §9-3 — kill은 항상 확인 경유
     return deactivate(b.name);
   },
   'POST /archive': async (b) => archive(b.name),
   'POST /reopen': async (b) => reopen(b.name),
+  // 전체 종료 — active 프로젝트 전부 비활성화(세션 kill → 대기중)한 뒤 서버 프로세스를 내린다.
+  // kill 경유이므로 confirm 필수(§9-3 — /deactivate와 동형). 실패 프로젝트는 응답·로그로 보고하고 종료는 계속.
+  'POST /shutdown': async (b) => {
+    if (b.confirm !== true) throw err(400, 'confirm-required');
+    const actives = scanProjects().projects.filter((p) => p.status === 'active');
+    const deactivated = [], failed = [];
+    for (const p of actives) {
+      try { await deactivate(p.name); deactivated.push(p.name); }
+      catch (e) { failed.push(p.name); logEvent('error', p.name, 'shutdown', `비활성화 실패 — ${e.message}`); }
+    }
+    logEvent('info', null, 'shutdown',
+      `전체 종료 — 프로젝트 ${deactivated.length}개 비활성화(대기중)${failed.length ? ` · 실패 ${failed.join('·')}` : ''} · 서버 종료`);
+    scheduleExit();
+    return { ok: true, deactivated, failed };
+  },
 
   'POST /create': async (b) => {
     const r = createProject({ name: b.name, roles: b.roles || [] });
@@ -161,10 +271,10 @@ const routes = {
   'POST /roles': async (b) => {
     if (b.action !== 'remove') throw err(400, 'unknown-action'); // 추가는 POST /create 병합 경로
     const p = requireProject(b.name);
-    // 살아있는 세션 가드(FS-8-3) — 그 역할의 세션이 떠 있으면 409(비활성화/정리 후).
+    // 살아있는 세션 가드(FS-8-3) — 그 역할의 세션이 떠 있으면 409(비활성화/정리 후). 역할 해석은 roleOf(③).
     const state = await getFresh();
     const ws = state.live ? matchWorkspace(state, p) : null;
-    if (ws && agentsOfWs(state, ws.id).some((a) => a.label === b.role)) throw err(409, 'role-alive');
+    if (ws && agentsOfWs(state, ws.id).some((a) => roleOf(p, a) === b.role)) throw err(409, 'role-alive');
     const r = removeRole(b.name, b.role);
     if (r.removed) logEvent('info', p.name, 'roles', `역할 제거 — ${b.role} (선언만, 폴더 보존)`);
     return { ok: true, removed: r.removed };
@@ -178,7 +288,8 @@ const routes = {
     await sendLine('claude', a.surfaceId);
     invalidateProc();
     const proj = scanProjects().projects.find((p) => p.wsId === a.workspaceId);
-    logEvent('info', proj?.name || null, 'claude', `${a.label || a.agentId} 세션에 claude 기동 전송`);
+    const nsL = parseLabel(a.label);
+    logEvent('info', proj?.name || null, 'claude', `${nsL ? nsL.role : (a.label || a.agentId)} 세션에 claude 기동 전송`);
     return { ok: true };
   },
   'POST /attach': async (b) => {
@@ -194,6 +305,11 @@ const routes = {
     spawn('explorer.exe', [dir], { detached: true, stdio: 'ignore' }).unref();
     return { ok: true };
   },
+  // 네이티브 폴더 선택창을 띄우고 선택된 절대경로를 돌려줌 — "기존 프로젝트 연동"이 경로를 클릭으로 고르게(FS-9 보조).
+  // 순수 읽기(FS 변이 없음) — 실제 연동(이동)은 사용자가 확인 후 POST /import이 수행.
+  'POST /pick-folder': async (b) => pickFolder({ title: b && b.title }),
+  // 대시보드 토스트 미러 — 화면에 뜬 토스트 내용을 서버 콘솔에 '[오류]내용 : …'로 출력(관측용). msg는 500자 컷.
+  'POST /console': async (b) => { logConsole(String((b && b.msg) || '').slice(0, 500)); return { ok: true }; },
   'POST /adopt': async (b) => {
     // 미연결 세션(wmux 자동 첫 pane 등)을 빈 선언 역할에 바인딩 — adopted[agentId]=role 저장.
     const p = requireProject(b.name);
@@ -208,8 +324,8 @@ const routes = {
     const wsAgents = agentsOfWs(state, ws.id);
     if (!wsAgents.some((a) => a.agentId === agentId)) throw err(404, 'agent-not-in-workspace'); // 이 프로젝트 workspace의 세션만
     const adopted = p.adopted || {};
-    // 역할이 이미 살아있는 다른 세션(label 일치 또는 다른 채택)으로 차 있으면 거부(이중 바인딩 방지).
-    if (wsAgents.some((a) => a.agentId !== agentId && (a.label === role || adopted[a.agentId] === role))) throw err(409, 'role-filled');
+    // 역할이 이미 살아있는 다른 세션(역할 해석 일치 — 채택/네임스페이스/구형식)으로 차 있으면 거부(이중 바인딩 방지).
+    if (wsAgents.some((a) => a.agentId !== agentId && roleOf(p, a) === role)) throw err(409, 'role-filled');
     p.adopted = { ...adopted, [agentId]: role };
     writeProject(p);
     logEvent('info', p.name, 'adopt', `세션 ${agentId} → 역할 ${role} 채택 (동기화)`);
@@ -290,6 +406,7 @@ export async function serve({ port } = {}) {
     server.on('error', rejectP);
     server.listen(PORT, '127.0.0.1', resolveP);
   });
+  _server = server; // POST /shutdown의 scheduleExit()가 닫을 수 있게 등록
 
   const n = scanProjects().projects.length;
   console.log(`[cockpit] 서버 가동 — http://127.0.0.1:${PORT}/  (127.0.0.1 전용 — 방화벽 허용 불필요)`);

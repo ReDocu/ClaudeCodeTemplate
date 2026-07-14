@@ -76,7 +76,10 @@ function uninstall() {
 async function record(state) {
   let cwd = process.cwd();
   try { const raw = await readStdin(); if (raw) { const j = JSON.parse(raw); if (j && j.cwd) cwd = j.cwd; } } catch { /* stdin 없음 — process.cwd() */ }
-  const key = deriveKey(cwd);
+  // 세션 신원 env 우선(신뢰성 개편 ⑥) — 스폰 시 pane에 주입된 COCKPIT_PROJECT/ROLE.
+  // cd로 다른 폴더에 가도 활동이 남의 세션 키로 오귀속되지 않는다. 없으면 cwd 역산(구 세션 호환).
+  const envP = (process.env.COCKPIT_PROJECT || '').trim(), envR = (process.env.COCKPIT_ROLE || '').trim();
+  const key = envP && envR ? { project: envP, role: envR } : deriveKey(cwd);
   if (!key) return; // cockpit 세션 아님 → 무동작
   mkdirSync(ACT_DIR, { recursive: true });
   const file = join(ACT_DIR, `${sanitize(key.project)}__${sanitize(key.role)}.json`);

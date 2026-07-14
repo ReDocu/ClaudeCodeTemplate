@@ -43,6 +43,8 @@
   .tbtn:hover{border-color:var(--accent-dim)}
   .tbtn:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
   .tbtn.primary{border-color:var(--accent-dim);color:var(--accent);background:#4fd6c910}
+  .tbtn.danger{border-color:#f4685c55;color:var(--crit);background:#f4685c10}
+  .tbtn.danger:hover{border-color:var(--crit)}
   .refresh{font-size:11px;color:var(--faint)}
 
   /* legend */
@@ -249,6 +251,9 @@
   .namer .field{display:flex;flex-direction:column;gap:4px;margin-bottom:10px;font-size:11.5px;color:var(--muted)}
   .namer input{font-family:inherit;font-size:13px;color:var(--text);background:var(--bg);border:1px solid var(--border-2);border-radius:8px;padding:8px 10px;outline:none}
   .namer input:focus{border-color:var(--accent-dim)}
+  .namer .nm-a-row{display:flex;gap:6px;align-items:stretch}
+  .namer .nm-a-row input{flex:1;min-width:0}
+  .namer .nm-a-row .btn{flex:none;white-space:nowrap}
   .namer input.mono{font-family:var(--mono);font-size:12px}
   .namer .err{color:var(--crit);font-size:11.5px;min-height:15px;margin:-3px 0 8px}
 
@@ -271,6 +276,13 @@
 
   .foot{margin-top:16px;font-size:11px;color:var(--faint);text-align:center;line-height:1.7}
   .foot code{font-family:var(--mono);color:var(--muted)}
+
+  /* 전체 종료 화면 — POST /shutdown 성공 후 조작 차단 + 안내(서버 내려감·폴링 중단) */
+  #bye{position:fixed;inset:0;z-index:90;display:flex;align-items:center;justify-content:center;background:#070b11ee}
+  #bye .box{text-align:center;border:1px solid var(--border-2);background:var(--panel);border-radius:14px;
+    padding:34px 46px;box-shadow:0 24px 80px -24px #000;max-width:min(480px,92vw)}
+  #bye h2{margin:0 0 9px;font-size:17px;color:var(--text)}
+  #bye p{margin:0;font-size:12.5px;color:var(--muted);line-height:1.75}
 </style>
 </head>
 <body>
@@ -291,9 +303,10 @@
       <span class="refresh mono" id="refresh">⟳ 방금</span>
       <button class="tbtn" onclick="doRefresh()">새로고침</button>
       <button class="tbtn" onclick="openFeedback()" title="버그·문의·제안 — 문의 폼 열기(새 탭)">💬 문의</button>
-      <button class="tbtn" onclick="importPrompt()" title="기존 프로젝트 폴더를 root/로 이동(move)하고 대기중으로 등록 — POST /import">기존 프로젝트 연동</button>
+      <button class="tbtn" onclick="importPrompt()" title="📁 탐색창으로 기존 프로젝트 폴더를 골라 root/로 이동(move)하고 대기중으로 등록 — POST /pick-folder · /import">기존 프로젝트 연동</button>
       <button class="tbtn" onclick="createFromGitPrompt()" title="git 저장소를 clone해 root/<이름>/ops/ 코드베이스로 새 프로젝트 등록 — POST /create-git">＋ git 주소</button>
       <button class="tbtn primary" onclick="createPrompt()" title="root/<프로젝트>/ 스캐폴드 생성 후 대기중 등록 — POST /create">＋ 새 프로젝트</button>
+      <button class="tbtn danger" onclick="shutdownPrompt()" title="전체 종료 — 모든 진행중 프로젝트를 비활성화(세션 종료 후 대기중 전환)하고 서버를 내림 — POST /shutdown (확인 필수)">⏻ 종료</button>
     </div>
   </header>
 
@@ -335,7 +348,7 @@
     </div>
   </div>
 
-  <p class="foot">ClaudeCockpit 리라이트 v1 — 프로젝트 생명주기 관제 · 활성화→<code>POST /activate</code>(ops 1번+역할, 멱등) · 비활성화(확인)→<code>POST /deactivate</code> · 보관/재개→<code>POST /archive</code>·<code>/reopen</code> · 연동/생성→<code>POST /import</code>·<code>/create</code>·<code>/create-git</code> · 역할 추가/제거→<code>POST /create</code>(병합)·<code>/roles</code> · 세션 클릭→상세 드로어(기능 인벤토리), [열기 ↗]→<code>POST /attach</code> · ▶ Claude 실행→<code>POST /claude</code> · 폴더→<code>POST /open</code> · 링크→<code>POST /links</code> · 포트/기능→<code>GET /api/state.ports</code>·<code>GET /api/caps</code> · 데이터는 <code>GET /api/state</code>·<code>/api/log</code> 폴링</p>
+  <p class="foot">ClaudeCockpit 리라이트 v1 — 프로젝트 생명주기 관제 · 활성화→<code>POST /activate</code>(ops 1번+역할, 멱등) · 비활성화(확인)→<code>POST /deactivate</code> · 전체 종료(확인)→<code>POST /shutdown</code>(전 프로젝트 비활성화→대기중→서버 종료) · 보관/재개→<code>POST /archive</code>·<code>/reopen</code> · 연동/생성→<code>POST /import</code>·<code>/create</code>·<code>/create-git</code> · 역할 추가/제거→<code>POST /create</code>(병합)·<code>/roles</code> · 세션 클릭→상세 드로어(기능 인벤토리), [열기 ↗]→<code>POST /attach</code> · ▶ Claude 실행→<code>POST /claude</code> · 폴더→<code>POST /open</code> · 링크→<code>POST /links</code> · 포트/기능→<code>GET /api/state.ports</code>·<code>GET /api/caps</code> · 데이터는 <code>GET /api/state</code>·<code>/api/log</code> 폴링</p>
 </div>
 
 <!-- drawer — 세션 상세(FS-15) -->
@@ -369,7 +382,8 @@
   <h2 id="nm-title">이름 입력</h2>
   <div class="cf-sub" id="nm-sub"></div>
   <div class="cf-warn" id="nm-warn" hidden></div>
-  <div class="field"><label for="nm-a" id="nm-a-label">이름</label><input id="nm-a" autocomplete="off" spellcheck="false"></div>
+  <div class="field"><label for="nm-a" id="nm-a-label">이름</label>
+    <div class="nm-a-row"><input id="nm-a" autocomplete="off" spellcheck="false"><button type="button" class="btn" id="nm-browse" hidden onclick="nmBrowse()">📁 찾아보기</button></div></div>
   <div class="field" id="nm-b-row" hidden><label for="nm-b" id="nm-b-label"></label><input id="nm-b" class="mono" autocomplete="off" spellcheck="false"></div>
   <div class="err" id="nm-err"></div>
   <div class="cf-ctrl">
@@ -385,6 +399,14 @@
   <div class="cf-sub">중앙 이벤트 로그(<span class="mono">workspace/logs/events.jsonl</span>) — 상태 전이·스폰/kill·에러, 최근 20건</div>
   <div class="feed" id="lg-feed"></div>
   <div class="cf-ctrl"><button class="btn" onclick="closeLog()">닫기</button></div>
+</div>
+
+<!-- 전체 종료 안내 — POST /shutdown 성공 후 표시(터미널 상태 — 닫기 없음, 폴링 중단) -->
+<div id="bye" hidden>
+  <div class="box" role="alertdialog" aria-modal="true" aria-labelledby="bye-title" aria-describedby="bye-sub">
+    <h2 id="bye-title">⏻ Cockpit 종료됨</h2>
+    <p id="bye-sub"></p>
+  </div>
 </div>
 
 <div class="sr-only" id="sr-assertive" aria-live="assertive" role="alert"></div>
@@ -463,11 +485,15 @@ async function api(path,opts){opts=opts||{};
   if(!res.ok){let d='';try{d=(await res.json()).error||'';}catch(e){}throw new Error(path+' → '+res.status+(d?' · '+d:''));}
   return res.json();
 }
+let _stateGen=0; // 폴링 응답 역전 방어(신뢰성 ①) — 더 새 요청이 나갔으면 늦게 도착한 옛 응답은 폐기
 async function loadState(){
+  if(typeof SHUT!=='undefined'&&SHUT)return; // 전체 종료 후 — 서버가 내려갔으므로 갱신 중단
+  const gen=++_stateGen;
   if(HAS_API){
     try{const d=await api('/api/state');
+      if(gen!==_stateGen)return; // 옛 응답 — 최신 화면을 덮지 않는다
       if(d.projects){PROJECTS=d.projects;PORTS=d.ports||[];UNLINKED=d.unlinked||[];SOURCE='live';WAS_LIVE=true;}else SOURCE='live-empty';}
-    catch(e){SOURCE=WAS_LIVE?'offline':'demo(offline)';} // live→단절 = offline(서버 확인·exe 재실행)
+    catch(e){if(gen!==_stateGen)return;SOURCE=WAS_LIVE?'offline':'demo(offline)';} // live→단절 = offline(서버 확인·exe 재실행)
   } else SOURCE='demo';
   renderAll();
 }
@@ -570,7 +596,7 @@ function renderActive(list){
         <span class="pill sm idle"><span class="g">○</span>미연결</span>
         <span class="rn">${esc(role)}${role==='ops'?opsTag:''}</span>
         <span class="now">세션 없음 — 활성화 필요</span></div>`;
-      const trail=`<button class="claude-go spawn" onclick="doSpawn(${pi},'${esc(role)}')" title="이 역할의 세션(pane)을 wmux에 스폰 — POST /spawn {role} · 연결 확인 후 Claude 실행">＋ 세션 활성화</button>`;
+      const trail=`<button class="claude-go spawn" onclick="doSpawn(${pi},'${esc(role)}')" title="워크스페이스로 이동 → 그 자리에서 세션(pane) 스폰 → 연결 검증 — POST /spawn {role} (확인 실패 시 이 버튼 유지)">＋ 세션 활성화</button>`;
       return `<div class="rrow-wrap">${main}${trail}</div>`;
     };
     // ③ orphan — 살아있으나 역할 미바인딩(wmux 자동 첫 pane 등): 열기 · 비활성화 · 역할로 동기화
@@ -594,7 +620,7 @@ function renderActive(list){
       <div class="rrows">${rows||'<div style="color:var(--faint);font-size:12px;padding:4px 2px">세션 없음 — [＋ 세션 활성화]로 여세요</div>'}</div>
       ${linksHtml(p)}${lastEvHtml(p)}
       <div class="cact">
-        <button class="btn" onclick="doSpawn(${pi})" title="빠진 선언 세션 전부 스폰 — POST /spawn (역할 생략=전체 수렴·중복 0)">＋ 모든 세션 활성화</button>
+        <button class="btn" onclick="doSpawn(${pi})" title="워크스페이스로 이동 → 빠진 선언 세션 전부 스폰 → 연결 검증 — POST /spawn (역할 생략=전체 수렴·중복 0·확인 실패분은 버튼 유지)">＋ 모든 세션 활성화</button>
         <button class="btn" onclick="rolePrompt(${pi})" title="선언 경유 역할 추가(FS-8 — 자유 스폰 아님) · 스폰은 [＋ 세션 활성화]로">＋ 역할</button>
         <span class="sp"></span>
         <button class="btn danger" onclick="deactivatePrompt(${pi})" title="세션 전체 종료(확인 필수) 후 대기중으로 — POST /deactivate">비활성화</button>
@@ -729,7 +755,8 @@ async function openSession(pi,si){
     +(orphan?'<span class="tag" style="color:var(--warn)" title="cockpit 역할에 연결 안 됨 — [⎇ 역할로 동기화]로 빈 역할에 채택">○ cockpit 미연결</span>':'')
     +(s.role==='ops'?'<span class="tag" title="1번 고정 세션 — 비활성화 시에만 함께 종료 · git/DB/배포 확인 거처">📌 ops 고정</span>':'')
     +(orphan?'':`<span class="tag">cwd <span class="mono">root/${esc(p.name)}/${esc(s.role)}/</span></span>`)
-    +`<span class="tag">agent <span class="mono">${esc(s.agentId||'?')}</span></span>`;
+    +`<span class="tag">agent <span class="mono">${esc(s.agentId||'?')}</span></span>`
+    +(!orphan&&s.via?`<span class="tag" title="cockpit이 이 세션을 역할로 인식한 근거 — adopted=채택 매핑 · label-ns=네임스페이스 label(스폰 시 각인) · label=구형식 label 일치">🧭 매칭 <span class="mono">${esc(s.via)}</span></span>`:'');
   const ctrl=[`<button class="btn primary" onclick="doAttach(${pi},${si})" title="wmux 해당 pane으로 포커스 이동 — POST /attach">열기 ↗ (wmux 점프)</button>`];
   if(!orphan)ctrl.push(`<button class="btn" onclick="doOpen(${pi},'${esc(s.role)}')" title="탐색기에서 역할 폴더 열기 — POST /open {name, role}">📁 폴더</button>`);
   if(s.claude==='off')ctrl.push(`<button class="btn bluish" onclick="doClaude(${pi},${si},this)" title="이 pane에서 claude 실행 — POST /claude">▶ Claude 실행</button>`);
@@ -778,12 +805,17 @@ async function doActivate(pi){
   ping(`활성화 — <span class="mono">${p.name}</span> ✓ (세션 없음 — [＋ 세션 활성화]로 열기)`);
   announce(`${p.name} 프로젝트를 활성화했습니다.`,true);renderAll();
 }
-/* [＋ 세션 활성화] — 역할별 세션(pane) 스폰. role 생략=빠진 전체(모든 세션 활성화). POST /spawn */
+/* [＋ 세션 활성화] — 3단계: 워크스페이스 초점 이동 → 그 자리에서 스폰 → 연결 검증. role 생략=빠진 전체. POST /spawn
+   서버가 연결을 실측 검증하므로 failed에 든 역할은 스폰 안 된 것 — 상태 기반 렌더라 버튼이 그대로 유지된다. */
 async function doSpawn(pi,role){
   const p=PROJECTS[pi]; if(!p)return;
   if(HAS_API){try{const r=await api('/spawn',{method:'POST',body:{name:p.name,...(role?{role}:{})}});
-    ping(`세션 활성화 — <span class="mono">${esc(p.name)}${role?'/'+esc(role):''}</span> 스폰 ${r.spawned??'?'}${r.reused?` · 재사용 ${r.reused}`:''} ✓ (연결 확인 후 Claude 실행)`);
-    announce(`${role||'세션'}을 열었습니다.`,true);loadState();return;}
+    const failed=r.failed||[];
+    if(failed.length&&!(r.spawned||r.reused)){ // 전부 연결 실패 — 버튼 유지, 재시도 유도
+      ping(`세션 연결 확인 실패 — <span class="mono">${esc(p.name)}${role?'/'+esc(role):''}</span> (${esc(failed.join('·'))}) — [＋ 세션 활성화] 버튼 유지, 다시 시도하세요`);
+      announce('세션 연결이 확인되지 않았습니다 — 다시 시도하세요.',true);loadState();return;}
+    ping(`세션 활성화 — <span class="mono">${esc(p.name)}${role?'/'+esc(role):''}</span>${r.focused?' 워크스페이스 이동 →':''} 스폰 ${r.spawned??'?'}${r.reused?` · 재사용 ${r.reused}`:''}${failed.length?` · <b>연결 실패 ${esc(failed.join('·'))} (버튼 유지)</b>`:''} ✓ 연결 확인됨`);
+    announce(`${role||'세션'}을 열고 연결을 확인했습니다.`,true);loadState();return;}
   catch(e){ping((String(e.message).includes('409')?'보관된 프로젝트 — 재개 후':'세션 활성화 실패 — ')+esc(e.message));return;}}
   // demo — unknown(연결 확인 중)으로 추가 후 잠시 뒤 off로 전환(연결 확인 시뮬)
   const declared=['ops',...(p.roles||[]).map(r=>r.id)];
@@ -800,10 +832,12 @@ async function doSpawn(pi,role){
 async function doKillSession(pi,si){
   const p=PROJECTS[pi]; const s=p&&(p.sessions||[])[si]; if(!s)return;
   const go=async()=>{
-    if(HAS_API){try{await api('/kill-session',{method:'POST',body:{name:p.name,agentId:s.agentId}});
+    if(HAS_API){try{await api('/kill-session',{method:'POST',body:{name:p.name,agentId:s.agentId,role:s.role}}); // role = 낙관적 재검증(⑤)
       ping(`세션 비활성화 — <span class="mono">${esc(p.name)}/${esc(s.role)}</span> 종료 ✓`);
       announce(`${s.role} 세션을 종료했습니다.`,true);closeDrawer();loadState();return;}
-    catch(e){ping('세션 비활성화 실패 — '+esc(e.message));return;}}
+    catch(e){
+      if(String(e.message).includes('session-changed')){ping('세션 상태가 바뀌었어요 — 종료를 중단하고 화면을 갱신했습니다. 다시 확인 후 시도하세요');closeDrawer();loadState();return;}
+      ping('세션 비활성화 실패 — '+esc(e.message));return;}}
     p.sessions=(p.sessions||[]).filter(x=>x!==s); // demo
     logEv('info',p.name,'kill',`세션 종료 — ${s.role} (개별 비활성화)`);
     ping(`세션 비활성화 — <span class="mono">${esc(s.role)}</span> 종료 ✓`);closeDrawer();renderAll();
@@ -837,6 +871,46 @@ async function doDeactivate(pi){
   logEv('info',p.name,'deactivate',`세션 ${n}개 종료 · 대기중 전환`);
   ping(`비활성화 — <span class="mono">${p.name}</span> 세션 ${n}개 종료 · 대기중 ✓`);
   announce(`${p.name} 프로젝트를 비활성화했습니다.`,true);renderAll();
+}
+/* [⏻ 종료] — 전체 종료: 모든 진행중 프로젝트 비활성화(세션 kill → 대기중 전환) 후 서버 종료. POST /shutdown */
+let SHUT=false;
+function shutdownPrompt(){
+  const act=byStatus('active');
+  const sess=act.flatMap(p=>((p.sessions||[]).filter(s=>s.alive!==false)).map(s=>({pn:p.name,role:s.role,claude:s.claude})));
+  const claudeOn=sess.filter(s=>s.claude==='on').length;
+  openConfirmDialog({
+    title:'Cockpit을 종료합니다',
+    sub:act.length
+      ?`진행중 프로젝트 <b>${act.length}개</b>가 모두 비활성화됩니다 — 아래 세션 ${sess.length}개가 종료(kill)되고 <b>대기중</b>으로 전환된 뒤 서버가 내려갑니다.<br><b>종료된 세션은 되돌릴 수 없습니다(undo 없음).</b>`
+      :'진행중 프로젝트가 없습니다 — 서버만 내려갑니다. 대시보드는 더 이상 응답하지 않아요.',
+    warn:claudeOn?`claude가 실행 중인 세션 ${claudeOn}개가 있습니다 — 작업 중일 수 있습니다.`:null,
+    sess:sess.length?sess.map(s=>`<div class="row"><span class="rn">${esc(s.pn)} / ${esc(s.role)}</span><span class="sp"></span>${
+      s.claude==='on'?'<span class="pill sm claude"><span class="g">✦</span>claude</span>':'<span class="pill sm idle"><span class="g">❯</span>터미널</span>'}</div>`).join(''):null,
+    okText:act.length?'모두 비활성화 후 종료':'서버 종료',
+    onConfirm:doShutdown});
+}
+async function doShutdown(){
+  if(HAS_API){
+    try{const r=await api('/shutdown',{method:'POST',body:{confirm:true}});
+      ping(`전체 종료 — 프로젝트 ${(r.deactivated||[]).length}개 비활성화 · 서버 종료 중…`);
+      showBye((r.deactivated||[]).length,r.failed||[]);return;}
+    catch(e){ping('전체 종료 실패 — '+esc(e.message));return;}}
+  // demo — 모든 active를 대기중으로 전환 후 종료 화면(시뮬)
+  const act=byStatus('active');
+  act.forEach(p=>{logEv('info',p.name,'deactivate',`세션 ${(p.sessions||[]).length}개 종료 · 대기중 전환`);
+    p.status='idle';p.wsLive=false;p.sessions=[];});
+  logEv('info',null,'shutdown',`전체 종료 — 프로젝트 ${act.length}개 비활성화(대기중) · 서버 종료`);
+  renderAll();showBye(act.length,[],true);
+}
+function showBye(n,failed,demo){
+  SHUT=true; if(POLL_STATE)clearInterval(POLL_STATE); if(POLL_CAPS)clearInterval(POLL_CAPS); // 서버가 내려가므로 폴링 중단(offline 오탐 방지)
+  document.getElementById('bye-sub').innerHTML=
+    `프로젝트 ${n}개를 비활성화하고 <b>대기중</b>으로 전환했습니다.`
+    +(failed&&failed.length?`<br><span style="color:var(--warn)">⚠ 비활성화 실패: ${esc(failed.join(' · '))} — wmux에서 직접 확인하세요.</span>`:'')
+    +(demo?'<br>(시뮬 — 새로고침하면 데모로 복귀합니다)'
+      :'<br>서버가 내려갔으니 이 창은 닫아도 됩니다. 다시 시작하려면 boot(exe)를 실행하세요.');
+  document.getElementById('bye').hidden=false;
+  announce('Cockpit이 종료되었습니다 — 모든 프로젝트가 대기중으로 전환되었습니다.',true);
 }
 async function doArchive(pi){
   const p=PROJECTS[pi]; if(!p)return;
@@ -914,14 +988,15 @@ function openConfirmDialog({title,sub,warn,sess,okText,onConfirm}){
 function closeConfirm(){closeModal('confirm');if(cfTrigger&&cfTrigger.focus)cfTrigger.focus();cfTrigger=null;confirmAction=null;}
 document.getElementById('cf-confirm').onclick=()=>{const fn=confirmAction;closeConfirm();if(fn)fn();};
 
-let namerSubmit=null,nmTrigger=null;
-function openNamer({title,sub,warn,aLabel,aPh,aMono,b,okText,onSubmit}){
+let namerSubmit=null,nmTrigger=null,nmBrowseFn=null;
+function openNamer({title,sub,warn,aLabel,aPh,aMono,browse,b,okText,onSubmit}){
   namerSubmit=onSubmit;nmTrigger=document.activeElement;
   document.getElementById('nm-title').textContent=title;
   document.getElementById('nm-sub').innerHTML=sub||'';
   const w=document.getElementById('nm-warn');
   if(warn){w.hidden=false;w.innerHTML='<span>⚠</span><span>'+warn+'</span>';}else w.hidden=true;
   document.getElementById('nm-a-label').textContent=aLabel||'이름';
+  nmBrowseFn=browse||null;document.getElementById('nm-browse').hidden=!browse; /* 폴더 찾아보기 버튼 — browse 콜백 있을 때만 */
   const a=document.getElementById('nm-a');a.value='';a.placeholder=aPh||'';a.className=aMono?'mono':'';
   document.getElementById('nm-b-row').hidden=!b;
   if(b){document.getElementById('nm-b-label').textContent=b.label;
@@ -938,6 +1013,8 @@ async function submitNamer(){
   const fn=namerSubmit;closeNamer();if(fn)await fn(a,b);
 }
 for(const id of['nm-a','nm-b'])document.getElementById(id).addEventListener('keydown',e=>{if(e.key==='Enter')submitNamer();});
+/* 폴더 찾아보기 — 등록된 browse 콜백에 위임(네이티브 탐색창 → nm-a에 절대경로 채움). auto=다이얼로그 오픈 시 자동 호출 */
+async function nmBrowse(auto){if(nmBrowseFn)await nmBrowseFn(!!auto);}
 
 let lgTrigger=null;
 async function openLog(pi){
@@ -984,9 +1061,10 @@ function createPrompt(){
 }
 function importPrompt(){
   openNamer({title:'기존 프로젝트 연동',
-    sub:'기존 프로젝트 폴더를 <b>root/&lt;프로젝트&gt;/ops/</b>로 <b>이동(move)</b>합니다 (기본 프로젝트 = ops 코드베이스, <b>git 저장소도 ops/</b>). 프로젝트 루트엔 격리 CLAUDE.md만 생기고(저장소 아님) <b>대기중</b>으로 등록됩니다. 경로가 이미 root/ 아래면 <b>이동 없이 제자리 등록</b>(구 팀 재등록 — B7).',
+    sub:'<b>📁 찾아보기</b>로 연동할 폴더를 고르면 아래 경로가 채워집니다(경로를 직접 입력해도 됩니다). 그 폴더를 <b>root/&lt;프로젝트&gt;/ops/</b>로 <b>이동(move)</b>합니다 (기본 프로젝트 = ops 코드베이스, <b>git 저장소도 ops/</b>). 프로젝트 루트엔 격리 CLAUDE.md만 생기고(저장소 아님) <b>대기중</b>으로 등록됩니다. 경로가 이미 root/ 아래면 <b>이동 없이 제자리 등록</b>(구 팀 재등록 — B7).',
     warn:'폴더가 실제로 ops/로 이동됩니다 — 같은 드라이브만 지원, 실패 시 원본은 변경되지 않습니다. 이동 후 프로젝트 내부의 절대경로 참조(.env·IDE 설정·스크립트)는 깨질 수 있습니다.',
-    aLabel:'기존 프로젝트 경로',aPh:'예: D:\\work\\my-old-project',aMono:true,
+    aLabel:'기존 프로젝트 경로',aPh:HAS_API?'📁 찾아보기로 폴더 선택 (또는 경로 직접 입력)':'예: D:\\work\\my-old-project',aMono:true,
+    browse:HAS_API?importBrowse:null,
     b:{label:'프로젝트 이름 (비우면 폴더명)',ph:'my-old-project'},okText:'ops/로 연동',
     onSubmit:async(path,name)=>{
       name=name||path.split(/[\\/]/).filter(Boolean).pop()||'project';
@@ -997,6 +1075,22 @@ function importPrompt(){
         links:[],roles:[{id:'dev'}],sessions:[]});
       logEv('info',name,'import',`${path} → root/${name}/ 이동 · 스캐폴드 적용 · 대기중 등록`);
       ping(`이사(시뮬) — <span class="mono">root/${esc(name)}/</span> 대기중 등록 ✓`);renderAll();}});
+  if(HAS_API)setTimeout(()=>nmBrowse(true),120); /* 다이얼로그가 뜬 직후 네이티브 탐색창 자동 오픈 */
+}
+/* 네이티브 폴더 선택창(POST /pick-folder) → 선택된 절대경로를 nm-a에 채우고 이름 자동 유추. auto=자동 오픈(취소는 조용히) */
+async function importBrowse(auto){
+  const btn=document.getElementById('nm-browse'),errEl=document.getElementById('nm-err');
+  const label=btn.textContent;btn.disabled=true;btn.textContent='탐색창 여는 중…';errEl.textContent='';
+  try{
+    const r=await api('/pick-folder',{method:'POST',body:{title:'연동할 기존 프로젝트 폴더를 선택하세요'}});
+    if(r&&r.path){
+      document.getElementById('nm-a').value=r.path;
+      const bi=document.getElementById('nm-b');
+      if(bi&&!bi.value.trim())bi.value=r.path.split(/[\\/]/).filter(Boolean).pop()||'';
+    }else if(r&&r.unsupported){errEl.textContent='이 환경에서는 탐색창을 열 수 없어요 — 경로를 직접 입력하세요.';}
+    /* 취소(path:null)는 조용히 — 사용자가 버튼으로 재시도하거나 경로를 직접 입력 */
+  }catch(e){errEl.textContent='탐색창 열기 실패 — '+esc(e.message);}
+  finally{btn.disabled=false;btn.textContent=label;}
 }
 /* 역할 추가/제거 (FS-8 — 선언 경유, user_context §4-2·C8) */
 function rolePrompt(pi){
@@ -1113,7 +1207,16 @@ function toast(html){
   requestAnimationFrame(()=>t.classList.add('on'));
   setTimeout(()=>{t.classList.remove('on');setTimeout(()=>t.remove(),250);},2600);
 }
-function ping(html){toast(html);}
+function ping(html){toast(html);mirrorToConsole(html);}
+/* 토스트 내용을 서버 콘솔로 미러링 — HTML을 순수 텍스트로 바꿔 POST /console('[오류]내용 : …'로 출력). fire-and-forget */
+function mirrorToConsole(html){
+  try{
+    if(typeof HAS_API==='undefined'||!HAS_API)return;
+    const tmp=document.createElement('div');tmp.innerHTML=String(html==null?'':html);
+    const txt=(tmp.textContent||'').replace(/\s+/g,' ').trim();
+    if(txt)api('/console',{method:'POST',body:{msg:txt}}).catch(()=>{});
+  }catch(e){/* 미러링 실패는 무시 — 토스트 표시엔 영향 없음 */}
+}
 let rc=0;
 function doRefresh(){rc=0;document.getElementById('refresh').textContent='⟳ 방금';loadState();loadGlobalCaps();ping('상태 갱신 — <span class="mono">GET /api/state</span>');}
 setInterval(()=>{rc++;document.getElementById('refresh').textContent=`⟳ ${rc}초 전`;},1000);
@@ -1126,9 +1229,10 @@ document.addEventListener('keydown',e=>{
 });
 
 /* ═══ init ═══ */
+let POLL_STATE=null,POLL_CAPS=null; // 전체 종료(showBye) 시 clearInterval로 폴링 중단
 loadState();
 loadGlobalCaps();
-if(HAS_API){setInterval(loadState,2500);setInterval(loadGlobalCaps,60000);}
+if(HAS_API){POLL_STATE=setInterval(loadState,2500);POLL_CAPS=setInterval(loadGlobalCaps,60000);}
 </script>
 </body>
 </html>

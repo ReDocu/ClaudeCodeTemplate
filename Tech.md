@@ -15,7 +15,7 @@ ClaudeCockpit은 여러 Claude Code 세션을 **세션에 들어가지 않고** 
 - **3계층 매핑**: 관리자(wmux 사용자) ─ 프로젝트(wmux **workspace**) ─ 역할(workspace 안의 **agent**/pane).
 - **전제 환경**: Windows 11 + wmux(0.13) + Node(내장 모듈만) + git CLI. **npm 런타임 의존성 0.**
 - **경계**: 서버는 `127.0.0.1` 바인드 + `X-Cockpit-Token` 전용, **포트 7420 정본**(config로 재지정 가능). 원격 노출 비목표.
-- **부트 체인**: `exe/boot` → wmux 보장 → 서버 보장 → active 프로젝트 재수렴 → 기본 브라우저.
+- **부트 체인**: `exe/boot` → wmux 보장(갓 기동 시 복원분 클린 슬레이트) → 서버 보장 → active 프로젝트 재수렴 → 기본 브라우저.
 
 ### 1.1 실동작 산출물
 
@@ -87,7 +87,7 @@ root/<프로젝트>/project.json  (desired — 폴더가 진실)      wmux  (act
 |---|---|
 | 목적 | exe 더블클릭 한 번으로 wmux·서버·대시보드까지 무입력 기동 |
 | 명령 | `cockpit.js serve [--port]` (서버 단독) · `cockpit.js boot [--port] [--setup]` (콜드 부트) |
-| boot 단계 | ① wmux 발견·기동 보장 → ② 서버 보장(기존 리스너 재사용, 멱등) → ③ **active 프로젝트 자동 재수렴** → ④ 기본 브라우저 오픈 |
+| boot 단계 | ① wmux 발견·기동 보장 → ①-b **클린 슬레이트**(boot이 wmux를 직접 기동한 경우만 — 자동 복원된 이전 세션·워크스페이스 전부 정리 후 선언 기준 재구성, 실행 중이던 wmux는 불변) → ② 서버 보장(기존 리스너 재사용, 멱등) → ③ **active 프로젝트 자동 재수렴** → ④ 기본 브라우저 오픈 |
 | 포트 우선순위 | `--port` > `config.port` > **7420**(정본) |
 | 서버 정책 | `127.0.0.1` 바인드 · `GET /` 제외 전 경로 `X-Cockpit-Token` 필수 · body 1MB 상한(413) |
 | 토큰 주입 | `GET /`가 `dashboard.html` 서빙 시 `<head>`에 토큰 meta 주입 → same-origin fetch 인증 |
@@ -131,7 +131,7 @@ root/<프로젝트>/project.json  (desired — 폴더가 진실)      wmux  (act
 | 단계 | UI | API | 동작 |
 |---|---|---|---|
 | ① 초기 미연결 | `○ 미연결` 행 + `[＋ 세션 활성화]` | — | 선언 역할이 실측 세션 없음 |
-| ② 세션 열기 | `[＋ 세션 활성화]` | `POST /spawn {name, role}` | 그 역할 pane 하나 스폰(role 생략 시 빠진 전체). 매 회 `getFresh`로 중복 스폰 방지, 중복은 재사용 |
+| ② 세션 열기 | `[＋ 세션 활성화]` | `POST /spawn {name, role}` | 3단계: **① 그 workspace로 wmux 초점 이동**(`workspace.select` · best-effort, 응답 `focused`) → **② 그 자리에서 역할 pane 스폰**(role 생략 시 빠진 전체 · 매 회 `getFresh`로 중복 방지, 중복은 재사용) → **③ 연결 검증**(대상 workspace 실측 확인, 최대 ~3초 — label 미부착 시 채택 자동 바인딩 · 오배치 pane은 정리 · 확인 실패는 `failed`로 보고돼 대시보드가 [＋ 세션 활성화] 버튼 유지) |
 | ③ 연결 확인 후 | `[↗ 세션 열기] [세션 비활성화] [▶ Claude 실행]` | — | claude 프로브가 resolved(off)되면 실행 버튼 노출 |
 | 개별 종료 | `[세션 비활성화]`(드로어) | `POST /kill-session {name, agentId}` | 세션 하나 kill. claude 실행 중이면 대시보드가 확인 다이얼로그 |
 | ops 고정 | `📌 ops 고정` | — | ops = 프로젝트별 1번 세션(git/DB/배포 확인 거처) |
@@ -180,6 +180,7 @@ root/<프로젝트>/project.json  (desired — 폴더가 진실)      wmux  (act
 |---|---|---|
 | 새 프로젝트 | `POST /create {name, roles[]}` | `root/<이름>/` 격리 스캐폴드 생성 → 대기중. 재호출은 역할 병합(멱등) · 폴더 있으면 409 |
 | 기존 폴더 연동 | `POST /import {path, name?}` | 외부 폴더를 `root/<이름>/ops/`로 **이동(rename)** · `root/` 아래 경로면 **제자리 등록**(구 팀 재등록) |
+| 폴더 고르기 | `POST /pick-folder {title?}` | 서버가 **네이티브 폴더 선택창**(Windows FolderBrowserDialog)을 띄워 선택 절대경로 반환(`{path}`). 대시보드 `📁 찾아보기`가 경로 타이핑 대신 사용 — 순수 읽기, 실제 이동은 `/import` |
 | git 주소로 생성 | `POST /create-git {url, name?}` | 스캐폴드 생성 ⊕ ops에 clone 합성. 이름 미입력 시 URL에서 파생(못 뽑으면 400) |
 | 이름 검증 | — | 파일시스템 금지문자 제거 · 빈/점 시작 400 |
 | 이동 안전 | — | 동일 볼륨만 · 실패 시 원본 무변경(백업 복원) |
@@ -275,11 +276,11 @@ root/<프로젝트>/project.json  (desired — 폴더가 진실)      wmux  (act
 
 | 항목 | 내용 |
 |---|---|
-| 목적 | wmux로 나가는 명령·설명·성공/실패를 서버 콘솔(stdout/stderr)에 출력 — 진단용 |
-| 포맷 | `[wmux→] <method> <한국어 설명>` · `[wmux✓] <method> → <id>` · `[wmux✗] <method> — <에러>` |
+| 목적 | wmux로 나가는 명령·설명·성공/실패를 서버 콘솔에 출력 — 진단용. 대시보드 토스트도 `POST /console`로 함께 미러 |
+| 포맷 | 전부 `log.js`의 `logConsole` 경유 → **`[오류]내용 : …`** 접두 통일. 예: `[오류]내용 : <t> [wmux→] <method> <설명>` · `[wmux✓] <method> → <id>` · `[wmux✗] <method> — <에러>` (wmux 마커는 내용에 보존) |
 | 소음 억제 | 고빈도 폴링(`workspace.list`·`agent.list`)은 성공 로그 제외(실패는 항상 — 오프라인 진단) |
-| 토글 | `COCKPIT_WMUX_LOG=0`으로 끔 · **detached 서버는 stdout 숨김** → 콘솔 보려면 터미널에서 `serve` 실행 |
-| 관련 | `wmux.js`(`request`·`CMD_DESC`) |
+| 토글 | `COCKPIT_WMUX_LOG=0`으로 wmux 로그만 끔(토스트 미러는 별개) · **detached 서버는 stdout 숨김** → 콘솔 보려면 터미널에서 `serve` 실행 |
+| 관련 | `wmux.js`(`request`·`CMD_DESC`), `log.js`(`logConsole`), `server.js`(`POST /console`), `dashboard.html`(`ping`·`mirrorToConsole`) |
 
 ### FS-20 · 폴더 열기 & wmux 점프
 
@@ -310,13 +311,15 @@ root/<프로젝트>/project.json  (desired — 폴더가 진실)      wmux  (act
 | 경로 | body | 성공 | 주요 가드 |
 |---|---|---|---|
 | `/activate` | `{name}` | `{wsId, spawned:0}` | 503 wmux-offline · 409 archived |
-| `/spawn` | `{name, role?}` | `{wsId, spawned, reused, failed}` | 400 unknown-role · 503 |
+| `/spawn` | `{name, role?}` | `{wsId, spawned, reused, failed, focused}` | 400 unknown-role · 503 |
 | `/kill-session` | `{name, agentId}` | `{killed, role}` | 404 session-not-found · 409 project-inactive |
 | `/deactivate` | `{name, confirm:true}` | `{killed}` | **400 confirm-required** |
 | `/archive` | `{name}` | `{ok}` | 409 project-active |
 | `/reopen` | `{name}` | `{ok}` | — |
 | `/create` | `{name, roles[]}` | `{created, added}` | 409 folder-exists · 400 invalid-name |
 | `/import` | `{path, name?}` | `{name, inPlace, backup}` | 400 path/이동 실패 |
+| `/pick-folder` | `{title?}` | `{path}` (취소=`null` · 비Win=`unsupported`) | — (네이티브 탐색창) |
+| `/console` | `{msg}` | `{ok}` | — (대시보드 토스트를 서버 콘솔 `[오류]내용 : …`로 미러) |
 | `/create-git` | `{url, name?}` | `{name, action, git}` | 400 git-url-invalid · name-underivable |
 | `/roles` | `{name, role, action:'remove'}` | `{removed}` | 400 ops-fixed · 409 role-alive |
 | `/claude` | `{agentId}` | `{ok, already?}` | 502 no-surface |
