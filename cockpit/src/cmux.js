@@ -68,14 +68,22 @@ export function parseNewPane(text) {
   const m = new RegExp(`surface:\\d+ \\((${UUID})\\) pane:\\d+ \\((${UUID})\\)`).exec(String(text));
   return m ? { surfaceId: m[1], paneId: m[2] } : null;
 }
-// top tsv → Map('surface:N' → 셸 pid). 행: cpu\tmem\tcount\tkind\tkey\tparent\tname — kind=process·parent=surface ref인 행이 셸.
+// top tsv → Map('surface:N' → 대표 pid). 행: cpu\tmem\tcount\tkind\tkey\tparent\tname.
+// surface 직속 process 행은 여럿(pty 프로세스들이 형제로 나열 — caffeinate·claude·zsh 등, 실측)이고
+// 수명 짧은 것·tty 없는 데몬도 섞인다 → 대표 pid는 ① claude 계열 ② 셸 ③ 첫 행 순으로 픽.
+// 켜짐 판정의 정본은 proc.js(tty 세션 그룹) — 여기 픽은 안정된 진입점 pid를 주는 역할.
 export function parseTop(tsv) {
-  const out = new Map();
+  const rank = (name) => /^claude/i.test(name) ? 0 : /^(zsh|bash|sh|fish)$/i.test(name) ? 1 : 2;
+  const best = new Map(); // ref → {pid, r, seq}
+  let seq = 0;
   for (const line of String(tsv).split('\n')) {
     const f = line.split('\t');
-    if (f[3] === 'process' && /^surface:\d+$/.test(f[5] || '') && !out.has(f[5])) out.set(f[5], Number(f[4]));
+    if (f[3] !== 'process' || !/^surface:\d+$/.test(f[5] || '')) continue;
+    const cur = { pid: Number(f[4]), r: rank(f[6] || ''), seq: seq++ };
+    const prev = best.get(f[5]);
+    if (!prev || cur.r < prev.r) best.set(f[5], cur);
   }
-  return out;
+  return new Map([...best].map(([ref, b]) => [ref, b.pid]));
 }
 const q = (s) => `'${String(s).replace(/'/g, `'\\''`)}'`;
 const BARE_SHELL = /^(sh|bash|zsh|fish|pwsh)$/i;
