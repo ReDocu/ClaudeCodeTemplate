@@ -12,6 +12,10 @@ import { homedir } from 'node:os';
 import { join } from 'node:path';
 import { readConfig, patchConfig } from './registry.js';
 import { logConsole } from './log.js';
+import * as cmux from './cmux.js';
+
+// darwin은 cmux 드라이버로 위임(동일 인터페이스) — win32는 기존 파이프 직결 그대로.
+const D = process.platform === 'darwin' ? cmux : null;
 
 const PIPE = process.env.WMUX_PIPE || '\\\\.\\pipe\\wmux';
 const TIMEOUT = 10_000;
@@ -82,8 +86,8 @@ export async function request(method, params = {}, timeoutMs = TIMEOUT) {
   return res.result;
 }
 
-// V1 ping — 토큰 불필요. 파이프 없음(ENOENT) = 앱 미실행.
-export const ping = () => exchange('ping', 5000);
+// V1 ping — 토큰 불필요. 파이프 없음(ENOENT) = 앱 미실행. (darwin: cmux CLI ping → PONG)
+export const ping = () => D ? D.ping() : exchange('ping', 5000);
 export async function isAvailable() {
   try { return /pong/i.test(await ping()); } catch { return false; }
 }
@@ -111,10 +115,16 @@ function _refetch() {
   if (_inflight) return _inflight; // single-flight
   _inflight = (async () => {
     try {
-      const [ws, ag] = await Promise.all([
-        request('workspace.list'),
-        request('agent.list').catch(() => ({ agents: [] })),
-      ]);
+      let ws, ag;
+      if (D) {
+        const r = await D.fetchState();
+        ws = { workspaces: r.workspaces }; ag = { agents: r.agents };
+      } else {
+        [ws, ag] = await Promise.all([
+          request('workspace.list'),
+          request('agent.list').catch(() => ({ agents: [] })),
+        ]);
+      }
       if (!_cache || !_cache.live) _epoch++; // 첫 연결·재연결 — id 공간이 갈렸을 수 있음(reconcile이 재검증)
       _cache = {
         workspaces: (ws.workspaces || []).map(normWs),
@@ -154,11 +164,14 @@ export async function refreshState() {
 }
 
 // ── 제어 ──
-export const selectWorkspace = (id) => request('workspace.select', { id });
-export const focusPane = (id) => request('pane.focus', { id });
-export const killAgent = (id) => request('agent.kill', { agentId: id });
+export const selectWorkspace = (id) => D ? D.selectWorkspace(id) : request('workspace.select', { id });
+export const focusPane = (id) => D ? D.focusPane(id) : request('pane.focus', { id });
+export const killAgent = (id) => D ? D.killAgent(id) : request('agent.kill', { agentId: id });
+// 점프 보조 — 멀티플렉서 앱을 앞으로(darwin: open <번들>). win32는 wmux가 select로 스스로 앞에 옴 — no-op.
+export const activateApp = () => D ? D.activateApp() : Promise.resolve();
 
 export function createWorkspace({ title, cwd } = {}) {
+  if (D) return D.createWorkspace({ title, cwd });
   const params = {};
   if (title) params.title = title;
   if (cwd) params.cwd = cwd;
@@ -166,6 +179,7 @@ export function createWorkspace({ title, cwd } = {}) {
 }
 // 파라미터 명 두 갈래 실측(id/workspaceId) — id 우선, 실패 시 재시도(계승).
 export async function closeWorkspace(id) {
+  if (D) return D.closeWorkspace(id);
   try { return await request('workspace.close', { id }); }
   catch { return request('workspace.close', { workspaceId: id }); }
 }
@@ -174,6 +188,7 @@ export async function closeWorkspace(id) {
 // env(신뢰성 개편 ⑥): 세션 신원(COCKPIT_PROJECT/ROLE)을 pane 환경에 주입 — wmux 미지원 시
 // 호출자(lifecycle)가 env 없이 재시도한다. 지원 여부와 무관하게 스폰 자체는 동일.
 export function spawnAgent({ workspaceId, label, cwd, cmd, env } = {}) {
+  if (D) return D.spawnAgent({ workspaceId, label, cwd, cmd, env });
   if (!cmd) throw new Error('cmd 필요');
   if (!cwd) throw new Error('cwd 필요(드리프트 방지 — 항상 명시)');
   const params = { cmd, label: label || cmd.split(/\s+/)[0], cwd };
@@ -184,6 +199,7 @@ export function spawnAgent({ workspaceId, label, cwd, cmd, env } = {}) {
 
 // 텍스트+Enter를 특정 세션 pane에 — surfaceId 명시 필수(계승 규칙 ② — 오발송 방지).
 export async function sendLine(text, surfaceId) {
+  if (D) return D.sendLine(text, surfaceId);
   if (!surfaceId) throw new Error('sendLine: 대상 surfaceId 필요(오발송 방지)');
   await request('surface.send_text', { surfaceId, text });
   try { await request('surface.send_key', { surfaceId, key: 'Enter' }); }

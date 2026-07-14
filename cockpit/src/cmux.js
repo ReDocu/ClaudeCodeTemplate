@@ -97,10 +97,18 @@ function writeMap(m) {
 }
 
 // ── 상태 실측 — wmux.js _refetch가 그대로 소비하는 형태로 반환 ──
-// 폴링당 CLI 1+N+1회(workspace.list · ws별 surface.list · top) — TTL 1.5s 캐시가 흡수.
+// workspace.list는 window 단위(실측) — window.list로 전 창 순회해 다른 창의 프로젝트도 놓치지 않는다.
+// 폴링당 CLI 1+W+N+1회(window.list · 창별 workspace.list · ws별 surface.list · top) — TTL 1.5s 캐시가 흡수.
+async function listAllWorkspaces() {
+  const win = await rpc('window.list');
+  const wsLists = await Promise.all(
+    (win.windows || []).map((w) => rpc('workspace.list', { window_id: w.id }).catch(() => ({ workspaces: [] }))),
+  );
+  return wsLists.flatMap((l) => l.workspaces || []);
+}
+
 export async function fetchState() {
-  const ws = await rpc('workspace.list');
-  const workspaces = (ws.workspaces || []).map((w) => ({ id: w.id, title: w.title || '' }));
+  const workspaces = (await listAllWorkspaces()).map((w) => ({ id: w.id, title: w.title || '' }));
   const map = readMap();
   const [top, ...lists] = await Promise.all([
     cli(['top', '--all', '--processes', '--format', 'tsv']).catch(() => ''),
@@ -134,9 +142,8 @@ export async function createWorkspace({ title, cwd } = {}) {
   const args = ['new-workspace', '--focus', 'false'];
   if (title) args.push('--name', title);
   if (cwd) args.push('--cwd', cwd);
-  await cli(args); // 출력에 UUID 없음(실측) — 직후 목록에서 title로 역산(ensureWorkspace가 무매칭일 때만 생성하므로 유일)
-  const ws = await rpc('workspace.list');
-  const hit = (ws.workspaces || []).filter((w) => w.title === title).pop();
+  await cli(args); // 출력에 UUID 없음(실측) — 직후 전 창 목록에서 title로 역산(ensureWorkspace가 무매칭일 때만 생성하므로 유일)
+  const hit = (await listAllWorkspaces()).filter((w) => w.title === title).pop();
   if (!hit) throw new Error(`workspace 생성 후 재발견 실패 — ${title}`);
   return { id: hit.id };
 }
