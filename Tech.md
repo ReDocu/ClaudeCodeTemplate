@@ -27,7 +27,7 @@ ClaudeCockpit은 여러 Claude Code 세션을 **세션에 들어가지 않고** 
 | `cockpit/src/*.js` | 브리지 모듈(§2.2) |
 | `ClaudeCockpit.exe`·`start.cmd` | 콜드 부트 런처(boot에 위임) |
 | `root/<프로젝트>/project.json` | 프로젝트 선언(진실의 원천) |
-| `cockpit/workspace/` | 런타임(config·logs·usage·activity — **gitignore**) |
+| `cockpit/workspace/` | 런타임(config·logs·activity — **gitignore**) |
 
 ---
 
@@ -58,7 +58,6 @@ root/<프로젝트>/project.json  (desired — 폴더가 진실)      wmux  (act
 | `bin/activity-hook.mjs` | Claude Code 훅 런타임 · 전역 `~/.claude/settings.json` 병합 설치/제거 |
 | `ports.js` | 활성 포트맵(리스너 실측·프로젝트 귀속·노이즈 필터) |
 | `caps.js` | 기능 인벤토리(global/세션 skill·agent·MCP — 이름·종류만) |
-| `usage.js` | Claude 사용량 게이지(3윈도 집계·한도 학습) |
 | `git.js` | git 칩(브랜치·원격·웹링크) · 원격 clone/connect · URL→이름 파생 |
 | `log.js` | 중앙 이벤트 로그(JSONL) 기록·조회 |
 | `bin/cockpit.js` | CLI — `serve`(서버) · `boot`(콜드 부트) |
@@ -110,7 +109,7 @@ root/<프로젝트>/project.json  (desired — 폴더가 진실)      wmux  (act
 | 동작 | 선언 스캔 ⊕ wmux 실측 병합 → §2.3 페이로드. 대시보드 폴링 진입점 |
 | 세션→역할 해석 | 채택 매핑(`adopted[agentId]`) 우선, 없으면 label · 선언 역할이면 `connected:true` |
 | 세션 정렬 | ops 먼저 → 선언 역할 순서 → orphan 뒤 |
-| 비차단 | 모든 온디맨드 프로브(git·proc·activity·ports·caps·usage)는 논블로킹 — 응답을 막지 않음 |
+| 비차단 | 모든 온디맨드 프로브(git·proc·activity·ports·caps)는 논블로킹 — 응답을 막지 않음 |
 | 관련 | `server.js`(`buildState`) |
 
 ### FS-4 · 생명주기 — 활성화/비활성화/보관/재개
@@ -150,17 +149,18 @@ root/<프로젝트>/project.json  (desired — 폴더가 진실)      wmux  (act
 | 캐시 | PowerShell CIM 1회 조회 → TTL 4s + single-flight + 논블로킹 |
 | 관련 | `proc.js`, `server.js`(`POST /claude`) |
 
-### FS-7 · 세션 활동 배지 (working/waiting/attention)
+### FS-7 · 세션 활동 배지 (working/waiting/attention) ⊕ 모델·effort 칩
 
 | 항목 | 내용 |
 |---|---|
-| 목적 | "명령 진행중 / 대기중 / 입력 대기"를 세션 행·드로어에 배지로 표시 |
-| 원리 | wmux는 pane 내부 상태를 모르므로 **Claude Code 훅**으로 얻는다 |
+| 목적 | "명령 진행중 / 대기중 / 입력 대기"와 **세션이 쓰는 모델·effort**를 표시 — 모델·effort는 **세션 행 경로 슬롯(.now)** 에(실측 있으면 `root/<proj>/<role>/` 대신 표시, 경로는 title로 이동 · 실측 없으면 경로 유지)·드로어에 pill로 |
+| 원리 | wmux는 pane 내부 상태를 모르므로 **Claude Code 훅**으로 얻는다 — 전부 로컬 파일 실측(토큰 소비 0) |
 | 훅 매핑 | `UserPromptSubmit`→**working** · `Stop`→**waiting** · `Notification`→**attention** |
 | 기록 | 훅 런타임이 cwd가 `root/<proj>/<role>/` 아래일 때만 `cockpit/workspace/activity/<proj>__<role>.json` 기록(그 외 세션 즉시 종료) · 항상 exit 0(세션 안 막음) |
-| 읽기 | `getActivity(proj,role)` → 상태 문자열. working은 10분 초과 시 stale→null(크래시 방어) |
-| 노출 | buildState가 **claude on일 때만** `activity` 필드 부착(꺼진 세션 잔존 파일 무시) |
-| 배지 | `⏳ 진행중`(accent) · `⌛ 대기중`(faint) · `⚠ 입력 대기`(warn) |
+| 모델·effort | effort=훅 stdin의 공식 common field `effort.level`(모델이 effort 미지원이면 부재) · 모델=훅이 받은 `transcript_path` 꼬리(마지막 256KB)에서 최신 assistant `message.model` — §13 "트랜스크립트 파싱 제거"의 유일한 예외. 이번 관측이 null이면 직전 값 보존(칩 깜빡임 방지) |
+| 읽기 | `getActivity(proj,role)` → `{state, model, effort}`. state의 working은 10분 초과 시 stale→null(크래시 방어) · model/effort는 썩지 않는 값이라 stale이어도 유지 |
+| 노출 | buildState가 **claude on일 때만** `activity`·`model`·`effort` 필드 부착(꺼진 세션 잔존 파일 무시) |
+| 배지 | `⏳ 진행중`(accent) · `⌛ 대기중`(faint) · `⚠ 입력 대기`(warn) · `◆ 모델·effort`(violet·mono — 세션 행은 경로 슬롯 텍스트·드로어는 pill, 축약 표기·title에 원문과 cwd) |
 | 설치 | `activity-hook.mjs install|uninstall` — 전역 `~/.claude/settings.json` 병합(백업·멱등, 기존 wmux 훅 보존) |
 | 설치 안내 | 미설치 실측(`hookInstalled()` — settings.json에 항목 없음) 시 대시보드가 배너 노출: 수동 설치 명령 표기 + **[🪝 훅 설치]** 원클릭(`POST /hook-install` — install을 자식 프로세스로 실행) · [숨기기]=localStorage `ck-hook-hide` · 반영은 새로 시작하는 Claude 세션부터 |
 | 관련 | `bin/activity-hook.mjs`, `src/activity.js`(`getActivity`·`hookInstalled`), `server.js`(buildState·`POST /hook-install`), `dashboard.html`(`hook-banner`) |
@@ -224,15 +224,17 @@ root/<프로젝트>/project.json  (desired — 폴더가 진실)      wmux  (act
 | 열기 | 대시보드에서 기본 브라우저 새 탭 |
 | 관련 | `server.js`(`POST /links`) |
 
-### FS-14 · 활성 포트맵
+### FS-14 · 활성 포트맵 ⊕ 서버 ON/OFF
 
 | 항목 | 내용 |
 |---|---|
-| 목적 | dev/db 리스너 실측 → 프로젝트 귀속 표시(우측 레일) |
+| 목적 | dev/db 리스너 실측 → 프로젝트 귀속 표시(우측 레일) · **귀속 리스너 중지(OFF) · 선언 명령으로 시작(ON)** |
 | 귀속 | active 프로젝트의 세션 pid ↔ 리스너 소유 프로세스 매칭 |
 | 필터 | 시스템·노이즈 리스너 분리(접기) |
-| 노출 | `GET /api/state`의 `ports[]` |
-| 관련 | `ports.js` |
+| 노출 | `GET /api/state`의 `ports[]`(**port·pid 포함**) · 프로젝트 `serve` 선언(`{role, cmd}` — project.json) |
+| OFF | 레일 귀속 행의 **[✕]** → `POST /port-kill` — kill 경유 확인 필수(§9-3) + 낙관적 재검증(⑤: 강제 재스캔에서 (port,pid) 정확 일치 + **프로젝트 귀속 재확인** — 시스템·wmux 오격추 방지) → `taskkill /T` 프로세스 트리 종료(pane 셸은 리스너의 부모라 무사 — 세션 유지) |
+| ON | cockpit은 시작 명령을 모른다 → 카드 **[＋ 서버]**로 선언(`POST /serve` — 비우고 확인=해제) → **[▶ 서버 시작]** `POST /serve-start`가 역할 pane 셸에 sendLine(`POST /claude` 동형). **pane에 claude on/unknown이면 409**(명령이 claude 입력창으로 들어가는 오염 방지) |
+| 관련 | `ports.js`(`freshListener`·`killPid`), `server.js`(`projPortInfo`), `dashboard.html`(`portKillPrompt`·`servePrompt`) |
 
 ### FS-15 · 기능 인벤토리 (caps)
 
@@ -243,16 +245,11 @@ root/<프로젝트>/project.json  (desired — 폴더가 진실)      wmux  (act
 | API | `GET /api/caps` (global) · `GET /api/caps?project=&role=` (세션 스코프) |
 | 관련 | `caps.js` |
 
-### FS-16 · 사용량 게이지 (usage)
+### FS-16 · 사용량 — **제거됨**
 
-| 항목 | 내용 |
-|---|---|
-| 목적 | Claude 사용량을 3개 한도 윈도로 표시 — **5시간 · 주간 전체 · 주간 Opus** |
-| 집계 | 트랜스크립트 usage 필드만(§"트랜스크립트 파싱 제거"의 명시적 예외) |
-| 한도 | 수동 지정(config `usageMax5h`·`usageMaxWeek`·`usageMaxWeekOpus`) 또는 관측 학습 · 미학습 윈도는 "학습 중" |
-| 불변식 | 주간 Opus ⊆ 주간 전체 |
-| API | `GET /api/usage` (60s 폴링) |
-| 관련 | `usage.js` |
+로컬 트랜스크립트 합산으로 사용량/한도를 표시했으나 제거했다. 이유: Claude의 실제 한도는 **5시간·7일 두 창**으로 서버가 관리하고 그 사용률은 트랜스크립트에서 재현할 수 없다 — 롤링 7일 ≠ 고정 리셋 창, 캐시 읽기·모델별 가중치 미상, 타 기기 사용량 부재. 분모도 공식 한도가 아닌 학습치라 `/usage`와 구조적으로 불일치했다.
+
+서버 실측값을 쓰려면 statusline stdin의 `rate_limits.five_hour` / `rate_limits.seven_day`(`used_percentage`·`resets_at`)가 유일한 공식 경로다 — 단 **퍼센트만** 제공되고(절대 토큰·한도값 없음) 세션의 첫 API 응답 이후에만 존재한다. "일간" 창은 Claude 한도 구조에 존재하지 않는다.
 
 ### FS-17 · 중앙 이벤트 로그
 
@@ -304,7 +301,6 @@ root/<프로젝트>/project.json  (desired — 폴더가 진실)      wmux  (act
 | `/` | 대시보드 HTML | 토큰 주입 |
 | `/api/state` | `{projects, unlinked, ports, hookInstalled}` | 폴링 진입점 · `hookInstalled=false`면 대시보드가 훅 설치 안내 배너 노출(FS-7) |
 | `/api/log?project=&limit=` | `{events}` | limit 최대 100 |
-| `/api/usage` | `{windows[...]}` | 3윈도 |
 | `/api/caps?project=&role=` | `{global}` 또는 세션 caps | project 없으면 global |
 
 ### POST (body = JSON)
@@ -330,6 +326,9 @@ root/<프로젝트>/project.json  (desired — 폴더가 진실)      wmux  (act
 | `/adopt` | `{name, agentId, role}` | `{agentId, role}` | 409 role-filled · 404 · 400 |
 | `/git-remote` | `{name, url}` | `{action, backup, git}` | 400 git-url-invalid |
 | `/links` | `{name, action, url, label?}` | `{links}` | 400 http-only |
+| `/port-kill` | `{port, pid, confirm:true}` | `{ok}` | **400 confirm-required** · 409 listener-gone·not-project-listener · 502 kill-failed (FS-14 OFF) |
+| `/serve` | `{name, action:'set'\|'clear', role?, cmd?}` | `{serve}` | 400 cmd-required·cmd-too-long·unknown-role·unknown-action (FS-14 ON 선언) |
+| `/serve-start` | `{name}` | `{ok}` | 400 no-serve-config · 409 project-inactive·role-session-missing·pane-claude-on·pane-state-unknown · 502 no-surface · 503 wmux-offline (FS-14 ON) |
 | `/shutdown` | `{confirm:true}` | `{deactivated, failed}` | **400 confirm-required** — 전 프로젝트 비활성화 → 응답 플러시 → **wmux 앱 종료(taskkill)** → 서버 종료. 평시엔 wmux 수명 비소유, ⏻ 전체 종료만 예외 |
 
 공통 에러: 401(토큰) · 413(body>1MB) · 400 bad-json · 404 unknown-project · 503 wmux-offline.
@@ -346,7 +345,7 @@ root/<프로젝트>/project.json  (desired — 폴더가 진실)      wmux  (act
 │   ⏸ 대기중  — 접힘 가능 · 역할 칩 · [▶ 활성화][＋ 역할][아카이브]
 │   ○ 미연결  — 외부 wmux workspace(기본 접힘)
 │   ▪ 종료됨  — 보관(접힘) · [재개]
-└ 우측 레일: 🔌 활성 포트(귀속 표시) · 🧩 기능 인벤토리(global) · 사용량 게이지(3윈도)
+└ 우측 레일: 🔌 활성 포트(귀속 표시) · 🧩 기능 인벤토리(global)
 드로어: 세션 상세(FS-18) · 다이얼로그: confirm/namer/logbox 공용 골격 · 토스트 · SR 라이브 리전
 ```
 
@@ -384,7 +383,7 @@ root/<프로젝트>/project.json  (desired — 폴더가 진실)      wmux  (act
 7. **세션 개별 스폰** — activate는 스폰 안 함. 스폰 결정은 매 회 `getFresh`(중복 방지).
 8. **세션 활동 = Claude 훅 실측(wmux 아님)** — cwd 가드 · claude on일 때만 노출 · working 10분 stale 방어.
 9. **채택(adopt)** — `connected = adopted[agentId] || declaredRoles.has(label)`. 미점유·같은 역할 열린 세션은 재사용.
-10. **논블로킹 프로브** — ports/proc/caps/usage/git/activity는 어떤 것도 `/api/state`를 막지 않는다.
+10. **논블로킹 프로브** — ports/proc/caps/git/activity는 어떤 것도 `/api/state`를 막지 않는다.
 11. **격리 스캐폴드** — clone된 ops·import 코드엔 cockpit 파일 미주입. 기존 파일 미덮어쓰기.
 12. **cmd 배치는 ASCII 전용**(CP949 파싱) — 한국어 메시지는 JS/C# 계층.
 13. **`.env` 값 비저장·비표시** — 키 이름·존재만.
@@ -404,9 +403,8 @@ root/<프로젝트>/project.json  (desired — 폴더가 진실)      wmux  (act
 
 | 파일 | 내용 |
 |---|---|
-| `cockpit/workspace/config.json` | port·token·wmuxBin·shell·usageMax* (서버 자동 생성) |
+| `cockpit/workspace/config.json` | port·token·wmuxBin·shell (서버 자동 생성) |
 | `cockpit/workspace/logs/events.jsonl` | 중앙 이벤트 로그 |
-| `cockpit/workspace/usage-max.json` | 학습된 사용량 한도 |
 | `cockpit/workspace/activity/<proj>__<role>.json` | 세션 활동 상태(훅 기록) |
 | `root/<프로젝트>/` 런타임 | project.json 외 코드·역할 폴더(상위 저장소는 `root/*` 무시) |
 
@@ -423,4 +421,4 @@ root/<프로젝트>/project.json  (desired — 폴더가 진실)      wmux  (act
 
 ## 11. 범위 밖 (v1 비목표)
 
-- 원격 노출·인증 계층 확장 · DB/배포 **조작**(현재 표시·링크 전용) · 트랜스크립트 파싱(usage 예외만) · git diff·활동 피드 뷰 · 프로젝트별 usage 분해 · 크로스 볼륨 이사(동일 볼륨만).
+- 원격 노출·인증 계층 확장 · DB/배포 **조작**(현재 표시·링크 전용) · 트랜스크립트 파싱(훅의 모델 판별만 예외) · git diff·활동 피드 뷰 · **사용량·한도 표시**(FS-16 — 제거됨) · 크로스 볼륨 이사(동일 볼륨만).

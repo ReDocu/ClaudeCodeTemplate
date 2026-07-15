@@ -1,7 +1,8 @@
 // HTTP 레이어(유일) — FS-3 + 전 엔드포인트(§8.4, 이 목록이 전부):
-//   GET  / · /api/state · /api/log · /api/caps · /api/usage
+//   GET  / · /api/state · /api/log · /api/caps
 //   POST /activate · /spawn · /kill-session · /deactivate · /archive · /reopen · /create · /import · /create-git · /roles
-//        /claude · /attach · /open · /links · /git-remote · /adopt · /pick-folder · /console · /hook-install · /shutdown
+//        /claude · /attach · /open · /links · /git-remote · /adopt · /pick-folder · /console · /hook-install
+//        /port-kill · /serve · /serve-start · /shutdown
 // 127.0.0.1 바인드 + X-Cockpit-Token(GET / 제외 전부, A-5). 어떤 프로브도 응답을 막지 않는다(§9-⑥).
 import { createServer } from 'node:http';
 import { readFileSync, existsSync, mkdirSync, writeFileSync, rmSync } from 'node:fs';
@@ -17,11 +18,10 @@ import {
   matchWorkspace, matchWorkspaceInfo, agentsOfWs, reconcile, parseLabel, roleOf,
 } from './lifecycle.js';
 import { claudeAlive, claudeAliveFresh, invalidateProc } from './proc.js';
-import { getPorts } from './ports.js';
+import { getPorts, freshListener, killPid, invalidatePorts } from './ports.js';
 import { getGit, connectRemote, repoNameFromUrl } from './git.js';
 import { getActivity, hookInstalled, invalidateHook } from './activity.js';
 import { globalCaps, sessionCaps } from './caps.js';
-import { getUsage } from './usage.js';
 import { logEvent, readLog, logConsole } from './log.js';
 
 const DASHBOARD = fileURLToPath(new URL('../dashboard.html', import.meta.url));
@@ -56,6 +56,8 @@ function buildState(state) {
       name: p.name, status: p.status,
       createdAt: p.createdAt || null, archivedAt: p.archivedAt || null,
       links: p.links || [], roles: (p.roles || []).map((r) => ({ id: r.id })),
+      // 서버 시작 명령 선언(FS-14 확장) — [▶ 서버 시작]이 이 명령을 역할 pane에 전송(POST /serve-start).
+      serve: p.serve && p.serve.cmd ? { role: p.serve.role || 'ops', cmd: String(p.serve.cmd) } : null,
       // git 칩은 ops(코드베이스) 기준 — ops가 저장소면 ops, 아니면 프로젝트 루트로 폴백(레거시 호환).
       wsLive: !!ws, wsVia, git: getGit(existsSync(join(p._dir, 'ops', '.git')) ? join(p._dir, 'ops') : p._dir),
       sessions: agents.map((a) => {
@@ -65,12 +67,14 @@ function buildState(state) {
         const resolved = resolveRole(a);
         const connected = !!adoptedRole || (resolved !== null && declaredRoles.has(resolved));
         const role = resolved || (ns ? `${ns.project}/${ns.role}` : a.label) || a.agentId;
+        // 활동·모델·effort(FS-훅): claude 실행 중일 때만 의미 — 훅이 쓴 상태 파일 실측(없으면 null).
+        const act = alive === true ? getActivity(p._folder, role) : null;
         return { role, agentId: a.agentId, alive: true,
           connected, adopted: !!adoptedRole,
           via: adoptedRole ? 'adopted' : ns ? 'label-ns' : 'label', // 매칭 근거(⑦) — 드로어 표시·진단용
           claude: alive === true ? 'on' : alive === false ? 'off' : 'unknown',
-          // 활동 상태(FS-훅): claude 실행 중일 때만 의미 — 훅이 쓴 상태 파일 실측(없으면 null).
-          activity: alive === true ? getActivity(p._folder, role) : null };
+          activity: act ? act.state : null,
+          model: act ? act.model : null, effort: act ? act.effort : null };
       }),
     });
     if (p.status === 'active') {
@@ -110,6 +114,18 @@ function requireProject(name) {
   const p = findProject(name);
   if (!p) throw err(404, 'unknown-project');
   return p;
+}
+
+// active 프로젝트 → 포트 귀속 입력(name/dir/pids) — buildState 인라인 구성과 동형(/port-kill 재검증용).
+function projPortInfo(state, projects) {
+  const out = [];
+  for (const p of projects) {
+    if (p.status !== 'active') continue;
+    const ws = state.live ? matchWorkspace(state, p) : null;
+    const agents = ws ? agentsOfWs(state, ws.id) : [];
+    out.push({ name: p.name, dir: (p._dir || '').toLowerCase(), pids: new Set(agents.map((a) => a.pid).filter(Boolean)) });
+  }
+  return out;
 }
 
 // 네이티브 폴더 선택창(Windows) — 대시보드 "찾아보기"가 절대경로 타이핑 대신 클릭으로 폴더를 고르게(FS-9 보조).
@@ -213,7 +229,6 @@ async function findAgent(agentId, fresh = false) {
 const routes = {
   'GET /api/state': async () => buildState(await getState()),
   'GET /api/log': async (_b, q) => ({ events: readLog({ project: q.get('project') || undefined, limit: Math.min(100, Number(q.get('limit')) || 20) }) }),
-  'GET /api/usage': async () => getUsage(),
   'GET /api/caps': async (_b, q) => {
     const project = q.get('project'), role = q.get('role');
     if (!project) return { global: globalCaps() };
@@ -359,6 +374,61 @@ const routes = {
     const r = await connectRemote(opsDir, url); // ops에 clone(또는 기존 저장소면 원격 갱신) — 백업 후 진행
     logEvent('info', p.name, 'git', `ops 원격 ${r.action === 'cloned' ? 'clone' : '갱신'}${r.backup ? ` · 기존 ops 백업 ${basename(r.backup)}` : ''} — ${url}`);
     return { ok: true, action: r.action, backup: r.backup ? basename(r.backup) : null, git: r.git };
+  },
+  // 활성 포트 리스너 중지(FS-14 확장 — OFF). kill 경유 확인 필수(§9-3) + 낙관적 재검증(⑤):
+  // 강제 재스캔에서 (port,pid) 정확 일치 + 프로젝트 귀속 재확인 — 시스템·wmux 리스너 오격추 방지.
+  // 종료는 프로세스 트리째(taskkill /T) — pane 셸은 리스너의 부모라 살아남고, 세션은 유지된다.
+  'POST /port-kill': async (b) => {
+    if (b.confirm !== true) throw err(400, 'confirm-required');
+    const port = Number(b.port), pid = Number(b.pid);
+    if (!port || !pid) throw err(400, 'port-pid-required');
+    const live = await freshListener(port, pid);
+    if (!live) throw err(409, 'listener-gone'); // 이미 내려갔거나 pid 재사용 — 재스캔 불일치
+    const state = await getState();
+    const { projects } = scanProjects();
+    const row = getPorts(projPortInfo(state, projects)).find((r) => r.port === port && r.pid === pid);
+    if (!row || !row.project) throw err(409, 'not-project-listener'); // 프로젝트 세션발 리스너만 허용
+    try { await killPid(pid); }
+    catch (e) { logEvent('error', row.project, 'port', `:${port} ${row.proc}(pid ${pid}) 중지 실패 — ${e.message}`); throw err(502, 'kill-failed'); }
+    invalidatePorts(); // 즉시 재실측 — 다음 폴링에 목록 반영
+    logEvent('info', row.project, 'port', `:${port} ${row.proc}(pid ${pid}) 중지 — 프로세스 트리 종료`);
+    return { ok: true };
+  },
+  // 서버 시작 명령 선언(FS-14 확장 — ON의 선행 선언). cockpit은 시작 명령을 모른다 → 프로젝트가 선언(project.json).
+  'POST /serve': async (b) => {
+    const p = requireProject(b.name);
+    if (b.action === 'set') {
+      const cmd = String(b.cmd || '').trim();
+      if (!cmd) throw err(400, 'cmd-required');
+      if (cmd.length > 200) throw err(400, 'cmd-too-long');
+      const role = String(b.role || 'ops').trim() || 'ops';
+      if (!new Set(['ops', ...(p.roles || []).map((r) => r.id)]).has(role)) throw err(400, 'unknown-role');
+      p.serve = { role, cmd };
+    } else if (b.action === 'clear') delete p.serve;
+    else throw err(400, 'unknown-action');
+    writeProject(p);
+    logEvent('info', p.name, 'serve', b.action === 'set' ? `서버 명령 선언 — [${p.serve.role}] ${p.serve.cmd}` : '서버 명령 해제');
+    return { ok: true, serve: p.serve || null };
+  },
+  // 서버 시작(FS-14 확장 — ON) — 선언된 명령을 역할 pane 셸에 전송(POST /claude의 sendLine과 동형).
+  // pane에 claude가 떠 있으면 거부(409) — 명령이 claude 입력창으로 들어가는 오염 방지. unknown도 보수적으로 거부.
+  'POST /serve-start': async (b) => {
+    const p = requireProject(b.name);
+    const sv = p.serve;
+    if (!sv || !sv.cmd) throw err(400, 'no-serve-config');
+    const state = await getFresh();
+    if (!state.live) throw err(503, 'wmux-offline');
+    const ws = matchWorkspace(state, p);
+    if (!ws) throw err(409, 'project-inactive');
+    const a = agentsOfWs(state, ws.id).find((x) => roleOf(p, x) === (sv.role || 'ops'));
+    if (!a) throw err(409, 'role-session-missing');
+    if (!a.surfaceId) throw err(502, 'no-surface');
+    const alive = await claudeAliveFresh(a.pid);
+    if (alive !== false) throw err(409, alive === true ? 'pane-claude-on' : 'pane-state-unknown');
+    await sendLine(sv.cmd, a.surfaceId);
+    invalidatePorts(); // 리스너가 뜨면 다음 폴링에 포트맵 반영
+    logEvent('info', p.name, 'serve', `[${sv.role}] pane에 서버 시작 전송 — ${sv.cmd}`);
+    return { ok: true };
   },
   'POST /links': async (b) => {
     const p = requireProject(b.name);

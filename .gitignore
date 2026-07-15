@@ -12,7 +12,7 @@ root/*
 claudecockpit_backup/*
 !root/.templates/
 
-# cockpit(리라이트) 런타임 — 토큰·로그·학습값(config.json·logs/·usage-max.json). 새 클론엔 없음.
+# cockpit(리라이트) 런타임 — 토큰·로그·활동 상태(config.json·logs/·activity/). 새 클론엔 없음.
 cockpit/workspace/
 
 # 내부 개발 문서 — 배포/공개 대상 아님. 로컬에는 남기고 추적만 중단.

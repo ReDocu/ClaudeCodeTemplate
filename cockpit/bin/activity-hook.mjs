@@ -1,9 +1,10 @@
-// Claude Code 훅 런타임 — 세션 활동(working/waiting/attention)을 cockpit이 읽을 상태 파일로 기록.
+// Claude Code 훅 런타임 — 세션 활동(working/waiting/attention)⊕모델·effort를 cockpit이 읽을 상태 파일로 기록.
 //   훅 호출: node activity-hook.mjs <working|waiting|attention>  (stdin=Claude 훅 JSON)
 //   cwd가 cockpit root/<프로젝트>/<역할>/ 아래일 때만 기록 → cockpit/workspace/activity/<proj>__<role>.json
 //   그 외(비-cockpit 세션)는 즉시 종료(무동작). 훅은 절대 세션을 막지 않는다 → 항상 exit 0.
 //   설치/제거: node activity-hook.mjs install|uninstall  (~/.claude/settings.json 병합·백업, 기존 훅 보존)
-import { readFileSync, writeFileSync, mkdirSync, existsSync, copyFileSync } from 'node:fs';
+//   모델·effort도 로컬 실측만(토큰 소비 0) — effort=훅 페이로드 공통 필드, 모델=트랜스크립트 꼬리(아래 주석).
+import { readFileSync, writeFileSync, mkdirSync, existsSync, copyFileSync, openSync, readSync, closeSync, statSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { join, resolve, dirname } from 'node:path';
 import { homedir } from 'node:os';
@@ -73,9 +74,42 @@ function uninstall() {
 }
 
 // ── 훅 런타임 — 상태 파일 기록 ──
+// 세션 모델 실측 — 훅 페이로드에 model이 없어(공식 common fields 밖) transcript_path 꼬리에서
+// 최신 assistant의 message.model을 읽는다(§13 "트랜스크립트 파싱 제거"의 유일한 예외).
+// 마지막 TAIL 바이트만 읽어 뒤에서부터 스캔 → 파일이 커도 비용 고정. 실패는 전부 null.
+const TAIL = 256 * 1024;
+function modelFromTranscript(path) {
+  if (!path) return null;
+  try {
+    const size = statSync(path).size;
+    if (!size) return null;
+    const len = Math.min(size, TAIL);
+    const buf = Buffer.alloc(len);
+    const fd = openSync(path, 'r');
+    try { readSync(fd, buf, 0, len, size - len); } finally { closeSync(fd); }
+    const lines = buf.toString('utf8').split('\n');
+    for (let i = lines.length - 1; i >= 0; i--) {
+      if (!lines[i].includes('"model"')) continue; // 값싼 프리필터
+      try {
+        const m = JSON.parse(lines[i])?.message?.model;
+        if (m && m !== '<synthetic>') return m;
+      } catch { /* 청크 경계에서 잘린 줄 — 다음 줄 계속 */ }
+    }
+  } catch { /* 트랜스크립트 없음/읽기 실패 — null */ }
+  return null;
+}
+
 async function record(state) {
-  let cwd = process.cwd();
-  try { const raw = await readStdin(); if (raw) { const j = JSON.parse(raw); if (j && j.cwd) cwd = j.cwd; } } catch { /* stdin 없음 — process.cwd() */ }
+  let cwd = process.cwd(), effort = null, transcript = null;
+  try {
+    const raw = await readStdin();
+    if (raw) {
+      const j = JSON.parse(raw);
+      if (j && j.cwd) cwd = j.cwd;
+      if (j && j.effort && j.effort.level) effort = String(j.effort.level); // 공식 common field — 모델이 effort 미지원이면 부재
+      if (j && j.transcript_path) transcript = String(j.transcript_path);
+    }
+  } catch { /* stdin 없음 — process.cwd() */ }
   // 세션 신원 env 우선(신뢰성 개편 ⑥) — 스폰 시 pane에 주입된 COCKPIT_PROJECT/ROLE.
   // cd로 다른 폴더에 가도 활동이 남의 세션 키로 오귀속되지 않는다. 없으면 cwd 역산(구 세션 호환).
   const envP = (process.env.COCKPIT_PROJECT || '').trim(), envR = (process.env.COCKPIT_ROLE || '').trim();
@@ -83,7 +117,13 @@ async function record(state) {
   if (!key) return; // cockpit 세션 아님 → 무동작
   mkdirSync(ACT_DIR, { recursive: true });
   const file = join(ACT_DIR, `${sanitize(key.project)}__${sanitize(key.role)}.json`);
-  writeFileSync(file, JSON.stringify({ state, project: key.project, role: key.role, ts: Date.now() }));
+  // 이번 관측이 null이면 직전 값 보존(첫 프롬프트엔 assistant 메시지가 아직 없는 등) — 칩 깜빡임 방지.
+  let prev = {}; try { prev = JSON.parse(readFileSync(file, 'utf8')) || {}; } catch { /* 첫 기록 */ }
+  const model = modelFromTranscript(transcript) || prev.model || null;
+  writeFileSync(file, JSON.stringify({
+    state, project: key.project, role: key.role, ts: Date.now(),
+    model, effort: effort || prev.effort || null,
+  }));
 }
 
 const arg = process.argv[2];

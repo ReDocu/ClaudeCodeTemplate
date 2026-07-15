@@ -72,9 +72,31 @@ export function getPorts(projInfo = []) {
       const hit = projInfo.find((pi) => pi.dir && cmdLc.includes(pi.dir));
       if (hit) project = hit.name;
     }
-    out.push({ p: ':' + port, proc: proc.name.replace(/\.exe$/i, ''), project });
+    out.push({ p: ':' + port, port, pid, proc: proc.name.replace(/\.exe$/i, ''), project });
   }
   return out;
 }
 
 export function invalidatePorts() { _at = 0; refresh(); }
+
+// ── 리스너 중지(FS-14 확장) — 대시보드 [✕]의 실측 재검증·종료 ──
+// freshListener: TTL 무시 강제 재스캔 후 (port,pid) 정확 일치 리스너 반환(없으면 null).
+// 낙관적 재검증(⑤) — 그 pid가 이미 내려갔거나 pid가 재사용됐으면 kill을 거부하게 한다.
+export async function freshListener(port, pid) {
+  if (process.platform !== 'win32') return null;
+  _at = 0;
+  await refresh();
+  if (!_snap) return null;
+  const hit = _snap.listeners.find((l) => l.port === port && l.pid === pid);
+  if (!hit) return null;
+  const proc = _snap.procs.get(pid);
+  return { port, pid, proc: (proc?.name || '?').replace(/\.exe$/i, '') };
+}
+
+// 프로세스 트리째 종료(dev 서버가 스폰한 워커 포함 — pane 셸은 리스너의 부모라 무사). 실패는 reject.
+export function killPid(pid) {
+  return new Promise((resolveP, rejectP) => {
+    execFile('taskkill.exe', ['/PID', String(pid), '/T', '/F'], { windowsHide: true, timeout: 10_000 },
+      (e, _stdout, stderr) => (e ? rejectP(new Error((stderr || e.message).trim())) : resolveP()));
+  });
+}

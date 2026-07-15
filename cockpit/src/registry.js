@@ -9,7 +9,7 @@ import { join, dirname, resolve, basename } from 'node:path';
 
 export const ROOT = fileURLToPath(new URL('../../root/', import.meta.url));
 
-// cockpit 런타임 설정(workspace/config.json — gitignore) — 포트·토큰·wmuxBin·shell·usageMax*.
+// cockpit 런타임 설정(workspace/config.json — gitignore) — 포트·토큰·wmuxBin·shell.
 // 새 클론엔 없다는 전제(서버가 자동 생성). 다른 모듈이 순환 의존 없이 읽고 쓰는 최소 창구.
 const CONFIG_PATH = fileURLToPath(new URL('../workspace/config.json', import.meta.url));
 export function readConfig() { try { return JSON.parse(readFileSync(CONFIG_PATH, 'utf8')); } catch { return {}; } }

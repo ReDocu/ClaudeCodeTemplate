@@ -26,12 +26,15 @@ export function hookInstalled() {
   return v;
 }
 
-// project 폴더명 · role → 'working'|'waiting'|'attention'|null. 훅 키(activity-hook.mjs)와 동일 규칙.
+// project 폴더명 · role → { state, model, effort } | null. 훅 키(activity-hook.mjs)와 동일 규칙.
+//   state: 'working'|'waiting'|'attention'|null(미상/stale). model·effort는 훅이 함께 기록한
+//   세션 실측(모델=트랜스크립트 꼬리 · effort=훅 페이로드) — 썩지 않는 값이라 stale이어도 유지.
 export function getActivity(project, role) {
   try {
     const j = JSON.parse(readFileSync(join(ACT_DIR, `${sanitize(project)}__${sanitize(role)}.json`), 'utf8'));
-    if (!j || !j.state) return null;
-    if (j.state === 'working' && Date.now() - (Number(j.ts) || 0) > WORKING_STALE) return null;
-    return j.state;
+    if (!j) return null;
+    let state = j.state || null;
+    if (state === 'working' && Date.now() - (Number(j.ts) || 0) > WORKING_STALE) state = null;
+    return { state, model: j.model || null, effort: j.effort || null };
   } catch { return null; }
 }
