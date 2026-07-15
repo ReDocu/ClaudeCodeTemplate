@@ -12,7 +12,7 @@ import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { join, basename } from 'node:path';
 import { ROOT, readConfig, patchConfig, scanProjects, findProject, createProject, importProject, removeRole, writeProject } from './registry.js';
-import { getState, getFresh, invalidate, selectWorkspace, focusPane, sendLine, killApp } from './wmux.js';
+import { getState, getFresh, invalidate, selectWorkspace, focusPane, sendLine, killApp, activateApp } from './wmux.js';
 import {
   activate, deactivate, archive, reopen, spawnRole, killSession,
   matchWorkspace, matchWorkspaceInfo, agentsOfWs, reconcile, parseLabel, roleOf,
@@ -136,8 +136,19 @@ function projPortInfo(state, projects) {
 // Win32(AttachThreadInput+SetForegroundWindow+SetWindowPos TOPMOST)로 잠금을 우회해 맨 앞으로 끌어올린다.
 // -File로 임시 .ps1 실행(C# 인라인·한글 설명 인용 안전). 취소=path:null · 비Windows=unsupported(수동 입력 폴백).
 function pickFolder({ title } = {}) {
+  const rawDesc = String(title || '연동할 기존 프로젝트 폴더를 선택하세요').replace(/[\r\n]/g, ' ').slice(0, 120);
+  if (process.platform === 'darwin') {
+    // 네이티브 폴더 선택창(macOS) — osascript choose folder. System Events activate로 대화상자를 앞으로.
+    // 취소(비0 종료)/5분 방치 = path:null (Windows 경로와 동형 — 대시보드는 수동 입력 폴백).
+    return new Promise((resolveP) => {
+      execFile('osascript',
+        ['-e', 'tell application "System Events" to activate', '-e', `POSIX path of (choose folder with prompt ${JSON.stringify(rawDesc)})`],
+        { timeout: 5 * 60 * 1000 },
+        (_e, stdout) => resolveP({ path: (stdout || '').trim().replace(/\/$/, '') || null }));
+    });
+  }
   if (process.platform !== 'win32') return Promise.resolve({ path: null, unsupported: true });
-  const desc = String(title || '연동할 기존 프로젝트 폴더를 선택하세요').replace(/[\r\n]/g, ' ').replace(/'/g, "''").slice(0, 120);
+  const desc = rawDesc.replace(/'/g, "''");
   const script = `$ErrorActionPreference = 'Stop'
 Add-Type -AssemblyName System.Windows.Forms
 Add-Type -AssemblyName System.Drawing
@@ -319,13 +330,14 @@ const routes = {
     const a = await findAgent(b.agentId);
     if (a.workspaceId) await selectWorkspace(a.workspaceId);
     if (a.paneId) { try { await focusPane(a.paneId); } catch { /* pane 포커스 실패 — ws 전환까지는 성공 */ } }
+    await activateApp().catch(() => { /* 앱 활성화 실패 — 전환은 성공했으므로 무해 (darwin 점프 보조, win32 no-op) */ });
     return { ok: true };
   },
   'POST /open': async (b) => {
     const p = requireProject(b.name);
     const dir = b.role ? join(p._dir, String(b.role)) : p._dir;
     if (!dir.toLowerCase().startsWith(ROOT.toLowerCase()) || !existsSync(dir)) throw err(400, 'bad-path');
-    spawn('explorer.exe', [dir], { detached: true, stdio: 'ignore' }).unref();
+    spawn(process.platform === 'win32' ? 'explorer.exe' : 'open', [dir], { detached: true, stdio: 'ignore' }).unref();
     return { ok: true };
   },
   // 네이티브 폴더 선택창을 띄우고 선택된 절대경로를 돌려줌 — "기존 프로젝트 연동"이 경로를 클릭으로 고르게(FS-9 보조).

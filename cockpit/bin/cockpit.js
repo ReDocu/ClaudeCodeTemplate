@@ -10,6 +10,7 @@ import { existsSync, readdirSync } from 'node:fs';
 import { join, dirname, resolve } from 'node:path';
 import { readConfig, patchConfig, scanProjects } from '../src/registry.js';
 import { isAvailable, invalidate } from '../src/wmux.js';
+import { cmuxApp } from '../src/cmux.js';
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const args = process.argv.slice(2);
@@ -108,6 +109,21 @@ async function ensureWmux({ setup = false } = {}) {
   throw new Error(`wmux를 기동했지만 15초 내 응답이 없습니다 (wmuxBin: ${bin}).`);
 }
 
+// cmux 보장(darwin) — 있으면 재사용, 없으면 앱 번들 open 후 ready 폴링. cmux 수명은 소유하지 않는다.
+// 발견은 드라이버(cmux.js cmuxBin: config → PATH → /Applications 글롭)가 담당 — 번들만 역산.
+async function ensureCmux() {
+  if (await isAvailable()) return { action: 'reused' };
+  const app = cmuxApp();
+  if (!app) throw new Error('cmux를 찾을 수 없습니다 — /Applications에 cmux를 설치하거나 cockpit/workspace/config.json에 "cmuxBin": "<cmux CLI 절대경로>"를 지정하세요.');
+  spawn('open', [app], { detached: true, stdio: 'ignore' }).unref();
+  const deadline = Date.now() + 20_000;
+  while (Date.now() < deadline) {
+    await sleep(500);
+    if (await isAvailable()) { invalidate(); return { action: 'started' }; }
+  }
+  throw new Error(`cmux를 기동했지만 20초 내 응답이 없습니다 (${app}).`);
+}
+
 // 기존 서버 감지 — 재클릭 멱등성. 401도 alive(우리 계열 서버가 응답 중 — 새로 띄우면 EADDRINUSE만 남).
 async function serverAlive(port, token) {
   try {
@@ -121,14 +137,18 @@ async function serverAlive(port, token) {
 
 async function boot() {
   const setup = args.includes('--setup');
-  console.log('[boot] ① wmux 확인/기동');
-  const w = await ensureWmux({ setup });
-  console.log(`[boot]    wmux ${w.action === 'reused' ? '이미 실행 중 — 재사용' : `기동 완료 (pid ${w.pid})`}`);
+  const IS_MAC = process.platform === 'darwin';
+  const MUX = IS_MAC ? 'cmux' : 'wmux';
+  console.log(`[boot] ① ${MUX} 확인/기동`);
+  const w = IS_MAC ? await ensureCmux() : await ensureWmux({ setup });
+  console.log(`[boot]    ${MUX} ${w.action === 'reused' ? '이미 실행 중 — 재사용' : `기동 완료${w.pid ? ` (pid ${w.pid})` : ''}`}`);
 
   // ①-b 클린 슬레이트 — boot이 wmux를 **직접 기동한 경우에만**. wmux가 자동 복원한 이전
   // 세션·워크스페이스(같은 제목 중복 → 순서 따라 오바인딩)를 전부 걷어내고 대시보드 선언 기준으로
   // 재구성한다. 이미 실행 중이던 wmux(reused)는 살아있는 작업일 수 있어 절대 건드리지 않는다.
-  if (w.action === 'started') {
+  // darwin 제외 — cmux는 사용자의 일상 터미널 앱이라 복원분 일괄 정리가 비-cockpit 작업을 파괴한다
+  // (wmux는 cockpit 전용 전제). 중복 제목 위험은 reconcile·title 매칭이 흡수.
+  if (w.action === 'started' && !IS_MAC) {
     console.log('[boot] ①-b wmux 초기화 — 자동 복원된 이전 세션·워크스페이스 정리');
     try {
       const { cleanSlate } = await import('../src/lifecycle.js');
@@ -164,7 +184,7 @@ async function boot() {
   if (!actives.length) console.log('[boot]    active 프로젝트 없음 — 건너뜀');
 
   console.log('[boot] ④ 대시보드 오픈 (기본 브라우저)');
-  try { spawn('explorer.exe', [url], { detached: true, stdio: 'ignore' }).unref(); }
+  try { spawn(IS_MAC ? 'open' : 'explorer.exe', [url], { detached: true, stdio: 'ignore' }).unref(); }
   catch (e) { console.warn(`[boot]    오픈 실패(${e.message}) — 수동으로 여세요: ${url}`); }
 
   console.log(served
