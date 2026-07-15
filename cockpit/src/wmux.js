@@ -174,12 +174,11 @@ export const activateApp = () => D ? D.activateApp() : Promise.resolve();
 // 프로세스 종료로 내린다(이미지 이름은 config.wmuxBin 기준 · Electron 자식들도 같은 이름이라 함께 종료).
 // 실패해도 던지지 않는다 — 전체 종료 흐름을 막지 않는 게 우선(호출자는 로그만 남긴다).
 export function killApp() {
+  if (D) return D.killApp();
   const cfg = readConfig();
   const image = cfg.wmuxBin ? basename(cfg.wmuxBin) : 'wmux.exe';
   return new Promise((resolveP) => {
-    const args = process.platform === 'win32' ? ['/F', '/IM', image] : ['-f', image];
-    execFile(process.platform === 'win32' ? 'taskkill' : 'pkill', args,
-      { windowsHide: true, timeout: 10_000 },
+    execFile('taskkill', ['/F', '/IM', image], { windowsHide: true, timeout: 10_000 },
       (e, _stdout, stderr) => resolveP(e ? { ok: false, error: (stderr || e.message).trim() } : { ok: true, image }));
   });
 }

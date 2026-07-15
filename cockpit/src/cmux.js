@@ -5,7 +5,7 @@
 import { execFile, spawn, spawnSync } from 'node:child_process';
 import { readFileSync, writeFileSync, readdirSync, mkdirSync, existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { join, dirname } from 'node:path';
+import { join, dirname, basename } from 'node:path';
 import { readConfig, patchConfig } from './registry.js';
 import { logConsole } from './log.js';
 
@@ -185,5 +185,18 @@ export function activateApp() {
     const child = spawn('open', app ? [app] : ['-a', 'cmux'], { detached: true, stdio: 'ignore' });
     child.on('error', () => resolveP()); // 활성화 실패 — 점프의 보조 동작이라 무해
     child.on('spawn', () => { child.unref(); resolveP(); });
+  });
+}
+
+// cmux 앱 종료 — 전체 종료(⏻)의 darwin 대응(win32는 wmux.js가 taskkill /IM).
+// pkill 대신 osascript quit — cmux는 GUI 앱이라 SIGTERM 직격은 세션 저장을 건너뛴다.
+// 앱 이름은 번들명 기준(cmux-0.x.app 같은 배포도 실측 존재 — cmuxApp() 역산이 정본).
+// wmux.js의 계약대로 던지지 않는다 — 전체 종료 흐름을 막지 않는 게 우선.
+export function killApp() {
+  const app = cmuxApp();
+  const name = app ? basename(app, '.app') : 'cmux';
+  return new Promise((resolveP) => {
+    execFile('/usr/bin/osascript', ['-e', `quit app "${name}"`], { timeout: 10_000 },
+      (e, _stdout, stderr) => resolveP(e ? { ok: false, error: (stderr || e.message).trim() } : { ok: true, image: name }));
   });
 }
