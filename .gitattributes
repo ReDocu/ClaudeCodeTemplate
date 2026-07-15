@@ -1,0 +1,9 @@
+# macOS 런처의 셔뱅은 커널이 직접 읽는다 — CRLF면 인터프리터가 '/bin/bash\r'가 되어
+# 실행 자체가 불가능하다. Windows에서 core.autocrlf=true로 패키징해도(git archive가
+# 이 설정을 적용한다) LF를 유지하도록 강제한다.
+*.command text eol=lf
+*.sh       text eol=lf
+
+# win32 런처는 반대 — cmd.exe는 CRLF를 요구한다.
+*.cmd text eol=crlf
+*.bat text eol=crlf
