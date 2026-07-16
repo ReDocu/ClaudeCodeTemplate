@@ -4,7 +4,7 @@
 import { mkdirSync } from 'node:fs';
 import {
   getFresh, invalidate, refreshState, spawnAgent, killAgent, createWorkspace, closeWorkspace, resolveShell, selectWorkspace,
-} from './wmux.js';
+} from './mux.js';
 import { findProject, writeProject, ensureRoleDir, scanProjects } from './registry.js';
 import { logEvent } from './log.js';
 

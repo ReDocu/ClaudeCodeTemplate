@@ -1,15 +1,25 @@
-// cmux 드라이버 (darwin) — wmux.js가 위임하는 macOS 대응물. 스펙: doc/specs/2026-07-14-cmux-port-design.md
+// cmux 드라이버 (darwin) — wmux 드라이버의 macOS 대응물. 스펙: doc/specs/2026-07-14-cmux-port-design.md
 // 원칙: ① 주소는 UUID만(short ref는 변이 사이 재번호 — 실측) ② 모든 호출은 cmux CLI(execFile) 경유
 //       (raw 소켓 파라미터는 미문서 — CLI가 문서화된 계약) ③ 세션 신원은 매핑 파일이 정본
 //       (cmux surface엔 label이 없고 탭 제목은 claude 훅이 덮어씀 — 실측).
+//
+// 역할 분담(계약 전문은 mux.js 헤더): 상태 캐시·정규화·dead 필터·셸 결정은 파사드(mux.js)가 갖고,
+// 이 파일은 cmux 고유 규약만 안다 — CLI 발견·UUID 주소·신원 매핑·pty wake.
 import { execFile, spawn, spawnSync } from 'node:child_process';
 import { readFileSync, writeFileSync, readdirSync, mkdirSync, existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { join, dirname } from 'node:path';
-import { readConfig, patchConfig } from './registry.js';
-import { logConsole } from './log.js';
+import { readConfig, patchConfig } from '../registry.js';
+import { logConsole } from '../log.js';
+
+export const NAME = 'cmux';
+// cockpit이 앱을 독점 소유하지 **않는다**(mux.js 계약) — cmux는 사용자의 일상 터미널이라
+// boot의 복원분 일괄 정리(cleanSlate)도, 전체 종료의 앱 종료(killApp)도 cockpit 밖 작업을 파괴한다.
+// wmux는 cockpit 전용 전제라 true — 이 한 플래그가 두 파괴적 경로를 동시에 막는다.
+export const OWNS_APP = false;
 
 const TIMEOUT = 10_000;
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 // ── CLI 발견 — config cmuxBin → PATH → /Applications/cmux*.app 글롭 (1회 캐시, config 되씀) ──
 let _bin = null;
@@ -38,7 +48,7 @@ export function cmuxApp() {
 }
 
 // ── CLI 실행 — 요청당 1프로세스(~30ms). CMUX_* 상속 제거(코크핏이 cmux 터미널 안에서 돌 때
-// 기본 --workspace 오염 방지). 고빈도 폴링 커맨드는 성공 로그 제외(wmux.js와 동일 규칙). ──
+// 기본 --workspace 오염 방지). 고빈도 폴링 커맨드는 성공 로그 제외(wmux 드라이버와 동일 규칙). ──
 const QUIET = new Set(['rpc', 'top', 'ping', 'read-screen']);
 const _hms = () => { try { return new Date().toLocaleTimeString(); } catch { return ''; } };
 function cli(args, timeoutMs = TIMEOUT) {
@@ -97,14 +107,14 @@ export function buildInitLine({ cwd, cmd, env } = {}) {
 // ── 세션 신원 매핑 (wmux label의 정본 대응물) — workspace/cmux-agents.json: {surfaceUUID: label} ──
 // 스폰 시 기록·kill 시 삭제만(자동 청소 없음 — UUID는 재사용되지 않아 잔존 무해).
 // cmux 재시작으로 UUID가 갈리면 세션은 '미연결'로 보이고 기존 채택(adopt) 경로로 복구.
-const MAP_PATH = fileURLToPath(new URL('../workspace/cmux-agents.json', import.meta.url));
+const MAP_PATH = fileURLToPath(new URL('../../workspace/cmux-agents.json', import.meta.url));
 function readMap() { try { return JSON.parse(readFileSync(MAP_PATH, 'utf8')); } catch { return {}; } }
 function writeMap(m) {
   try { mkdirSync(dirname(MAP_PATH), { recursive: true }); writeFileSync(MAP_PATH, JSON.stringify(m, null, 2)); }
   catch (e) { logConsole(`[cmux✗] 신원 매핑 저장 실패 — ${e.message}`); }
 }
 
-// ── 상태 실측 — wmux.js _refetch가 그대로 소비하는 형태로 반환 ──
+// ── 상태 실측 — mux.js _refetch가 정규화·dead 필터를 걸어 소비한다 ──
 // workspace.list는 window 단위(실측) — window.list로 전 창 순회해 다른 창의 프로젝트도 놓치지 않는다.
 // 폴링당 CLI 1+W+N+1회(window.list · 창별 workspace.list · ws별 surface.list · top) — TTL 1.5s 캐시가 흡수.
 async function listAllWorkspaces() {
@@ -136,7 +146,10 @@ export async function fetchState() {
   return { workspaces, agents };
 }
 
-export async function ping() { return cli(['ping'], 5000); }
+export const ping = () => cli(['ping'], 5000);
+export async function isAvailable() {
+  try { return /pong/i.test(await ping()); } catch { return false; }
+}
 
 // ── 제어 — 전부 UUID 주소 지정 ──
 export const selectWorkspace = (id) => cli(['select-workspace', '--workspace', id]);
@@ -157,9 +170,8 @@ export async function createWorkspace({ title, cwd } = {}) {
 }
 export const closeWorkspace = (id) => cli(['close-workspace', '--workspace', id]);
 
+// 스폰 — cwd/cmd 필수 검사는 파사드(mux.js). workspaceId(UUID)는 cmux 고유 요구.
 export async function spawnAgent({ workspaceId, label, cwd, cmd, env } = {}) {
-  if (!cmd) throw new Error('cmd 필요');
-  if (!cwd) throw new Error('cwd 필요(드리프트 방지 — 항상 명시)');
   if (!workspaceId) throw new Error('workspaceId 필요(UUID)');
   const out = await cli(['new-pane', '--type', 'terminal', '--workspace', workspaceId, '--focus', 'false', '--id-format', 'both']);
   const ids = parseNewPane(out);
@@ -172,7 +184,6 @@ export async function spawnAgent({ workspaceId, label, cwd, cmd, env } = {}) {
 // 텍스트+Enter — 비포커스 surface는 pty 지연 초기화라 입력이 queue됨(실측: wake 시 정상 재생).
 // read-screen 1줄로 강제 wake — 포커스 변경 없이 pty를 띄워 즉시 실행 + pid 실측 가능하게.
 export async function sendLine(text, surfaceId) {
-  if (!surfaceId) throw new Error('sendLine: 대상 surfaceId 필요(오발송 방지)');
   await rpc('surface.send_text', { surface_id: surfaceId, text });
   await rpc('surface.send_key', { surface_id: surfaceId, key: 'Enter' });
   await cli(['read-screen', '--surface', surfaceId, '--lines', '1']).catch(() => { /* wake 실패 — 표시 시점에 재생 */ });
@@ -186,4 +197,32 @@ export function activateApp() {
     child.on('error', () => resolveP()); // 활성화 실패 — 점프의 보조 동작이라 무해
     child.on('spawn', () => { child.unref(); resolveP(); });
   });
+}
+
+// openWeb(선택 계약) — **미구현**. 파사드가 `typeof D.openWeb`로 미지원을 판정해 `canOpenWeb=false`를
+// 내보내고, 대시보드는 기본 브라우저로 폴백한다(README '우아한 성능 저하').
+// cmux에도 browser surface는 실재한다 — fetchState가 `type !== 'terminal'`로 거르는 그것. 다만 그걸
+// **여는** CLI/RPC 계약은 미문서(cmux 매뉴얼에 browser 항목 없음)이고 darwin에서만 실측 가능하다.
+// 추측으로 채우면 검증 못 한 코드가 조용히 실패하므로, macOS에서 실측한 뒤 여기에 추가할 것.
+// (wmux 실측 참고: 파이프 `browser.navigate {url}` — cmux CLI는 `new-pane --type browser` 계열일 가능성)
+
+// 전체 종료(⏻) — darwin은 앱을 내리지 않는다(OWNS_APP=false). cmux는 사용자의 일상 터미널이라
+// cockpit 밖에서 열어둔 탭·창까지 함께 죽는다 — 프로젝트 비활성화와 서버 종료로 충분하다.
+// skipped를 보고 호출자(server scheduleExit·대시보드)가 문구를 맞춘다.
+export function killApp() { return Promise.resolve({ ok: true, skipped: true, app: NAME }); }
+
+// cmux 보장(boot ①) — 있으면 재사용, 없으면 앱 번들 open 후 ready 폴링.
+// cmux 수명은 소유하지 않는다(FS-13). setup은 미지원(무시) — 발견 체인(config → PATH →
+// /Applications 글롭)이 프롬프트 없이 끝나고, 실패하면 config.cmuxBin 안내로 던진다.
+export async function ensureApp() {
+  if (await isAvailable()) return { action: 'reused' };
+  const app = cmuxApp();
+  if (!app) throw new Error('cmux를 찾을 수 없습니다 — /Applications에 cmux를 설치하거나 cockpit/workspace/config.json에 "cmuxBin": "<cmux CLI 절대경로>"를 지정하세요.');
+  spawn('open', [app], { detached: true, stdio: 'ignore' }).unref();
+  const deadline = Date.now() + 20_000;
+  while (Date.now() < deadline) {
+    await sleep(500);
+    if (await isAvailable()) return { action: 'started' };
+  }
+  throw new Error(`cmux를 기동했지만 20초 내 응답이 없습니다 (${app}).`);
 }

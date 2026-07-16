@@ -15,7 +15,7 @@ ClaudeCockpit은 여러 Claude Code 세션을 **세션에 들어가지 않고** 
 - **3계층 매핑**: 관리자(wmux 사용자) ─ 프로젝트(wmux **workspace**) ─ 역할(workspace 안의 **agent**/pane).
 - **전제 환경**: Windows 11 + wmux(0.13) + Node(내장 모듈만) + git CLI. **npm 런타임 의존성 0.**
 - **경계**: 서버는 `127.0.0.1` 바인드 + `X-Cockpit-Token` 전용, **포트 7420 정본**(config로 재지정 가능). 원격 노출 비목표.
-- **부트 체인**: `exe/boot` → wmux 보장(갓 기동 시 복원분 클린 슬레이트) → 서버 보장 → active 프로젝트 재수렴 → 기본 브라우저.
+- **부트 체인**: `exe/boot` → 멀티플렉서 보장(갓 기동 + `ownsApp`이면 복원분 클린 슬레이트) → 서버 보장 → active 프로젝트 재수렴 → 기본 브라우저.
 
 ### 1.1 실동작 산출물
 
@@ -50,11 +50,13 @@ root/<프로젝트>/project.json  (desired — 폴더가 진실)      wmux  (act
 | 모듈 | 책임 |
 |---|---|
 | `server.js` | HTTP 레이어(유일) · `buildState`(선언⊕실측 병합) · 라우트 · 토큰 |
-| `wmux.js` | 모든 wmux 명령의 단일 창구(파이프 직결) · 상태 캐시(`getState`/`getFresh`/`invalidate`) · `isDead` 필터 · **명령 콘솔 로깅** |
+| `mux.js` | 멀티플렉서 단일 창구(파사드) · 플랫폼별 드라이버 선택(darwin=cmux · 그 외=wmux) · 상태 캐시(`getState`/`getFresh`/`invalidate`) · 정규화·`isDead` 필터 · 스폰 인자 계약 · 셸 결정. **상위는 이 파일만 import — 플랫폼 분기는 여기서 끝난다** |
+| `mux/wmux.js`<br>`mux/cmux.js` | 드라이버(동일 계약) — 앱 발견·기동(`ensureApp`) · 프로토콜 왕복(파이프 직결 / cmux CLI) · 제어 동사 · 앱 종료(`killApp`) · **명령 콘솔 로깅**. `OWNS_APP`(wmux=true · cmux=false)이 boot의 클린 슬레이트와 전체 종료의 앱 종료를 함께 가른다 |
 | `registry.js` | 프로젝트 선언 스캔·생성·연동 · 격리 스캐폴드 · ops git 스캐폴드 · 역할 폴더 · config 읽기/쓰기 |
 | `lifecycle.js` | 생명주기 전이 · 워크스페이스 보장 · 개별 스폰/kill · 채택 판정 근거 |
 | `proc.js` | claude on/off 프로세스 트리 실측(논블로킹 캐시) |
 | `activity.js` | 세션 활동(working/waiting/attention) 상태 파일 읽기 |
+| `follow.js` | workspace git 추적(FS-21) — **코크핏의 유일한 백그라운드 루프**(2s) · 활성 workspace 변경 감지 → 저장소 유도(`repoDirOf`) → 내장 브라우저 패널 이동 · config 토글 |
 | `bin/activity-hook.mjs` | Claude Code 훅 런타임 · 전역 `~/.claude/settings.json` 병합 설치/제거 |
 | `ports.js` | 활성 포트맵(리스너 실측·프로젝트 귀속·노이즈 필터) |
 | `caps.js` | 기능 인벤토리(global/세션 skill·agent·MCP — 이름·종류만) |
@@ -65,14 +67,15 @@ root/<프로젝트>/project.json  (desired — 폴더가 진실)      wmux  (act
 ### 2.3 데이터 계약 — `GET /api/state`
 
 ```
-{ projects[], unlinked[], ports[] }
+{ projects[], unlinked[], ports[], hookInstalled, mux }
 ```
 
 - **`projects[]`** = `{ name, status('active'|'idle'|'archived'), createdAt, archivedAt, links[], roles[{id}], wsLive, git{branch,remote,web}, sessions[] }`
 - **`sessions[]`** = `{ role, agentId, connected, adopted, claude('on'|'off'|'unknown'), activity('working'|'waiting'|'attention'|null) }`
   - `connected` = 선언 역할 label 일치 또는 채택됨 · `activity`는 **claude on일 때만** 채워짐
-- **`unlinked[]`** = `{ wsId, title, sessions[{role, agentId, claude}] }` — 프로젝트에 매칭 안 된 wmux workspace(직접 연 외부 세션)
+- **`unlinked[]`** = `{ wsId, title, sessions[{role, agentId, claude}] }` — 프로젝트에 매칭 안 된 멀티플렉서 workspace(직접 연 외부 세션)
 - **`ports[]`** = `{ p(':포트'), proc, project|null }`
+- **`mux`** = `{ name('wmux'|'cmux'), ownsApp, canOpenWeb, follow }` — 대시보드는 플랫폼을 모르므로 서버가 알려준다. `ownsApp=false`(cmux — 사용자의 일상 터미널)면 [⏻ 종료]가 앱을 내리지 않고 확인 문구도 "서버만 내려감"으로 바뀐다 · `canOpenWeb=false`면 git 칩이 내장 패널 대신 기본 브라우저로 폴백하고 [↺ git 추적] 칩도 숨김 · `follow` = workspace git 추적(FS-21) 켜짐 여부
 
 생명주기 상태 = 프로젝트 `status`(선언) · 세션 활성 = `claude` 프로세스 실측 · 세션 활동 = 훅 실측.
 
@@ -86,7 +89,7 @@ root/<프로젝트>/project.json  (desired — 폴더가 진실)      wmux  (act
 |---|---|
 | 목적 | exe 더블클릭 한 번으로 wmux·서버·대시보드까지 무입력 기동 |
 | 명령 | `cockpit.js serve [--port]` (서버 단독) · `cockpit.js boot [--port] [--setup]` (콜드 부트) |
-| boot 단계 | ① wmux 발견·기동 보장 → ①-b **클린 슬레이트**(boot이 wmux를 직접 기동한 경우만 — 자동 복원된 이전 세션·워크스페이스 전부 정리 후 선언 기준 재구성, 실행 중이던 wmux는 불변) → ② 서버 보장(기존 리스너 재사용, 멱등) → ③ **active 프로젝트 자동 재수렴** → ④ 기본 브라우저 오픈 |
+| boot 단계 | ① 멀티플렉서 발견·기동 보장(`mux.ensureApp` — 드라이버 소관) → ①-b **클린 슬레이트**(boot이 앱을 직접 기동했고 `mux.ownsApp`일 때만 — 자동 복원된 이전 세션·워크스페이스 전부 정리 후 선언 기준 재구성. 실행 중이던 앱은 불변, cmux는 `ownsApp=false`라 항상 제외) → ② 서버 보장(기존 리스너 재사용, 멱등) → ③ **active 프로젝트 자동 재수렴** → ④ 기본 브라우저 오픈 |
 | 포트 우선순위 | `--port` > `config.port` > **7420**(정본) |
 | 서버 정책 | `127.0.0.1` 바인드 · `GET /` 제외 전 경로 `X-Cockpit-Token` 필수 · body 1MB 상한(413) |
 | 토큰 주입 | `GET /`가 `dashboard.html` 서빙 시 `<head>`에 토큰 meta 주입 → same-origin fetch 인증 |
@@ -278,15 +281,30 @@ root/<프로젝트>/project.json  (desired — 폴더가 진실)      wmux  (act
 | 포맷 | 전부 `log.js`의 `logConsole` 경유 → **`[오류]내용 : …`** 접두 통일. 예: `[오류]내용 : <t> [wmux→] <method> <설명>` · `[wmux✓] <method> → <id>` · `[wmux✗] <method> — <에러>` (wmux 마커는 내용에 보존) |
 | 소음 억제 | 고빈도 폴링(`workspace.list`·`agent.list`)은 성공 로그 제외(실패는 항상 — 오프라인 진단) |
 | 토글 | `COCKPIT_WMUX_LOG=0`으로 wmux 로그만 끔(토스트 미러는 별개) · **detached 서버는 stdout 숨김** → 콘솔 보려면 터미널에서 `serve` 실행 |
-| 관련 | `wmux.js`(`request`·`CMD_DESC`), `log.js`(`logConsole`), `server.js`(`POST /console`), `dashboard.html`(`ping`·`mirrorToConsole`) |
+| 관련 | `mux/wmux.js`(`request`·`CMD_DESC`) · `mux/cmux.js`(`cli` — 동일 규칙, `[cmux→]`/`[cmux✓]`/`[cmux✗]`), `log.js`(`logConsole`), `server.js`(`POST /console`), `dashboard.html`(`ping`·`mirrorToConsole`) |
 
-### FS-20 · 폴더 열기 & wmux 점프
+### FS-20 · 폴더 열기 & wmux 점프 & 내장 브라우저
 
 | 동작 | API | 내용 |
 |---|---|---|
 | 탐색기 열기 | `POST /open {name, role?}` | 프로젝트/역할 폴더를 탐색기로. `root/` 밖 경로는 400(가드) |
 | wmux 점프 | `POST /attach {agentId}` | 해당 workspace 선택 + pane 포커스(사용자가 보는 pane으로 이동) |
-| 관련 | — | `server.js` |
+| 내장 브라우저 열기 | `POST /open-web {url}` | git 칩 → 원격 저장소 페이지를 **멀티플렉서 내장 브라우저 패널**에 표시. http(s)만(400 `http-only`) · 미지원 멀티플렉서는 501 `open-web-unsupported` |
+| 관련 | — | `server.js` · `mux.js`(`openWeb`·`canOpenWeb`) · `mux/wmux.js`(파이프 `browser.navigate {url}` — **실측 2026-07-16**: `browser.*` 중 파이프가 아는 건 navigate 하나뿐) |
+
+> **cmux 미지원(선택 계약)** — cmux에도 browser surface는 실재하지만(`fetchState`가 `type!=='terminal'`로 거르는 그것) 여는 CLI/RPC 계약이 미문서·미실측이라 `openWeb`을 내보내지 않는다. 파사드가 `canOpenWeb=false`로 판정 → 대시보드는 기본 브라우저 새 탭으로 폴백(우아한 성능 저하). darwin에서 실측 후 `mux/cmux.js`에 추가하면 상위 코드 변경 없이 켜진다(FS-21 추적도 함께 켜진다).
+
+### FS-21 · workspace git 추적
+
+| 항목 | 내용 |
+|---|---|
+| 목적 | 활성 workspace가 바뀌면 **그 workspace의 저장소 페이지**를 멀티플렉서 내장 브라우저 패널에 자동 표시 |
+| 기전 | `follow.js` — **코크핏의 유일한 백그라운드 루프**(2s). wmux는 이벤트를 밀지 않고 서버는 요청 기반이라, 사용자가 wmux에서 직접 전환(`Ctrl+1~9`)하는 걸 잡으려면 폴링뿐. `getState()`의 TTL 캐시(1.5s)를 대시보드 폴링과 공유해 파이프 부하는 추가되지 않는다 |
+| 토글 | 대시보드 [↺ git 추적 ●] 칩 · `POST /follow {enabled}` → `config.followWorkspaceGit`(기본 켜짐, 서버 재시작 불필요) |
+| 저장소 유도 | `workspace.cwd` → `repoDirOf()`. **wmux의 cwd는 활성 pane을 따라 움직인다(실측 2026-07-16)** — 같은 workspace가 `root/<proj>`로도 `root/<proj>/ops`로도 나오고 사용자가 `cd`하면 더 내려간다 → 위로 거슬러 저장소를 찾는다 |
+| **유출 방어** | ① 프로젝트 루트는 `ops/`를 **먼저** 본다(격리 규칙: 루트는 저장소가 아님) ② `root/` 안이면 `root/<프로젝트>/` 위로 **절대** 안 올라간다 — `root/`의 조상이 코크핏 저장소(`ClaudeCodeTemplate/.git`)라, 무작정 올라가면 **엉뚱하게 코크핏 자신의 GitHub 페이지**를 띄운다 |
+| 안전 규칙 | ① 변경 시 1회만 이동(매 틱 재이동 = 패널 2초마다 리로드) ② 원격 못 구하면 패널 불변 ③ 실패는 삼킴(부가 기능이 서버를 막지 않음) ④ 오프라인·재연결(epoch 변화)은 기준선만 잡고 이동 안 함 |
+| 관련 | `follow.js`(`tick`·`repoDirOf`·`startFollow`), `mux.js`(`normWs`의 `isActive`·`cwd` — 추적의 유일한 근거), `server.js`(`POST /follow` · `serve()`가 루프 시작), `dashboard.html`(`renderFollow`·`toggleFollow`) |
 
 ---
 
@@ -323,13 +341,15 @@ root/<프로젝트>/project.json  (desired — 폴더가 진실)      wmux  (act
 | `/claude` | `{agentId}` | `{ok, already?}` | 502 no-surface |
 | `/attach` | `{agentId}` | `{ok}` | 404 agent |
 | `/open` | `{name, role?}` | `{ok}` | 400 bad-path |
+| `/open-web` | `{url}` | `{ok}` | 400 http-only · 501 open-web-unsupported · 502 open-web-failed |
+| `/follow` | `{enabled}` | `{follow}` | 400 enabled-required · 501 open-web-unsupported |
 | `/adopt` | `{name, agentId, role}` | `{agentId, role}` | 409 role-filled · 404 · 400 |
 | `/git-remote` | `{name, url}` | `{action, backup, git}` | 400 git-url-invalid |
 | `/links` | `{name, action, url, label?}` | `{links}` | 400 http-only |
 | `/port-kill` | `{port, pid, confirm:true}` | `{ok}` | **400 confirm-required** · 409 listener-gone·not-project-listener · 502 kill-failed (FS-14 OFF) |
 | `/serve` | `{name, action:'set'\|'clear', role?, cmd?}` | `{serve}` | 400 cmd-required·cmd-too-long·unknown-role·unknown-action (FS-14 ON 선언) |
 | `/serve-start` | `{name}` | `{ok}` | 400 no-serve-config · 409 project-inactive·role-session-missing·pane-claude-on·pane-state-unknown · 502 no-surface · 503 wmux-offline (FS-14 ON) |
-| `/shutdown` | `{confirm:true}` | `{deactivated, failed}` | **400 confirm-required** — 전 프로젝트 비활성화 → 응답 플러시 → **wmux 앱 종료(taskkill)** → 서버 종료. 평시엔 wmux 수명 비소유, ⏻ 전체 종료만 예외 |
+| `/shutdown` | `{confirm:true}` | `{deactivated, failed}` | **400 confirm-required** — 전 프로젝트 비활성화 → 응답 플러시 → **앱 종료(`mux.ownsApp`일 때만 — wmux는 taskkill · cmux는 일상 터미널이라 유지)** → 서버 종료. 평시엔 앱 수명 비소유, ⏻ 전체 종료만 예외 |
 
 공통 에러: 401(토큰) · 413(body>1MB) · 400 bad-json · 404 unknown-project · 503 wmux-offline.
 
@@ -414,7 +434,7 @@ root/<프로젝트>/project.json  (desired — 폴더가 진실)      wmux  (act
 
 1. `node --check <파일>` — 수정한 모든 JS. 대시보드는 `<script>` 추출 후 검사.
 2. **라이브 프로브** — 스크래치패드 일회성 `.mjs`로 실 wmux/HTTP/모듈에 검증(미커밋). 프로브는 반드시 뒷정리(스폰 agent kill·`root/_Tmp*` 삭제·잔존 pwsh kill·config 원복).
-3. wmux는 셸 PATH에 없음 — 프로브에서 `src/wmux.js` import. `wmux browser`는 사용자 대화형 셸(`!`) 전용.
+3. wmux/cmux는 셸 PATH에 없음 — 프로브에서 `src/mux.js` import(플랫폼에 맞는 드라이버가 붙는다). `wmux browser`는 사용자 대화형 셸(`!`) 전용.
 4. **코드 수정 후 서버 재시작 필수**(HTML만 수정 시 브라우저 새로고침 — `readFileSync` 매 요청).
 
 ---

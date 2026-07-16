@@ -1,7 +1,7 @@
 // cmux 드라이버 순수 파서 검증 — 실 cmux 불필요(출력 형태는 2026-07-14 실측 고정본).
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { parseNewPane, parseTop, buildInitLine } from '../src/cmux.js';
+import { parseNewPane, parseTop, buildInitLine } from '../src/mux/cmux.js';
 import { parsePs } from '../src/proc.js';
 import { parseLsof } from '../src/ports.js';
 

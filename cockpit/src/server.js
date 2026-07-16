@@ -1,7 +1,7 @@
 // HTTP 레이어(유일) — FS-3 + 전 엔드포인트(§8.4, 이 목록이 전부):
 //   GET  / · /api/state · /api/log · /api/caps
 //   POST /activate · /spawn · /kill-session · /deactivate · /archive · /reopen · /create · /import · /create-git · /roles
-//        /claude · /attach · /open · /links · /git-remote · /adopt · /pick-folder · /console · /hook-install
+//        /claude · /attach · /open · /open-web · /follow · /links · /git-remote · /adopt · /pick-folder · /console · /hook-install
 //        /port-kill · /serve · /serve-start · /shutdown
 // 127.0.0.1 바인드 + X-Cockpit-Token(GET / 제외 전부, A-5). 어떤 프로브도 응답을 막지 않는다(§9-⑥).
 import { createServer } from 'node:http';
@@ -12,7 +12,10 @@ import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { join, basename } from 'node:path';
 import { ROOT, readConfig, patchConfig, scanProjects, findProject, createProject, importProject, removeRole, writeProject } from './registry.js';
-import { getState, getFresh, invalidate, selectWorkspace, focusPane, sendLine, killApp, activateApp } from './wmux.js';
+import {
+  getState, getFresh, invalidate, selectWorkspace, focusPane, sendLine, killApp, activateApp, openWeb,
+  name as MUX, ownsApp, canOpenWeb,
+} from './mux.js';
 import {
   activate, deactivate, archive, reopen, spawnRole, killSession,
   matchWorkspace, matchWorkspaceInfo, agentsOfWs, reconcile, parseLabel, roleOf,
@@ -22,6 +25,7 @@ import { getPorts, freshListener, killPid, invalidatePorts } from './ports.js';
 import { getGit, connectRemote, repoNameFromUrl } from './git.js';
 import { getActivity, hookInstalled, invalidateHook } from './activity.js';
 import { globalCaps, sessionCaps } from './caps.js';
+import { startFollow, isEnabled as followEnabled, setEnabled as setFollow } from './follow.js';
 import { logEvent, readLog, logConsole } from './log.js';
 
 const DASHBOARD = fileURLToPath(new URL('../dashboard.html', import.meta.url));
@@ -98,7 +102,11 @@ function buildState(state) {
     }
   }
   // hookInstalled=false면 대시보드가 활동 배지(FS-7) 훅 설치 안내 배너를 띄운다 — 설치 방법·원클릭 버튼 포함.
-  return { projects: payloadProjects, unlinked, ports: getPorts(portInfo), hookInstalled: hookInstalled() };
+  // mux — 대시보드가 플랫폼을 모르므로 서버가 알려준다: 이름은 문구에, ownsApp은 [⏻ 종료] 확인
+  // 문구에("앱과 서버가 함께" vs "서버만"), canOpenWeb은 git 칩이 내장 패널로 열지 기본 브라우저로
+  // 폴백할지에, follow는 [↺ git 추적] 칩의 on/off 표시에. 정적이지만 페이로드에 실어 폴링 하나로 끝낸다.
+  return { projects: payloadProjects, unlinked, ports: getPorts(portInfo), hookInstalled: hookInstalled(),
+    mux: { name: MUX, ownsApp, canOpenWeb, follow: canOpenWeb && followEnabled() } };
 }
 
 // 스캔 에러(깨진 project.json)는 변화가 있을 때만 1회 기록 — 폴링 스팸 방지.
@@ -213,17 +221,20 @@ $owner.Close()
   });
 }
 
-// POST /shutdown 전용 — 응답이 플러시된 뒤 wmux 앱을 내리고 서버를 닫는다. _server는 serve()가 등록.
-// 평시 wmux 수명은 소유하지 않지만(FS-13), 전체 종료(⏻)만은 예외 — 사용자 의도가 '다 끄기'이므로
-// wmux도 함께 내린다(세션은 이미 비활성화로 정리됨). wmux 종료는 응답 플러시 뒤에 — 서버가 wmux
-// pane 안에서 돌 때 응답 전에 wmux를 죽이면 응답이 유실된다.
+// POST /shutdown 전용 — 응답이 플러시된 뒤 멀티플렉서 앱을 내리고 서버를 닫는다. _server는 serve()가 등록.
+// 평시 앱 수명은 소유하지 않지만(FS-13), 전체 종료(⏻)만은 예외 — 사용자 의도가 '다 끄기'이므로
+// 앱도 함께 내린다(세션은 이미 비활성화로 정리됨). 단 ownsApp=false인 cmux는 예외의 예외 —
+// 일상 터미널이라 앱은 살려두고 서버만 내린다(드라이버 killApp이 skipped로 응답).
+// 앱 종료는 응답 플러시 뒤에 — 서버가 그 앱의 pane 안에서 돌 때 응답 전에 죽이면 응답이 유실된다.
 let _server = null;
 function scheduleExit() {
   setTimeout(async () => {
     const r = await killApp();
-    console.log(r.ok
-      ? `[cockpit] 전체 종료 — 프로젝트 비활성화 완료 · wmux(${r.image}) 종료 · 서버를 내립니다.`
-      : `[cockpit] 전체 종료 — 프로젝트 비활성화 완료 · wmux 종료 실패(${r.error} — 이미 꺼져 있으면 정상) · 서버를 내립니다.`);
+    console.log(r.skipped
+      ? `[cockpit] 전체 종료 — 프로젝트 비활성화 완료 · ${MUX}는 그대로 둡니다(일상 터미널) · 서버를 내립니다.`
+      : r.ok
+        ? `[cockpit] 전체 종료 — 프로젝트 비활성화 완료 · ${MUX}(${r.app}) 종료 · 서버를 내립니다.`
+        : `[cockpit] 전체 종료 — 프로젝트 비활성화 완료 · ${MUX} 종료 실패(${r.error} — 이미 꺼져 있으면 정상) · 서버를 내립니다.`);
     try { if (_server) _server.close(); } catch { /* 이미 닫힘 — 종료는 계속 */ }
     setTimeout(() => process.exit(0), 200);
   }, 400);
@@ -256,9 +267,9 @@ const routes = {
   },
   'POST /archive': async (b) => archive(b.name),
   'POST /reopen': async (b) => reopen(b.name),
-  // 전체 종료 — active 프로젝트 전부 비활성화(세션 kill → 대기중)한 뒤 wmux 앱과 서버를 내린다.
+  // 전체 종료 — active 프로젝트 전부 비활성화(세션 kill → 대기중)한 뒤 멀티플렉서 앱(ownsApp일 때만)과 서버를 내린다.
   // kill 경유이므로 confirm 필수(§9-3 — /deactivate와 동형). 실패 프로젝트는 응답·로그로 보고하고 종료는 계속.
-  // 비활성화(파이프 사용)가 먼저, wmux 종료는 scheduleExit(응답 플러시 후) — 순서 뒤집으면 세션 정리 불가.
+  // 비활성화(파이프 사용)가 먼저, 앱 종료는 scheduleExit(응답 플러시 후) — 순서 뒤집으면 세션 정리 불가.
   'POST /shutdown': async (b) => {
     if (b.confirm !== true) throw err(400, 'confirm-required');
     const actives = scanProjects().projects.filter((p) => p.status === 'active');
@@ -268,7 +279,8 @@ const routes = {
       catch (e) { failed.push(p.name); logEvent('error', p.name, 'shutdown', `비활성화 실패 — ${e.message}`); }
     }
     logEvent('info', null, 'shutdown',
-      `전체 종료 — 프로젝트 ${deactivated.length}개 비활성화(대기중)${failed.length ? ` · 실패 ${failed.join('·')}` : ''} · wmux 종료 · 서버 종료`);
+      `전체 종료 — 프로젝트 ${deactivated.length}개 비활성화(대기중)${failed.length ? ` · 실패 ${failed.join('·')}` : ''}`
+      + `${ownsApp ? ` · ${MUX} 종료` : ` · ${MUX} 유지`} · 서버 종료`);
     scheduleExit();
     return { ok: true, deactivated, failed };
   },
@@ -332,6 +344,26 @@ const routes = {
     if (a.paneId) { try { await focusPane(a.paneId); } catch { /* pane 포커스 실패 — ws 전환까지는 성공 */ } }
     await activateApp().catch(() => { /* 앱 활성화 실패 — 전환은 성공했으므로 무해 (darwin 점프 보조, win32 no-op) */ });
     return { ok: true };
+  },
+  // 내장 브라우저 패널로 열기 — 대시보드 git 칩(원격 저장소 페이지)이 기본 브라우저 새 탭 대신 여기로.
+  // http(s)만(FS-11 링크와 동일 규칙, 파사드가 재검사). 미지원 멀티플렉서(cmux)면 501 —
+  // 대시보드는 canOpenWeb=false를 보고 애초에 호출하지 않지만, 낡은 화면의 호출을 위해 서버도 판정한다.
+  'POST /open-web': async (b) => {
+    const url = String((b && b.url) || '').trim();
+    if (!/^https?:\/\//i.test(url)) throw err(400, 'http-only');
+    if (!canOpenWeb) throw err(501, 'open-web-unsupported');
+    try { await openWeb(url); }
+    catch (e) { logEvent('error', null, 'open-web', `${MUX} 브라우저 패널 열기 실패 — ${e.message}`); throw err(502, 'open-web-failed'); }
+    return { ok: true };
+  },
+  // workspace git 추적 on/off (FS-21) — 대시보드 [↺ git 추적] 칩. config에 저장(서버 재시작 불필요).
+  // 미지원 멀티플렉서(cmux)면 켤 수 없다(501) — 대시보드는 canOpenWeb=false면 칩 자체를 안 그린다.
+  'POST /follow': async (b) => {
+    if (typeof b?.enabled !== 'boolean') throw err(400, 'enabled-required');
+    if (!canOpenWeb) throw err(501, 'open-web-unsupported');
+    const on = setFollow(b.enabled);
+    logEvent('info', null, 'follow', `workspace git 추적 ${on ? '켜짐' : '꺼짐'} — ${MUX} 브라우저 패널 자동 이동`);
+    return { ok: true, follow: on };
   },
   'POST /open': async (b) => {
     const p = requireProject(b.name);
@@ -508,6 +540,11 @@ export async function serve({ port } = {}) {
     server.listen(PORT, '127.0.0.1', resolveP);
   });
   _server = server; // POST /shutdown의 scheduleExit()가 닫을 수 있게 등록
+
+  // workspace git 추적 루프 시작(FS-21) — 코크핏의 유일한 백그라운드 루프. unref라 종료를 막지 않고,
+  // canOpenWeb=false(cmux)면 조용히 돌지 않는다. 설정이 꺼져 있어도 루프는 돌며 즉시 켤 수 있게 둔다.
+  const f = startFollow();
+  if (f.started) console.log(`[cockpit] workspace git 추적 ${followEnabled() ? '켜짐' : '꺼짐(대시보드에서 켤 수 있음)'} — 활성 workspace의 저장소를 ${MUX} 브라우저 패널에 표시`);
 
   const n = scanProjects().projects.length;
   console.log(`[cockpit] 서버 가동 — http://127.0.0.1:${PORT}/  (127.0.0.1 전용 — 방화벽 허용 불필요)`);
