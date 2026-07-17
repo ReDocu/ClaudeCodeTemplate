@@ -125,7 +125,7 @@ export function invalidatePorts() { _at = 0; refresh(); }
 // freshListener: TTL 무시 강제 재스캔 후 (port,pid) 정확 일치 리스너 반환(없으면 null).
 // 낙관적 재검증(⑤) — 그 pid가 이미 내려갔거나 pid가 재사용됐으면 kill을 거부하게 한다.
 export async function freshListener(port, pid) {
-  if (process.platform !== 'win32') return null;
+  if (!['win32', 'darwin'].includes(process.platform)) return null;
   _at = 0;
   await refresh();
   if (!_snap) return null;
@@ -136,7 +136,18 @@ export async function freshListener(port, pid) {
 }
 
 // 프로세스 트리째 종료(dev 서버가 스폰한 워커 포함 — pane 셸은 리스너의 부모라 무사). 실패는 reject.
+// darwin엔 /T 대응이 없다 — 자식(-P)을 먼저 TERM하고 리스너 pid를 TERM한다. 리스너는 pid 자신이라
+// 포트는 이 시점에 풀린다. 손자 프로세스는 고아로 남을 수 있다(win32와의 알려진 차이).
 export function killPid(pid) {
+  if (process.platform === 'darwin') {
+    return new Promise((resolveP, rejectP) => {
+      execFile('/usr/bin/pkill', ['-TERM', '-P', String(pid)], { timeout: 10_000 }, () => {
+        // 자식이 없으면 pkill은 1로 끝난다 — 리스너 종료가 본체라 무시한다.
+        execFile('/bin/kill', ['-TERM', String(pid)], { timeout: 10_000 },
+          (e, _stdout, stderr) => (e ? rejectP(new Error((stderr || e.message).trim())) : resolveP()));
+      });
+    });
+  }
   return new Promise((resolveP, rejectP) => {
     execFile('taskkill.exe', ['/PID', String(pid), '/T', '/F'], { windowsHide: true, timeout: 10_000 },
       (e, _stdout, stderr) => (e ? rejectP(new Error((stderr || e.message).trim())) : resolveP()));
