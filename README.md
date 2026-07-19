@@ -15,9 +15,9 @@
 
 ## ⬇️ 다운로드 · 실행
 
-### 📥 [최신 릴리스 다운로드][releases] — 현재 **v0.2.0**
+### 📥 [최신 릴리스 다운로드][releases] — 현재 **v0.3.0**
 
-1. **[`ClaudeCockpit-v0.2.0.zip`][zip]** 바로 다운로드 → 압축 해제
+1. **[`ClaudeCockpit-v0.3.0.zip`][zip]** 바로 다운로드 → 압축 해제
 2. 실행 — OS에 맞는 런처를 더블클릭
    - **Windows** — **`ClaudeCockpit.exe`** (실행이 막히면 `start.cmd`)
    - **macOS (cmux)** — **`ClaudeCockpit_cmux.command`** (실행이 막히면 터미널에서 `bash ClaudeCockpit_cmux.command`)
@@ -206,5 +206,5 @@ Claude Code 훅(bin/activity-hook.mjs) ──▶ cockpit/workspace/activity/*.js
 [form]: https://docs.google.com/forms/d/e/1FAIpQLSfdAAODOXSfYg8bQp-WLewENrP_otXglztMzfR7bL678wqdHg/viewform
 
 <!-- 릴리스 링크(단일 교체 지점) — 새 릴리스마다 [zip] 한 줄의 버전(v0.1.0 두 곳)과 위 "현재 vX.Y.Z" 표기만 갱신. -->
-[zip]: https://github.com/ReDocu/ClaudeCodeTemplate/releases/download/v0.2.0/ClaudeCockpit-v0.2.0.zip
+[zip]: https://github.com/ReDocu/ClaudeCodeTemplate/releases/download/v0.3.0/ClaudeCockpit-v0.3.0.zip
 [releases]: https://github.com/ReDocu/ClaudeCodeTemplate/releases/latest
