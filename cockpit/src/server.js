@@ -500,6 +500,21 @@ function readBody(req) {
   });
 }
 
+// 활동 훅 자동 설치/수리(FS-7) — 서버 기동 시 1회. hookInstalled()가 이 리포 경로를 실측하므로
+//   미설치(PC 첫 실행)거나 옛 경로(리포 이동·이름변경)면 activity-hook.mjs install을 자식 프로세스로
+//   실행해 ~/.claude/settings.json을 현재 경로로 재등록한다. 이미 맞으면 no-op(멱등 — settings.json 안 건드림).
+//   비차단·비치명: 실패해도 서버는 그대로 뜨고, 대시보드 배너의 [훅 설치] 원클릭이 최종 폴백.
+//   import이 아니라 자식 프로세스인 이유는 /hook-install과 동일 — 스크립트가 top-level에서 process.exit(0).
+function ensureHookInstalled() {
+  if (hookInstalled()) return; // 이미 현재 리포 경로로 설치됨 — 홈 설정 파일을 만지지 않는다
+  execFile(process.execPath, [HOOK_SCRIPT, 'install'], { timeout: 15_000, windowsHide: true }, (e, _stdout, stderr) => {
+    invalidateHook(); // 성공/실패 무관 즉시 재실측 — 다음 /api/state 폴링·배너에 반영
+    if (e) { logEvent('error', null, 'hook', `활동 훅 자동 설치 실패 — ${(stderr || e.message).trim()} (배너의 [훅 설치]로 수동 설치 가능)`); return; }
+    logEvent('info', null, 'hook', '활동 훅 자동 설치/수리 — ~/.claude/settings.json을 현재 리포 경로로 재등록(백업 settings.json.cockpit-bak)');
+    console.log('[cockpit] 활동 훅 자동 설치/수리 완료 — 세션 상태(진행중/입력대기)가 이 리포 경로로 기록됩니다(새로 시작하는 세션부터 반영).');
+  });
+}
+
 export async function serve({ port } = {}) {
   const cfg = readConfig();
   const PORT = port || cfg.port || 7420; // 기본 7420 (W4 교체 완료 — teamctl 폐기, cockpit이 7420 정본)
@@ -540,6 +555,8 @@ export async function serve({ port } = {}) {
     server.listen(PORT, '127.0.0.1', resolveP);
   });
   _server = server; // POST /shutdown의 scheduleExit()가 닫을 수 있게 등록
+
+  ensureHookInstalled(); // 활동 훅 자동 설치/수리 — PC 첫 실행·리포 이동 시 현재 경로로 재등록(멱등·비차단)
 
   // workspace git 추적 루프 시작(FS-21) — 코크핏의 유일한 백그라운드 루프. unref라 종료를 막지 않고,
   // canOpenWeb=false(cmux)면 조용히 돌지 않는다. 설정이 꺼져 있어도 루프는 돌며 즉시 켤 수 있게 둔다.
