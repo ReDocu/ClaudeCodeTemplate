@@ -17,7 +17,7 @@
 
 ### 📥 [최신 릴리스 다운로드][releases] — 현재 **v0.3.0**
 
-1. **[`ClaudeCodeTemplate-0.3.0.zip`][zip]** 바로 다운로드 → 압축 해제
+1. **[`ClaudeCockpit-v0.3.0.zip`][zip]** 바로 다운로드 → 압축 해제
 2. 실행 — OS에 맞는 런처를 더블클릭
    - **Windows** — **`ClaudeCockpit.exe`** (실행이 막히면 `start.cmd`)
    - **macOS (cmux)** — **`ClaudeCockpit_cmux.command`** (실행이 막히면 터미널에서 `bash ClaudeCockpit_cmux.command`)
@@ -205,9 +205,9 @@ Claude Code 훅(bin/activity-hook.mjs) ──▶ cockpit/workspace/activity/*.js
 <!-- 문의 폼 링크(단일 교체 지점) — 바꾸려면 이 URL 한 줄만 수정하면 README 내 모든 "문의 폼" 링크에 반영됩니다. -->
 [form]: https://docs.google.com/forms/d/e/1FAIpQLSfdAAODOXSfYg8bQp-WLewENrP_otXglztMzfR7bL678wqdHg/viewform
 
-<!-- 릴리스 링크(단일 교체 지점) — [zip]은 태그 자동 아카이브(자산 업로드 불필요·태그만 푸시하면 즉시 동작).
-     새 릴리스마다 [zip]의 버전(v0.3.0)과 위 "현재 vX.Y.Z"·파일명(ClaudeCodeTemplate-X.Y.Z.zip) 표기만 갱신.
-     릴리스에 ClaudeCockpit-vX.Y.Z.zip 자산을 직접 올렸다면 releases/download/vX.Y.Z/… 직링크로 되돌려도 된다.
-     [releases]는 목록 페이지 — /releases/latest는 pre-release를 건너뛰어(현재 v0.2.0을 가리킴) 쓰지 않는다. -->
-[zip]: https://github.com/ReDocu/ClaudeCodeTemplate/archive/refs/tags/v0.3.0.zip
+<!-- 릴리스 링크(단일 교체 지점) — [zip]은 릴리스 자산 직링크(releases/download/vX.Y.Z/ClaudeCockpit-vX.Y.Z.zip).
+     새 릴리스마다 [zip]의 버전과 위 "현재 vX.Y.Z"·파일명(ClaudeCockpit-vX.Y.Z.zip) 표기만 갱신.
+     자산을 아직 안 올렸다면 archive/refs/tags/vX.Y.Z.zip 태그 자동 아카이브로 임시 대체할 수 있다.
+     [releases]는 목록 페이지 — /releases/latest는 pre-release를 건너뛰므로 쓰지 않는다. -->
+[zip]: https://github.com/ReDocu/ClaudeCodeTemplate/releases/download/v0.3.0/ClaudeCockpit-v0.3.0.zip
 [releases]: https://github.com/ReDocu/ClaudeCodeTemplate/releases
