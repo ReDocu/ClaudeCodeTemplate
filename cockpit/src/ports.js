@@ -121,6 +121,18 @@ export function getPorts(projInfo = []) {
 
 export function invalidatePorts() { _at = 0; refresh(); }
 
+// 프로젝트 귀속 리스너 일괄 실측(FS-14 확장) — 비활성화·전체 종료의 귀속 서버 정리 입력.
+// TTL 무시 강제 재스캔 후 귀속 판정(getPorts와 동일 로직)까지 끝난 행만 반환 — 호출자
+// (lifecycle.deactivate)가 killPid로 정리한다. 세션 kill **전에** 불러야 한다: 부모 트리
+// 귀속(①)은 세션 pid가 살아있어야 실측되고, kill 뒤엔 cmdline 귀속(②)만 남는다.
+export async function freshProjectListeners(projInfo = []) {
+  if (!['win32', 'darwin'].includes(process.platform)) return [];
+  _at = 0;
+  await refresh();
+  if (!_snap) return [];
+  return getPorts(projInfo).filter((r) => r.project && r.pid);
+}
+
 // ── 리스너 중지(FS-14 확장) — 대시보드 [✕]의 실측 재검증·종료 ──
 // freshListener: TTL 무시 강제 재스캔 후 (port,pid) 정확 일치 리스너 반환(없으면 null).
 // 낙관적 재검증(⑤) — 그 pid가 이미 내려갔거나 pid가 재사용됐으면 kill을 거부하게 한다.

@@ -6,6 +6,8 @@ import {
   getFresh, invalidate, refreshState, spawnAgent, killAgent, createWorkspace, closeWorkspace, resolveShell, selectWorkspace,
 } from './mux.js';
 import { findProject, writeProject, ensureRoleDir, scanProjects } from './registry.js';
+import { freshProjectListeners, killPid, invalidatePorts } from './ports.js';
+import { noteSelect } from './follow.js';
 import { logEvent } from './log.js';
 
 const err = (status, code) => Object.assign(new Error(code), { status });
@@ -146,6 +148,7 @@ async function ensureWorkspace(p, state) {
   ws = { id: raw.id || raw.workspaceId, title: p.name };
   if (!ws.id) throw err(502, 'workspace-create-failed');
   await refreshState(); // read-your-writes(①) — 응답 시점에 새 workspace가 실측에 반영돼 있게
+  noteSelect(ws.id); // 생성이 초점을 가져갈 수 있음 — follow가 자기 유발 전환으로 패널을 덮지 않게(규칙 ⑤)
   return { ws, wsCreated: true };
 }
 
@@ -225,7 +228,8 @@ export async function spawnRole(name, role) {
   //    따라 엉뚱한 곳에 붙는 실측 문제 대응. 실패해도 workspaceId 명시 스폰이라 계속(focused로 보고만,
   //    wmux 계층이 [wmux✗] workspace.select 로 콘솔 로깅).
   let focused = false;
-  try { await selectWorkspace(ws.id); focused = true; } catch { /* 초점 실패 — 스폰은 계속 */ }
+  try { await selectWorkspace(ws.id); focused = true; noteSelect(ws.id); /* 자기 유발 전환 — follow 기준선만 갱신(규칙 ⑤) */ }
+  catch { /* 초점 실패 — 스폰은 계속 */ }
   let spawned = 0, reused = 0; const spawnedIds = [], failed = [];
   for (const r of targets) {
     state = await getFresh();
@@ -280,15 +284,30 @@ export async function killSession(name, agentId, expectedRole) {
   return { ok: true, killed: agentId, role };
 }
 
-// POST /deactivate — 확인 필수(서버가 confirm 검사, §9-3). ws의 살아있는 세션 전부 kill(ops 포함)
-// → workspace close → idle. "자동 종료 금지" 원칙의 유일한 명시적 예외(R3).
+// POST /deactivate — 확인 필수(서버가 confirm 검사, §9-3). "다 끄기" 순서:
+//   ① 귀속 활성 포트 리스너(dev 서버) 중지 — **세션 kill 전에**: 부모 트리 귀속은 세션 pid가
+//      살아있어야 실측된다(ports.freshProjectListeners 주석). pane 셸은 리스너의 부모라 이
+//      단계에선 무사하고, 곧이어 ②에서 세션째 내려간다. 실패는 비차단(로그만 — 전이는 계속).
+//   ② ws의 살아있는 세션 전부 kill(ops 포함) → workspace close → idle.
+// "자동 종료 금지" 원칙의 유일한 명시적 예외(R3) — 리스너 정리도 이 confirm 게이트 안이다.
 export async function deactivate(name) {
   const p = requireProject(name);
   const state = await getFresh();
   const ws = state.live ? matchWorkspace(state, p) : null;
+  const agents = ws ? agentsOfWs(state, ws.id) : [];
+  let portsKilled = 0;
+  const rows = await freshProjectListeners([{
+    name: p.name, dir: (p._dir || '').toLowerCase(),
+    pids: new Set(agents.map((a) => a.pid).filter(Boolean)),
+  }]).catch(() => []);
+  for (const r of rows) {
+    try { await killPid(r.pid); portsKilled++; logEvent('info', p.name, 'port', `:${r.port} ${r.proc}(pid ${r.pid}) 중지 — 비활성화에 따른 귀속 서버 정리`); }
+    catch (e) { logEvent('error', p.name, 'port', `:${r.port} ${r.proc}(pid ${r.pid}) 중지 실패 — ${e.message} (비활성화는 계속)`); }
+  }
+  if (rows.length) invalidatePorts(); // 즉시 재실측 — 다음 폴링 포트맵에 반영
   let killed = 0;
   if (ws) {
-    for (const a of agentsOfWs(state, ws.id)) {
+    for (const a of agents) {
       try { await killAgent(a.agentId); killed++; }
       catch (e) { logEvent('error', p.name, 'kill', `${a.label || a.agentId} 종료 실패 — ${e.message}`); }
     }
@@ -297,8 +316,8 @@ export async function deactivate(name) {
   }
   p.status = 'idle'; p.wsId = null;
   writeProject(p);
-  logEvent('info', p.name, 'deactivate', `세션 ${killed}개 종료 · 대기중 전환`);
-  return { ok: true, killed };
+  logEvent('info', p.name, 'deactivate', `세션 ${killed}개 종료${portsKilled ? ` · 귀속 서버 ${portsKilled}개 중지` : ''} · 대기중 전환`);
+  return { ok: true, killed, portsKilled };
 }
 
 // POST /archive — active면 409(비활성화 먼저 — kill을 아카이브에 숨기지 않음, §8.3).

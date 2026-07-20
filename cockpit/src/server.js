@@ -25,7 +25,7 @@ import { getPorts, freshListener, killPid, invalidatePorts } from './ports.js';
 import { getGit, connectRemote, repoNameFromUrl } from './git.js';
 import { getActivity, hookInstalled, invalidateHook } from './activity.js';
 import { globalCaps, sessionCaps } from './caps.js';
-import { startFollow, isEnabled as followEnabled, setEnabled as setFollow } from './follow.js';
+import { startFollow, isEnabled as followEnabled, setEnabled as setFollow, noteSelect } from './follow.js';
 import { logEvent, readLog, logConsole } from './log.js';
 
 const DASHBOARD = fileURLToPath(new URL('../dashboard.html', import.meta.url));
@@ -267,22 +267,24 @@ const routes = {
   },
   'POST /archive': async (b) => archive(b.name),
   'POST /reopen': async (b) => reopen(b.name),
-  // 전체 종료 — active 프로젝트 전부 비활성화(세션 kill → 대기중)한 뒤 멀티플렉서 앱(ownsApp일 때만)과 서버를 내린다.
+  // 전체 종료 — active 프로젝트 전부 비활성화(귀속 서버 중지 → 세션 kill → 대기중)한 뒤
+  // 멀티플렉서 앱(ownsApp일 때만)과 서버를 내린다. 귀속 리스너 정리는 deactivate 내부 소관.
   // kill 경유이므로 confirm 필수(§9-3 — /deactivate와 동형). 실패 프로젝트는 응답·로그로 보고하고 종료는 계속.
   // 비활성화(파이프 사용)가 먼저, 앱 종료는 scheduleExit(응답 플러시 후) — 순서 뒤집으면 세션 정리 불가.
   'POST /shutdown': async (b) => {
     if (b.confirm !== true) throw err(400, 'confirm-required');
     const actives = scanProjects().projects.filter((p) => p.status === 'active');
     const deactivated = [], failed = [];
+    let portsKilled = 0;
     for (const p of actives) {
-      try { await deactivate(p.name); deactivated.push(p.name); }
+      try { const r = await deactivate(p.name); portsKilled += r.portsKilled || 0; deactivated.push(p.name); }
       catch (e) { failed.push(p.name); logEvent('error', p.name, 'shutdown', `비활성화 실패 — ${e.message}`); }
     }
     logEvent('info', null, 'shutdown',
-      `전체 종료 — 프로젝트 ${deactivated.length}개 비활성화(대기중)${failed.length ? ` · 실패 ${failed.join('·')}` : ''}`
+      `전체 종료 — 프로젝트 ${deactivated.length}개 비활성화(대기중)${portsKilled ? ` · 귀속 서버 ${portsKilled}개 중지` : ''}${failed.length ? ` · 실패 ${failed.join('·')}` : ''}`
       + `${ownsApp ? ` · ${MUX} 종료` : ` · ${MUX} 유지`} · 서버 종료`);
     scheduleExit();
-    return { ok: true, deactivated, failed };
+    return { ok: true, deactivated, failed, portsKilled };
   },
 
   'POST /create': async (b) => {
@@ -340,7 +342,7 @@ const routes = {
   },
   'POST /attach': async (b) => {
     const a = await findAgent(b.agentId);
-    if (a.workspaceId) await selectWorkspace(a.workspaceId);
+    if (a.workspaceId) { await selectWorkspace(a.workspaceId); noteSelect(a.workspaceId); } // 점프는 자기 유발 전환 — follow가 패널을 덮지 않게(규칙 ⑤)
     if (a.paneId) { try { await focusPane(a.paneId); } catch { /* pane 포커스 실패 — ws 전환까지는 성공 */ } }
     await activateApp().catch(() => { /* 앱 활성화 실패 — 전환은 성공했으므로 무해 (darwin 점프 보조, win32 no-op) */ });
     return { ok: true };

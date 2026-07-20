@@ -12,6 +12,13 @@
 //  ③ 실패는 삼킨다(로그만) — 추적은 부가 기능이라 서버·폴링을 절대 막지 않는다(§9-⑥).
 //  ④ 오프라인/재연결(epoch 변화)에선 **기준선만 잡고 이동하지 않는다** — wmux 재시작마다 패널이
 //     제멋대로 바뀌지 않게. reconcile(lifecycle.js)의 epoch 처리와 같은 규약.
+//  ⑤ **cockpit 자기 유발 전환은 추적하지 않는다** — 스폰 ① 초점 이동·attach 점프·워크스페이스
+//     생성이 부르는 noteSelect()가 기준선만 갱신한다. 이 기능의 계약은 "사용자가 직접 바꾼
+//     전환(Ctrl+1~9)"이지, cockpit이 일으킨 전환에 패널을 덮는 게 아니다.
+//  ⑥ **안정화 디바운스** — 새 활성 ws가 STABLE틱(2틱≈4s) 연속 관측될 때만 전환으로 인정.
+//     실측(중앙 로그 57건 — 1~2초 간격 연쇄 이동)에서 스치는 전환이 패널을 반복해 덮었다.
+//  ⑦ **같은 저장소 재이동 생략** — 마지막으로 실은 URL을 기억, 같으면 openWeb을 건너뛴다
+//     (재이동은 스크롤·로그인만 날린다). 로컬 전용(원격 없음) 저장소는 재시도하지 않는다.
 import { existsSync } from 'node:fs';
 import { join, dirname, resolve } from 'node:path';
 import { ROOT, readConfig, patchConfig } from './registry.js';
@@ -56,7 +63,7 @@ export function repoDirOf(cwd) {
 export const isEnabled = () => readConfig().followWorkspaceGit !== false;
 export function setEnabled(on) {
   patchConfig({ followWorkspaceGit: !!on });
-  _lastWsId = null; // 껐다 켜도 현재 workspace를 기준선으로 다시 잡는다 — 켠 직후 즉시 덮지 않게
+  _lastWsId = null; _pend = null; _pendN = 0; // 껐다 켜도 현재 workspace를 기준선으로 다시 잡는다 — 켠 직후 즉시 덮지 않게
   return isEnabled();
 }
 
@@ -64,6 +71,16 @@ let _timer = null;
 let _lastWsId = null;   // 마지막으로 판정한 활성 workspace — 규칙 ①의 상태
 let _seenEpoch = null;  // 연결 세대 — 규칙 ④
 let _busy = false;      // 틱 겹침 방지(느린 왕복이 쌓이지 않게)
+let _lastUrl = null;    // 패널에 마지막으로 실은 URL — 같은 저장소 재이동 생략(규칙 ⑦)
+let _pend = null, _pendN = 0; // 안정화 디바운스(규칙 ⑥) — 후보 ws와 연속 관측 횟수
+const STABLE = 2;       // 전환 인정에 필요한 연속 관측 틱 수(2틱 ≈ 4s)
+
+// cockpit 자기 유발 전환 통지(규칙 ⑤) — 스폰 ① 초점 이동·attach 점프·워크스페이스 생성이 부른다.
+// 기준선만 갱신해 follow가 이를 사용자 전환으로 오인해 패널을 덮지 않게 한다.
+export function noteSelect(wsId) {
+  if (!wsId) return;
+  _lastWsId = wsId; _pend = null; _pendN = 0;
+}
 
 export async function tick() {
   if (_busy) return;
@@ -75,8 +92,14 @@ export async function tick() {
     if (!active) return;
 
     // 재연결/부팅 첫 관측 — 기준선만 잡고 이동하지 않는다(규칙 ④)
-    if (state.epoch !== _seenEpoch) { _seenEpoch = state.epoch; _lastWsId = active.id; return; }
-    if (active.id === _lastWsId) return; // 변경 없음(규칙 ①)
+    if (state.epoch !== _seenEpoch) { _seenEpoch = state.epoch; _lastWsId = active.id; _pend = null; return; }
+    if (active.id === _lastWsId) { _pend = null; return; } // 변경 없음(규칙 ①)
+
+    // 안정화 디바운스(규칙 ⑥) — 같은 새 활성 ws가 STABLE틱 연속일 때만 전환으로 인정.
+    // 연속 스위칭·스폰 직후 반동 같은 스치는 전환은 여기서 걸러진다.
+    if (_pend !== active.id) { _pend = active.id; _pendN = 1; return; }
+    if (++_pendN < STABLE) return;
+    _pend = null; _pendN = 0;
 
     const prev = _lastWsId;
     _lastWsId = active.id;
@@ -86,8 +109,11 @@ export async function tick() {
     const dir = repoDirOf(active.cwd);
     if (!dir) return;               // 저장소 아님 — 패널 불변(규칙 ②)
     const g = getGit(dir);          // 논블로킹 — 콜드면 null
-    if (!g || !g.web) { _lastWsId = prev; return; } // 미실측/원격 없음 → 기준선 되돌려 다음 틱 재시도(규칙 ②)
+    if (!g) { _lastWsId = prev; _pend = active.id; _pendN = STABLE; return; } // 콜드(미실측) — 다음 틱 즉시 재시도(디바운스 재대기 없음)
+    if (!g.web) return;             // 실측 완료·원격 없음(로컬 전용) — 재시도 무의미, 기준선 확정(규칙 ②·⑦)
+    if (g.web === _lastUrl) return; // 패널이 이미 그 저장소(규칙 ⑦) — 재이동은 스크롤·로그인만 날린다
     await openWeb(g.web);
+    _lastUrl = g.web;
     logEvent('info', null, 'follow', `workspace 추적 — ${active.title || active.id} → ${g.web} (${MUX} 브라우저 패널)`);
   } catch (e) {
     logEvent('error', null, 'follow', `추적 실패 — ${e.message}`); // 규칙 ③ — 삼키고 계속
@@ -104,5 +130,5 @@ export function startFollow() {
 }
 export function stopFollow() {
   if (_timer) clearInterval(_timer);
-  _timer = null; _lastWsId = null; _seenEpoch = null;
+  _timer = null; _lastWsId = null; _seenEpoch = null; _lastUrl = null; _pend = null; _pendN = 0;
 }

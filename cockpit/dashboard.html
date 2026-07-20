@@ -968,9 +968,12 @@ function deactivatePrompt(pi){
   const p=PROJECTS[pi]; if(!p)return;
   const sess=(p.sessions||[]).filter(s=>s.alive);
   const claudeOn=sess.filter(s=>s.claude==='on').length;
+  const prts=PORTS.filter(pt=>pt.project===p.name); // 귀속 서버 리스너 — 비활성화가 함께 중지(FS-14 확장)
   openConfirmDialog({
     title:'프로젝트를 비활성화합니다',
-    sub:`<span class="who">${esc(p.name)}</span> — 아래 세션 ${sess.length}개가 모두 종료(kill)되고 대기중으로 전환됩니다.<br><b>종료된 세션은 되돌릴 수 없습니다(undo 없음).</b>`,
+    sub:`<span class="who">${esc(p.name)}</span> — 아래 세션 ${sess.length}개가 모두 종료(kill)되고 대기중으로 전환됩니다.${
+      prts.length?`<br>귀속 서버 리스너 <b>${prts.length}개</b>(<span class="mono">${prts.map(pt=>esc(pt.p)).join(' · ')}</span>)도 함께 중지됩니다.`:''
+    }<br><b>종료된 세션은 되돌릴 수 없습니다(undo 없음).</b>`,
     warn:claudeOn?`claude가 실행 중인 세션 ${claudeOn}개가 있습니다 — 작업 중일 수 있습니다.`:null,
     sess:sess.map(s=>`<div class="row"><span class="rn">${esc(s.role)}</span>${s.role==='ops'?'<span class="pin" style="font-size:9.5px;color:var(--warn)">고정</span>':''}<span class="sp"></span>${
       s.claude==='on'?'<span class="pill sm claude"><span class="g">✦</span>claude</span>':'<span class="pill sm idle"><span class="g">❯</span>터미널</span>'}</div>`).join(''),
@@ -979,13 +982,15 @@ function deactivatePrompt(pi){
 }
 async function doDeactivate(pi){
   const p=PROJECTS[pi]; const n=(p.sessions||[]).length;
-  if(HAS_API){try{await api('/deactivate',{method:'POST',body:{name:p.name,confirm:true}});
-    ping(`비활성화 — <span class="mono">${p.name}</span> 세션 ${n}개 종료 ✓`);
+  if(HAS_API){try{const r=await api('/deactivate',{method:'POST',body:{name:p.name,confirm:true}});
+    ping(`비활성화 — <span class="mono">${p.name}</span> 세션 ${n}개 종료${r.portsKilled?` · 서버 ${r.portsKilled}개 중지`:''} ✓`);
     announce(`${p.name} 비활성화 — 세션을 종료했습니다.`,true);loadState();return;}
   catch(e){ping('비활성화 실패 — '+e.message);return;}}
+  const pk=PORTS.filter(pt=>pt.project===p.name).length;
+  PORTS=PORTS.filter(pt=>pt.project!==p.name); // demo — 귀속 리스너도 함께 정리(실서버 경로와 동형)
   p.status='idle';p.wsLive=false;p.sessions=[];
-  logEv('info',p.name,'deactivate',`세션 ${n}개 종료 · 대기중 전환`);
-  ping(`비활성화 — <span class="mono">${p.name}</span> 세션 ${n}개 종료 · 대기중 ✓`);
+  logEv('info',p.name,'deactivate',`세션 ${n}개 종료${pk?` · 귀속 서버 ${pk}개 중지`:''} · 대기중 전환`);
+  ping(`비활성화 — <span class="mono">${p.name}</span> 세션 ${n}개 종료${pk?` · 서버 ${pk}개 중지`:''} · 대기중 ✓`);
   announce(`${p.name} 프로젝트를 비활성화했습니다.`,true);renderAll();
 }
 /* [⏻ 종료] — 전체 종료: 모든 진행중 프로젝트 비활성화(세션 kill → 대기중 전환) 후 서버 종료.
@@ -997,10 +1002,13 @@ function shutdownPrompt(){
   const act=byStatus('active');
   const sess=act.flatMap(p=>((p.sessions||[]).filter(s=>s.alive!==false)).map(s=>({pn:p.name,role:s.role,claude:s.claude})));
   const claudeOn=sess.filter(s=>s.claude==='on').length;
+  const prts=PORTS.filter(pt=>pt.project); // 프로젝트 귀속 서버 리스너 — 비활성화가 함께 중지(FS-14 확장)
   openConfirmDialog({
     title:'Cockpit을 종료합니다',
     sub:act.length
-      ?`진행중 프로젝트 <b>${act.length}개</b>가 모두 비활성화됩니다 — 아래 세션 ${sess.length}개가 종료(kill)되고 <b>대기중</b>으로 전환된 뒤 ${muxAppFate()}.<br><b>종료된 세션은 되돌릴 수 없습니다(undo 없음).</b>`
+      ?`진행중 프로젝트 <b>${act.length}개</b>가 모두 비활성화됩니다 — 아래 세션 ${sess.length}개가 종료(kill)되고${
+        prts.length?` 귀속 서버 리스너 <b>${prts.length}개</b>(<span class="mono">${prts.map(pt=>esc(pt.p)).join(' · ')}</span>)가 중지되고`:''
+      } <b>대기중</b>으로 전환된 뒤 ${muxAppFate()}.<br><b>종료된 세션은 되돌릴 수 없습니다(undo 없음).</b>`
       :`진행중 프로젝트가 없습니다 — ${muxAppFate()}. 대시보드는 더 이상 응답하지 않아요.`,
     warn:claudeOn?`claude가 실행 중인 세션 ${claudeOn}개가 있습니다 — 작업 중일 수 있습니다.`:null,
     sess:sess.length?sess.map(s=>`<div class="row"><span class="rn">${esc(s.pn)} / ${esc(s.role)}</span><span class="sp"></span>${
@@ -1011,7 +1019,7 @@ function shutdownPrompt(){
 async function doShutdown(){
   if(HAS_API){
     try{const r=await api('/shutdown',{method:'POST',body:{confirm:true}});
-      ping(`전체 종료 — 프로젝트 ${(r.deactivated||[]).length}개 비활성화 · 서버 종료 중…`);
+      ping(`전체 종료 — 프로젝트 ${(r.deactivated||[]).length}개 비활성화${r.portsKilled?` · 서버 ${r.portsKilled}개 중지`:''} · 서버 종료 중…`);
       showBye((r.deactivated||[]).length,r.failed||[]);return;}
     catch(e){ping('전체 종료 실패 — '+esc(e.message));return;}}
   // demo — 모든 active를 대기중으로 전환 후 종료 화면(시뮬)

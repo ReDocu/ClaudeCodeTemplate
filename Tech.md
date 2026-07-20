@@ -120,7 +120,7 @@ root/<프로젝트>/project.json  (desired — 폴더가 진실)      wmux  (act
 | 전이 | API | 동작 |
 |---|---|---|
 | idle→active | `POST /activate {name}` | **워크스페이스만 보장 · 세션 스폰 없음**(초기 미연결). archived면 409 |
-| active→idle | `POST /deactivate {name, confirm:true}` | ws의 산 세션 **ops 포함 전부 kill → workspace close → idle**. `confirm` 없으면 400 |
+| active→idle | `POST /deactivate {name, confirm:true}` | **① 귀속 활성 포트 리스너(dev 서버) 중지**(세션 kill 전 — 부모 트리 귀속은 세션 pid가 살아있어야 실측, 실패는 비차단) → **② ws의 산 세션 ops 포함 전부 kill → workspace close → idle**. `confirm` 없으면 400 |
 | idle→archived | `POST /archive {name}` | 보관(폴더·선언 유지). active면 409(비활성화 먼저) |
 | archived→idle | `POST /reopen {name}` | 재개 — 대기중 복귀(즉시 활성화 없음) |
 | 원칙 | — | **무명령 자동 종료 없음.** kill은 아래 두 명시 경로뿐(§FS-5) |
@@ -236,6 +236,7 @@ root/<프로젝트>/project.json  (desired — 폴더가 진실)      wmux  (act
 | 필터 | 시스템·노이즈 리스너 분리(접기) |
 | 노출 | `GET /api/state`의 `ports[]`(**port·pid 포함**) · 프로젝트 `serve` 선언(`{role, cmd}` — project.json) |
 | OFF | 레일 귀속 행의 **[✕]** → `POST /port-kill` — kill 경유 확인 필수(§9-3) + 낙관적 재검증(⑤: 강제 재스캔에서 (port,pid) 정확 일치 + **프로젝트 귀속 재확인** — 시스템·wmux 오격추 방지) → `taskkill /T` 프로세스 트리 종료(pane 셸은 리스너의 부모라 무사 — 세션 유지) |
+| 일괄 OFF | **비활성화·전체 종료가 귀속 리스너를 함께 중지** — `deactivate`가 세션 kill **전에** 강제 재실측(`freshProjectListeners` — 귀속 판정까지 동일 로직) 후 트리 종료. 확인 다이얼로그가 대상 포트를 미리 표기, 실패는 비차단(로그만). 응답에 `portsKilled` |
 | ON | cockpit은 시작 명령을 모른다 → 카드 **[＋ 서버]**로 선언(`POST /serve` — 비우고 확인=해제) → **[▶ 서버 시작]** `POST /serve-start`가 역할 pane 셸에 sendLine(`POST /claude` 동형). **pane에 claude on/unknown이면 409**(명령이 claude 입력창으로 들어가는 오염 방지) |
 | 관련 | `ports.js`(`freshListener`·`killPid`), `server.js`(`projPortInfo`), `dashboard.html`(`portKillPrompt`·`servePrompt`) |
 
@@ -303,8 +304,8 @@ root/<프로젝트>/project.json  (desired — 폴더가 진실)      wmux  (act
 | 토글 | 대시보드 [↺ git 추적 ●] 칩 · `POST /follow {enabled}` → `config.followWorkspaceGit`(기본 켜짐, 서버 재시작 불필요) |
 | 저장소 유도 | `workspace.cwd` → `repoDirOf()`. **wmux의 cwd는 활성 pane을 따라 움직인다(실측 2026-07-16)** — 같은 workspace가 `root/<proj>`로도 `root/<proj>/ops`로도 나오고 사용자가 `cd`하면 더 내려간다 → 위로 거슬러 저장소를 찾는다 |
 | **유출 방어** | ① 프로젝트 루트는 `ops/`를 **먼저** 본다(격리 규칙: 루트는 저장소가 아님) ② `root/` 안이면 `root/<프로젝트>/` 위로 **절대** 안 올라간다 — `root/`의 조상이 코크핏 저장소(`ClaudeCodeTemplate/.git`)라, 무작정 올라가면 **엉뚱하게 코크핏 자신의 GitHub 페이지**를 띄운다 |
-| 안전 규칙 | ① 변경 시 1회만 이동(매 틱 재이동 = 패널 2초마다 리로드) ② 원격 못 구하면 패널 불변 ③ 실패는 삼킴(부가 기능이 서버를 막지 않음) ④ 오프라인·재연결(epoch 변화)은 기준선만 잡고 이동 안 함 |
-| 관련 | `follow.js`(`tick`·`repoDirOf`·`startFollow`), `mux.js`(`normWs`의 `isActive`·`cwd` — 추적의 유일한 근거), `server.js`(`POST /follow` · `serve()`가 루프 시작), `dashboard.html`(`renderFollow`·`toggleFollow`) |
+| 안전 규칙 | ① 변경 시 1회만 이동(매 틱 재이동 = 패널 2초마다 리로드) ② 원격 못 구하면 패널 불변 ③ 실패는 삼킴(부가 기능이 서버를 막지 않음) ④ 오프라인·재연결(epoch 변화)은 기준선만 잡고 이동 안 함 ⑤ **cockpit 자기 유발 전환 무시** — 스폰 초점 이동·attach 점프·ws 생성이 `noteSelect()`로 기준선만 갱신(사용자 전환만 추적) ⑥ **안정화 디바운스** — 새 활성 ws가 2틱(≈4s) 연속 관측될 때만 이동(스치는 전환 무시 — 실측: 1~2초 연쇄 이동이 패널을 반복해 덮음) ⑦ **같은 저장소 재이동 생략**(마지막 URL 기억 — 스크롤·로그인 보존) · 로컬 전용(원격 없음) 저장소는 재시도하지 않음 |
+| 관련 | `follow.js`(`tick`·`repoDirOf`·`startFollow`·`noteSelect`), `mux.js`(`normWs`의 `isActive`·`cwd` — 추적의 유일한 근거), `lifecycle.js`(`spawnRole`·`ensureWorkspace`가 `noteSelect` 호출), `server.js`(`POST /follow`·`/attach` · `serve()`가 루프 시작), `dashboard.html`(`renderFollow`·`toggleFollow`) |
 
 ---
 
@@ -328,7 +329,7 @@ root/<프로젝트>/project.json  (desired — 폴더가 진실)      wmux  (act
 | `/activate` | `{name}` | `{wsId, spawned:0}` | 503 wmux-offline · 409 archived |
 | `/spawn` | `{name, role?}` | `{wsId, spawned, reused, failed, focused}` | 400 unknown-role · 503 |
 | `/kill-session` | `{name, agentId}` | `{killed, role}` | 404 session-not-found · 409 project-inactive |
-| `/deactivate` | `{name, confirm:true}` | `{killed}` | **400 confirm-required** |
+| `/deactivate` | `{name, confirm:true}` | `{killed, portsKilled}` | **400 confirm-required** — 귀속 리스너 중지 → 전체 kill(FS-14 일괄 OFF) |
 | `/archive` | `{name}` | `{ok}` | 409 project-active |
 | `/reopen` | `{name}` | `{ok}` | — |
 | `/create` | `{name, roles[]}` | `{created, added}` | 409 folder-exists · 400 invalid-name |
@@ -349,7 +350,7 @@ root/<프로젝트>/project.json  (desired — 폴더가 진실)      wmux  (act
 | `/port-kill` | `{port, pid, confirm:true}` | `{ok}` | **400 confirm-required** · 409 listener-gone·not-project-listener · 502 kill-failed (FS-14 OFF) |
 | `/serve` | `{name, action:'set'\|'clear', role?, cmd?}` | `{serve}` | 400 cmd-required·cmd-too-long·unknown-role·unknown-action (FS-14 ON 선언) |
 | `/serve-start` | `{name}` | `{ok}` | 400 no-serve-config · 409 project-inactive·role-session-missing·pane-claude-on·pane-state-unknown · 502 no-surface · 503 wmux-offline (FS-14 ON) |
-| `/shutdown` | `{confirm:true}` | `{deactivated, failed}` | **400 confirm-required** — 전 프로젝트 비활성화 → 응답 플러시 → **앱 종료(`mux.ownsApp`일 때만 — wmux는 taskkill · cmux는 일상 터미널이라 유지)** → 서버 종료. 평시엔 앱 수명 비소유, ⏻ 전체 종료만 예외 |
+| `/shutdown` | `{confirm:true}` | `{deactivated, failed, portsKilled}` | **400 confirm-required** — 전 프로젝트 비활성화(귀속 서버 중지 포함) → 응답 플러시 → **앱 종료(`mux.ownsApp`일 때만 — wmux는 taskkill · cmux는 일상 터미널이라 유지)** → 서버 종료. 평시엔 앱 수명 비소유, ⏻ 전체 종료만 예외 |
 
 공통 에러: 401(토큰) · 413(body>1MB) · 400 bad-json · 404 unknown-project · 503 wmux-offline.
 
@@ -399,7 +400,7 @@ root/<프로젝트>/project.json  (desired — 폴더가 진실)      wmux  (act
 3. **세션 전송은 surfaceId 명시 필수** — 포커스 기반은 오발송. paneId를 send_text에 주면 "no PTY".
 4. **경로 진실 = 폴더** — spawn엔 항상 `--cwd` 명시(홈 드리프트 차단).
 5. **git = ops 단일 저장소** — 루트는 저장소 아님. `connectRemote`는 스켈레톤 ops면 clone, 실저장소면 원격 갱신.
-6. **kill은 두 명시 경로뿐** — `killSession`(개별) + `deactivate`(전체·confirm 게이트). 무명령 자동 종료 없음.
+6. **kill은 두 명시 경로뿐** — `killSession`(개별) + `deactivate`(전체·confirm 게이트 — 귀속 리스너 정리 포함). 무명령 자동 종료 없음.
 7. **세션 개별 스폰** — activate는 스폰 안 함. 스폰 결정은 매 회 `getFresh`(중복 방지).
 8. **세션 활동 = Claude 훅 실측(wmux 아님)** — cwd 가드 · claude on일 때만 노출 · working 10분 stale 방어.
 9. **채택(adopt)** — `connected = adopted[agentId] || declaredRoles.has(label)`. 미점유·같은 역할 열린 세션은 재사용.
