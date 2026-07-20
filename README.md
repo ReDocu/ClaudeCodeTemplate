@@ -17,7 +17,7 @@
 
 ### 📥 [최신 릴리스 다운로드][releases] — 현재 **v0.3.0**
 
-1. **[`ClaudeCockpit-v0.3.0.zip`][zip]** 바로 다운로드 → 압축 해제
+1. **[`ClaudeCodeTemplate-0.3.0.zip`][zip]** 바로 다운로드 → 압축 해제
 2. 실행 — OS에 맞는 런처를 더블클릭
    - **Windows** — **`ClaudeCockpit.exe`** (실행이 막히면 `start.cmd`)
    - **macOS (cmux)** — **`ClaudeCockpit_cmux.command`** (실행이 막히면 터미널에서 `bash ClaudeCockpit_cmux.command`)
@@ -113,7 +113,7 @@ node cockpit/bin/cockpit.js boot --setup   # wmux 설치 경로 재지정
 | 분류 | 기능 |
 |---|---|
 | **관찰** | 프로젝트 카드(대기중/진행중/종료됨) · **claude 켜짐 실측**(on/off/unknown) · **세션 활동 배지**(⏳ 진행중 / ⌛ 대기중 / ⚠ 입력 대기 — Claude 훅) · **모델·effort 칩**(◆ — 훅 실측) · 세션 드로어(상태·작업 폴더·기능 인벤토리·점프·폴더·세션 비활성화) · git 칩(원격 웹링크) · 활성 포트맵(프로젝트 귀속) · Global 기능 인벤토리 · 미연결(외부) 세션 · 중앙 이벤트 로그 |
-| **행동** | 프로젝트 생성/연동/`＋ git 주소`(clone) · 역할 추가/제거 · `▶ 활성화`(워크스페이스만, 세션 스폰 없음) · `＋ 세션 활성화`(역할별 개별 스폰) · `＋ 모든 세션 활성화`(빠진 전체) · `▶ Claude 실행`(이미 켜져 있으면 생략) · `↗ 세션 열기`(wmux 점프) · `세션 비활성화`(개별) · `비활성화`(전체·확인) · `아카이브`/`재개` · `＋ 링크` · `＋ 원격`(ops에 git clone/연결) · `＋ 서버`(시작 명령 선언) → `▶ 서버 시작`(역할 pane에 전송) · 활성 포트 `✕`(리스너 중지·확인) |
+| **행동** | 프로젝트 생성/연동/`＋ git 주소`(clone) · 역할 추가/제거 · `▶ 활성화`(워크스페이스만, 세션 스폰 없음) · `＋ 세션 활성화`(역할별 개별 스폰) · `＋ 모든 세션 활성화`(빠진 전체) · `▶ Claude 실행`(이미 켜져 있으면 생략) · `↗ 세션 열기`(wmux 점프) · `세션 비활성화`(개별) · `비활성화`(전체·확인 — 귀속 서버 리스너도 함께 중지) · `아카이브`/`재개` · `＋ 링크` · `＋ 원격`(ops에 git clone/연결) · `＋ 서버`(시작 명령 선언) → `▶ 서버 시작`(역할 pane에 전송) · 활성 포트 `✕`(리스너 중지·확인) |
 | **운영** | 콜드 부트 exe · wmux 위치 자동 발견 · boot 시 active 자동 재수렴 · **wmux 명령 콘솔 로깅**(`[wmux→]`/`[wmux✗]` 진단) · offline/demo 배지 구분 |
 
 > 세션은 **3단계**로 연다: `○ 미연결` → `[＋ 세션 활성화]` → 연결 확인 → `[▶ Claude 실행]`. 활성화는 방을 여는 것일 뿐 세션을 자동 생성하지 않는다.
@@ -205,6 +205,9 @@ Claude Code 훅(bin/activity-hook.mjs) ──▶ cockpit/workspace/activity/*.js
 <!-- 문의 폼 링크(단일 교체 지점) — 바꾸려면 이 URL 한 줄만 수정하면 README 내 모든 "문의 폼" 링크에 반영됩니다. -->
 [form]: https://docs.google.com/forms/d/e/1FAIpQLSfdAAODOXSfYg8bQp-WLewENrP_otXglztMzfR7bL678wqdHg/viewform
 
-<!-- 릴리스 링크(단일 교체 지점) — 새 릴리스마다 [zip] 한 줄의 버전(v0.1.0 두 곳)과 위 "현재 vX.Y.Z" 표기만 갱신. -->
-[zip]: https://github.com/ReDocu/ClaudeCodeTemplate/releases/download/v0.3.0/ClaudeCockpit-v0.3.0.zip
-[releases]: https://github.com/ReDocu/ClaudeCodeTemplate/releases/latest
+<!-- 릴리스 링크(단일 교체 지점) — [zip]은 태그 자동 아카이브(자산 업로드 불필요·태그만 푸시하면 즉시 동작).
+     새 릴리스마다 [zip]의 버전(v0.3.0)과 위 "현재 vX.Y.Z"·파일명(ClaudeCodeTemplate-X.Y.Z.zip) 표기만 갱신.
+     릴리스에 ClaudeCockpit-vX.Y.Z.zip 자산을 직접 올렸다면 releases/download/vX.Y.Z/… 직링크로 되돌려도 된다.
+     [releases]는 목록 페이지 — /releases/latest는 pre-release를 건너뛰어(현재 v0.2.0을 가리킴) 쓰지 않는다. -->
+[zip]: https://github.com/ReDocu/ClaudeCodeTemplate/archive/refs/tags/v0.3.0.zip
+[releases]: https://github.com/ReDocu/ClaudeCodeTemplate/releases
