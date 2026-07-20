@@ -1,0 +1,718 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ClaudeCockpit — 기술문서 (내부 구조 · UML)</title>
+<style>
+  :root{
+    --bg:#0b0e13; --bg-grid:#0e131a; --panel:#141a22; --panel-2:#171f29;
+    --border:#232c37; --border-2:#2c3744;
+    --text:#d8dee7; --muted:#8b97a6; --faint:#828d9c;
+    --accent:#4fd6c9; --accent-dim:#2c8f88;
+    --ok:#46c667; --warn:#e2a83e; --crit:#f4685c; --idle:#5a6472; --blue:#5aa9f0; --violet:#b48cf2;
+    --mono:ui-monospace,"Cascadia Code",Consolas,monospace;
+    --ui:system-ui,-apple-system,"Segoe UI",Roboto,"Malgun Gothic",sans-serif;
+  }
+  *{box-sizing:border-box} html,body{margin:0}
+  body{font-family:var(--ui);color:var(--text);background:var(--bg);
+    background-image:radial-gradient(circle at 1px 1px,var(--bg-grid) 1px,transparent 0);background-size:22px 22px;
+    font-size:14px;line-height:1.55;padding:26px 18px 60px}
+  .wrap{max-width:980px;margin:0 auto}
+  h1{font-size:25px;margin:0 0 4px;letter-spacing:.2px}
+  .lead{color:var(--muted);margin:0 0 10px;font-size:14px}
+  h2{font-size:18px;margin:40px 0 4px;padding-top:20px;border-top:1px solid var(--border)}
+  h2 .n{display:inline-flex;min-width:26px;height:26px;padding:0 6px;border-radius:7px;background:var(--accent);color:#06201d;
+    font-size:14px;font-weight:700;align-items:center;justify-content:center;margin-right:9px;vertical-align:2px}
+  h3{font-size:15px;margin:24px 0 6px;color:var(--accent)}
+  .desc{color:var(--muted);margin:2px 0 14px}
+  .mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
+  code{font-family:var(--mono);background:var(--panel);border:1px solid var(--border);border-radius:5px;padding:1px 6px;font-size:12.5px;color:var(--accent)}
+  pre{font-family:var(--mono);font-size:12px;line-height:1.55;background:var(--panel);border:1px solid var(--border);
+    border-radius:10px;padding:14px 16px;overflow-x:auto;color:var(--text)}
+  pre code{background:none;border:0;padding:0;color:inherit}
+  a{color:var(--blue);text-decoration:none} a:hover{text-decoration:underline}
+
+  .badges{display:flex;flex-wrap:wrap;gap:6px;margin:10px 0 4px}
+  .badge{display:inline-flex;align-items:center;gap:5px;font-size:11px;padding:2px 10px;border-radius:20px;border:1px solid var(--border-2);
+    color:var(--muted);background:var(--panel)}
+  .badge b{color:var(--text);font-weight:600}
+  .badge.on{color:var(--accent);border-color:var(--accent-dim);background:#4fd6c912}
+  .badge.warn{color:var(--warn);border-color:#e2a83e66;background:#e2a83e10}
+
+  table{border-collapse:collapse;width:100%;margin:8px 0 16px;font-size:12.5px}
+  th,td{border:1px solid var(--border);padding:6px 9px;text-align:left;vertical-align:top}
+  th{background:var(--panel-2);color:var(--muted);font-weight:600;white-space:nowrap}
+  td .mono{font-size:11.5px}
+  tr:nth-child(even) td{background:#10151d}
+  .tblwrap{overflow-x:auto}
+
+  .fig{border:1px solid var(--border);border-radius:12px;background:var(--panel);padding:14px 14px 8px;margin:8px 0 18px;overflow-x:auto}
+  .figcap{font-size:11px;color:var(--faint);text-transform:uppercase;letter-spacing:.8px;margin:0 0 8px}
+  .fig svg{width:100%;height:auto;min-width:760px;display:block}
+
+  /* SVG 공통 */
+  .d-box{fill:var(--panel-2);stroke:var(--border-2);stroke-width:1.1}
+  .d-box.hl{stroke:var(--accent-dim)}
+  .d-box.ext{fill:#101720;stroke-dasharray:5 3}
+  .d-t{fill:var(--text);font-size:12.5px;font-weight:600;font-family:var(--ui)}
+  .d-s{fill:var(--muted);font-size:10px;font-family:var(--ui)}
+  .d-l{fill:var(--muted);font-size:10px;font-family:var(--ui)}
+  .d-lc{fill:var(--accent);font-size:10px;font-family:var(--ui)}
+  .d-lw{fill:var(--warn);font-size:10px;font-family:var(--ui)}
+  .mid{text-anchor:middle}
+  .fa{stroke:var(--accent);stroke-width:1.3;fill:none}
+  .fm{stroke:var(--muted);stroke-width:1.1;fill:none}
+  .fd{stroke:var(--muted);stroke-width:1.1;fill:none;stroke-dasharray:4 3}
+  .fw{stroke:var(--warn);stroke-width:1.1;fill:none;stroke-dasharray:4 3}
+  .fx{stroke:var(--crit);stroke-width:1.1;fill:none;stroke-dasharray:4 3}
+  .ll{stroke:var(--border-2);stroke-width:1;stroke-dasharray:3 4}
+
+  /* UML 모듈 카드 */
+  .cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(290px,1fr));gap:10px;margin:10px 0 16px}
+  .card{border:1px solid var(--border-2);border-radius:10px;background:var(--panel-2);overflow:hidden}
+  .card .hd{padding:7px 11px;border-bottom:1px solid var(--border);background:var(--panel)}
+  .card .st{font-size:10px;color:var(--faint)}
+  .card .nm{font-family:var(--mono);font-size:12.5px;font-weight:700;color:var(--text)}
+  .card .rs{padding:6px 11px;border-bottom:1px solid var(--border);font-size:11.5px;color:var(--muted)}
+  .card .ops{padding:6px 11px 9px;font-family:var(--mono);font-size:10.8px;line-height:1.7;color:var(--faint)}
+  .card .ops b{color:var(--accent);font-weight:600}
+
+  .note{border-left:3px solid var(--accent-dim);background:var(--panel);border-radius:0 8px 8px 0;padding:8px 12px;margin:10px 0;color:var(--muted);font-size:12.5px}
+  .note.warn{border-left-color:var(--warn)}
+  .kbd{color:var(--warn)}
+  ol,ul{margin:6px 0 14px;padding-left:22px;color:var(--text)}
+  li{margin:3px 0}
+  .toc{columns:2;column-gap:28px;font-size:13px;margin:8px 0 4px}
+  .toc a{display:block;padding:2px 0;color:var(--text)}
+  .toc a .mono{color:var(--faint);margin-right:6px}
+  @media(max-width:700px){.toc{columns:1}}
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <marker id="arA" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0L10,5L0,10z" fill="#4fd6c9"/></marker>
+    <marker id="arM" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0L10,5L0,10z" fill="#8b97a6"/></marker>
+    <marker id="arW" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0L10,5L0,10z" fill="#e2a83e"/></marker>
+  </defs>
+</svg>
+<div class="wrap">
+
+<h1>ClaudeCockpit — 기술문서</h1>
+<p class="lead">내부 코드 · 프로그램 상황 · 구조를 UML 다이어그램과 함께 정리한 개발자 문서 — <b>2026-07-20 코드 실측 기준</b>. 기능 단위 명세는 <span class="mono">Tech.md</span>(기능명세서)를, 사용법은 <span class="mono">Manual.md</span>를 함께 본다.</p>
+<div class="badges">
+  <span class="badge on"><b>v0.3.0</b> · 2026-07-19 릴리스</span>
+  <span class="badge"><b>상태</b> 실동작 (Windows wmux · macOS cmux)</span>
+  <span class="badge"><b>런타임</b> Node 20+ · npm 의존성 0</span>
+  <span class="badge"><b>서버</b> 127.0.0.1:7420 + 토큰</span>
+  <span class="badge warn"><b>원칙</b> 관찰·제어 = Claude 토큰 소비 0</span>
+</div>
+
+<h2 id="toc"><span class="n">§</span>목차</h2>
+<div class="toc">
+  <a href="#s1"><span class="mono">1</span>프로그램 개요 · 현황</a>
+  <a href="#s2"><span class="mono">2</span>시스템 아키텍처 (컴포넌트 다이어그램)</a>
+  <a href="#s3"><span class="mono">3</span>폴더 구조</a>
+  <a href="#s4"><span class="mono">4</span>모듈 구조 (UML 모듈 카드 · 의존 관계)</a>
+  <a href="#s5"><span class="mono">5</span>동작 시퀀스 (UML 시퀀스 다이어그램)</a>
+  <a href="#s6"><span class="mono">6</span>상태 전이 (UML 상태머신)</a>
+  <a href="#s7"><span class="mono">7</span>데이터 모델 · 런타임 파일</a>
+  <a href="#s8"><span class="mono">8</span>API 엔드포인트 요약</a>
+  <a href="#s9"><span class="mono">9</span>캐시 · 신뢰성 설계</a>
+  <a href="#s10"><span class="mono">10</span>플랫폼 추상화 (wmux / cmux)</a>
+  <a href="#s11"><span class="mono">11</span>보안 · 불변 규칙</a>
+  <a href="#s12"><span class="mono">12</span>검증 컨벤션 · 코드 규모 · 알려진 경계</a>
+</div>
+
+<!-- ══════════════════════════ 1 ══════════════════════════ -->
+<h2 id="s1"><span class="n">1</span>프로그램 개요 · 현황</h2>
+<p class="desc">ClaudeCockpit은 여러 Claude Code 세션을 <b>세션에 들어가지 않고</b> 브라우저 대시보드에서 관찰·제어하는 로컬 관제 도구다. 새 터미널 멀티플렉서를 만들지 않고 <b>wmux(Windows)/cmux(macOS) 위에 얇게 얹는 오케스트레이션 레이어</b>로 동작한다.</p>
+
+<table>
+  <tr><th>항목</th><th>내용</th></tr>
+  <tr><td>3계층 매핑</td><td>관리자(대시보드) ─ 프로젝트(멀티플렉서 <b>workspace</b>) ─ 역할(workspace 안의 <b>agent</b>/pane)</td></tr>
+  <tr><td>진실의 원천</td><td><span class="mono">root/&lt;프로젝트&gt;/project.json</span> 폴더 선언(desired) ⊕ 멀티플렉서·프로세스 실측(actual)을 매 폴링마다 병합</td></tr>
+  <tr><td>정본 시스템</td><td><span class="mono">cockpit/</span> (구 <span class="mono">teamctl/</span>은 리라이트로 폐기 — 재배선 금지)</td></tr>
+  <tr><td>전제 환경</td><td>Windows 11(wmux) · macOS(cmux) · Node 20+(내장 모듈만) · git CLI · Claude Code(<span class="mono">claude</span> 명령)</td></tr>
+  <tr><td>보안 경계</td><td>서버 <span class="mono">127.0.0.1</span> 바인드 + <span class="mono">X-Cockpit-Token</span>(GET / 제외 전부) · 원격 노출 비목표</td></tr>
+</table>
+
+<h3>현황 (v0.3.0 · 2026-07-19)</h3>
+<ul>
+  <li><b>macOS(cmux) 지원</b> — mux 파사드 아래 cmux 드라이버 추가. 대시보드는 플랫폼을 모른 채 서버가 내려주는 <span class="mono">mux</span> 계약(<span class="mono">ownsApp</span>·<span class="mono">canOpenWeb</span>)만 따른다.</li>
+  <li><b>활동 훅 자동 설치/수리(FS-7)</b> — 서버 기동 시 <span class="mono">~/.claude/settings.json</span>의 훅 커맨드를 <b>절대경로로 실측</b>, 미설치/옛 경로면 현재 리포 경로로 자동 재등록(멱등·비차단·백업).</li>
+  <li><b>workspace git 추적(FS-21)</b> — 코크핏의 <b>유일한 백그라운드 루프</b>(2s). 활성 workspace가 바뀌면 그 저장소 페이지를 내장 브라우저 패널로 1회만 이동.</li>
+  <li><b>사용량 표시(FS-16)는 제거됨</b>(2026-07-15) — 로컬 트랜스크립트 합산이 <span class="mono">/usage</span>의 실제 한도(5시간·7일 창)와 구조적으로 불일치. 재도입하지 않는다.</li>
+  <li><b>토큰 소비 0 원칙</b> — 관찰·제어는 전부 로컬 실측(파이프·프로세스·파일). 토큰이 도는 경로는 <span class="kbd">[▶ Claude 실행]</span> 하나뿐이며 그것도 기동만 한다.</li>
+</ul>
+
+<!-- ══════════════════════════ 2 ══════════════════════════ -->
+<h2 id="s2"><span class="n">2</span>시스템 아키텍처 — UML 컴포넌트 다이어그램</h2>
+<p class="desc">상위(server·lifecycle·bin)는 <span class="mono">mux.js</span> 파사드만 import 한다 — 플랫폼 분기는 파사드에서 끝난다. 모든 프로브(proc·ports·caps·git·activity)는 논블로킹 캐시라 <span class="mono">/api/state</span> 응답을 절대 막지 않는다.</p>
+
+<div class="fig">
+<p class="figcap">component diagram — 실행 컴포넌트와 주요 호출 경로</p>
+<svg viewBox="0 0 960 724" role="img" aria-label="컴포넌트 다이어그램">
+  <!-- 진입 계층 -->
+  <rect class="d-box" x="20" y="20" width="250" height="56" rx="10"/>
+  <text class="d-t mid" x="145" y="42">콜드 부트 런처</text>
+  <text class="d-s mid" x="145" y="60">ClaudeCockpit.exe · _cmux.command · start.cmd</text>
+
+  <rect class="d-box" x="340" y="20" width="230" height="56" rx="10"/>
+  <text class="d-t mid" x="455" y="42">bin/cockpit.js</text>
+  <text class="d-s mid" x="455" y="60">CLI — boot · serve</text>
+  <path class="fm" d="M270,48 L338,48" marker-end="url(#arM)"/>
+
+  <!-- 오른쪽 컬럼: 훅 파이프라인 -->
+  <rect class="d-box ext" x="670" y="20" width="270" height="56" rx="10"/>
+  <text class="d-t mid" x="805" y="42">Claude Code 세션들</text>
+  <text class="d-s mid" x="805" y="60">pane 안에서 실행되는 claude CLI</text>
+
+  <rect class="d-box" x="670" y="140" width="270" height="56" rx="10"/>
+  <text class="d-t mid" x="805" y="162">bin/activity-hook.mjs</text>
+  <text class="d-s mid" x="805" y="180">훅 런타임 · settings 병합 설치/제거</text>
+  <path class="fm" d="M805,76 L805,138" marker-end="url(#arM)"/>
+  <text class="d-l" x="812" y="112">훅 이벤트 3종</text>
+
+  <rect class="d-box" x="670" y="240" width="270" height="52" rx="10"/>
+  <text class="d-t mid" x="805" y="262">workspace/activity/*.json</text>
+  <text class="d-s mid" x="805" y="280">{state, model, effort, ts}</text>
+  <path class="fm" d="M805,196 L805,238" marker-end="url(#arM)"/>
+  <text class="d-l" x="812" y="222">기록</text>
+
+  <!-- 프레젠테이션 계층 -->
+  <rect class="d-box hl" x="20" y="140" width="230" height="64" rx="10"/>
+  <text class="d-t mid" x="135" y="164">브라우저 대시보드</text>
+  <text class="d-s mid" x="135" y="182">dashboard.html — 폴링 2.5s</text>
+
+  <rect class="d-box hl" x="340" y="140" width="230" height="64" rx="10"/>
+  <text class="d-t mid" x="455" y="164">src/server.js</text>
+  <text class="d-s mid" x="455" y="182">유일 HTTP 레이어 · buildState</text>
+  <path class="fa" d="M250,172 L338,172" marker-end="url(#arA)"/>
+  <text class="d-lc mid" x="295" y="164">fetch+토큰</text>
+  <path class="fm" d="M455,76 L455,138" marker-end="url(#arM)"/>
+  <text class="d-l" x="462" y="112">serve()</text>
+
+  <!-- 도메인 계층 -->
+  <rect class="d-box" x="20" y="256" width="180" height="56" rx="10"/>
+  <text class="d-t mid" x="110" y="278">src/registry.js</text>
+  <text class="d-s mid" x="110" y="296">선언 스캔 · 스캐폴드 · config</text>
+
+  <rect class="d-box" x="220" y="256" width="180" height="56" rx="10"/>
+  <text class="d-t mid" x="310" y="278">src/lifecycle.js</text>
+  <text class="d-s mid" x="310" y="296">전이 · 스폰 3단계 · reconcile</text>
+
+  <rect class="d-box" x="420" y="256" width="180" height="56" rx="10"/>
+  <text class="d-t mid" x="510" y="278">src/follow.js</text>
+  <text class="d-s mid" x="510" y="296">git 추적 루프 (2s · 유일)</text>
+
+  <path class="fm" d="M400,204 L145,253" marker-end="url(#arM)"/>
+  <path class="fm" d="M440,204 L330,253" marker-end="url(#arM)"/>
+  <path class="fm" d="M490,204 L505,253" marker-end="url(#arM)"/>
+
+  <!-- 프로브 계층 -->
+  <text class="d-l mid" x="315" y="352">온디맨드 프로브 — 전부 논블로킹 캐시(응답 비차단)</text>
+  <rect class="d-box" x="20"  y="372" width="88" height="50" rx="8"/><text class="d-t mid" x="64"  y="393" style="font-size:11.5px">proc.js</text><text class="d-s mid" x="64"  y="410">claude on/off</text>
+  <rect class="d-box" x="118" y="372" width="88" height="50" rx="8"/><text class="d-t mid" x="162" y="393" style="font-size:11.5px">ports.js</text><text class="d-s mid" x="162" y="410">포트맵·kill</text>
+  <rect class="d-box" x="216" y="372" width="88" height="50" rx="8"/><text class="d-t mid" x="260" y="393" style="font-size:11.5px">caps.js</text><text class="d-s mid" x="260" y="410">인벤토리</text>
+  <rect class="d-box" x="314" y="372" width="88" height="50" rx="8"/><text class="d-t mid" x="358" y="393" style="font-size:11.5px">git.js</text><text class="d-s mid" x="358" y="410">원격·clone</text>
+  <rect class="d-box" x="412" y="372" width="88" height="50" rx="8"/><text class="d-t mid" x="456" y="393" style="font-size:11.5px">activity.js</text><text class="d-s mid" x="456" y="410">활동 읽기</text>
+  <rect class="d-box" x="510" y="372" width="88" height="50" rx="8"/><text class="d-t mid" x="554" y="393" style="font-size:11.5px">log.js</text><text class="d-s mid" x="554" y="410">JSONL 로그</text>
+  <path class="fm" d="M560,204 L632,204 L632,397 L600,397" marker-end="url(#arM)"/>
+
+  <!-- activity 파일 읽기 -->
+  <path class="fd" d="M670,266 L648,266 L648,332 L462,332 L462,370" marker-end="url(#arM)"/>
+  <text class="d-l" x="470" y="326">읽기 — getActivity()</text>
+
+  <!-- project.json -->
+  <rect class="d-box ext" x="670" y="356" width="270" height="56" rx="10"/>
+  <text class="d-t mid" x="805" y="378">root/&lt;프로젝트&gt;/project.json</text>
+  <text class="d-s mid" x="805" y="396">프로젝트 선언(진실) — 원자적 되쓰기</text>
+  <path class="fd" d="M668,384 L656,384 L656,348 L150,348 L150,314" marker-end="url(#arM)"/>
+  <text class="d-l" x="180" y="344">스캔 · 원자적 쓰기(tmp→rename)</text>
+
+  <!-- OS 실측 -->
+  <rect class="d-box ext" x="670" y="452" width="270" height="64" rx="10"/>
+  <text class="d-t mid" x="805" y="474">OS 실측 · git CLI</text>
+  <text class="d-s mid" x="805" y="492">PowerShell CIM·ps / NetTCP·lsof / git</text>
+  <path class="fd" d="M402,397 L668,478" marker-end="url(#arM)"/>
+  <text class="d-l" x="540" y="430">스냅샷 실측 (proc·ports·git)</text>
+
+  <!-- mux 파사드 -->
+  <rect class="d-box hl" x="110" y="456" width="400" height="56" rx="10"/>
+  <text class="d-t mid" x="310" y="478">src/mux.js — 멀티플렉서 파사드</text>
+  <text class="d-s mid" x="310" y="496">상태 캐시 TTL 1.5s · 정규화·dead 필터 · 셸 결정 · epoch</text>
+  <path class="fm" d="M310,312 L310,454" marker-end="url(#arM)"/>
+  <path class="fm" d="M500,312 L470,454" marker-end="url(#arM)"/>
+  <path class="fa" d="M400,80 L400,100 L60,100 L60,466 L108,466" marker-end="url(#arA)"/>
+  <text class="d-lc" x="66" y="120">① ensureApp()</text>
+  <path class="fa" d="M360,204 L360,232 L84,232 L84,486 L108,486" marker-end="url(#arA)"/>
+  <text class="d-lc" x="92" y="226">getState · getFresh · 제어</text>
+
+  <!-- 드라이버 -->
+  <rect class="d-box" x="110" y="552" width="190" height="56" rx="10"/>
+  <text class="d-t mid" x="205" y="574">mux/wmux.js</text>
+  <text class="d-s mid" x="205" y="592">win32 — named pipe 직결</text>
+  <rect class="d-box" x="320" y="552" width="190" height="56" rx="10"/>
+  <text class="d-t mid" x="415" y="574">mux/cmux.js</text>
+  <text class="d-s mid" x="415" y="592">darwin — cmux CLI</text>
+  <path class="fm" d="M205,512 L205,550" marker-end="url(#arM)"/>
+  <path class="fm" d="M415,512 L415,550" marker-end="url(#arM)"/>
+  <text class="d-l mid" x="310" y="540">플랫폼별 드라이버 선택 (동일 계약)</text>
+
+  <!-- 외부 앱 -->
+  <rect class="d-box ext" x="110" y="644" width="190" height="56" rx="10"/>
+  <text class="d-t mid" x="205" y="666">wmux 앱</text>
+  <text class="d-s mid" x="205" y="684">\\.\pipe\wmux — JSON 1줄 왕복</text>
+  <rect class="d-box ext" x="320" y="644" width="190" height="56" rx="10"/>
+  <text class="d-t mid" x="415" y="666">cmux 앱</text>
+  <text class="d-s mid" x="415" y="684">execFile · rpc/top · UUID 주소</text>
+  <path class="fm" d="M205,608 L205,642" marker-end="url(#arM)"/>
+  <path class="fm" d="M415,608 L415,642" marker-end="url(#arM)"/>
+</svg>
+</div>
+
+<div class="note">핵심 데이터 계약은 <code>GET /api/state = { projects, unlinked, ports, hookInstalled, mux }</code> 하나다. 대시보드는 상태를 소유하지 않고 이 페이로드를 2.5초마다 폴링해 전체를 다시 그린다(상태 기반 렌더).</div>
+
+<!-- ══════════════════════════ 3 ══════════════════════════ -->
+<h2 id="s3"><span class="n">3</span>폴더 구조</h2>
+<pre><code>ClaudeCodeTemplate/
+├─ cockpit/                      # ★ 정본 시스템
+│  ├─ dashboard.html             #   대시보드 (단일 파일 · 인라인 JS/CSS · 의존 0)
+│  ├─ bin/
+│  │  ├─ cockpit.js              #   CLI — serve · boot
+│  │  └─ activity-hook.mjs       #   Claude Code 훅 런타임 + settings 설치/제거
+│  ├─ src/
+│  │  ├─ server.js               #   유일 HTTP 레이어 · buildState · 전 라우트
+│  │  ├─ registry.js             #   선언 스캔·생성·연동 · 격리 스캐폴드 · config
+│  │  ├─ lifecycle.js            #   생명주기 전이 · 스폰 3단계 · reconcile · cleanSlate
+│  │  ├─ mux.js                  #   멀티플렉서 파사드 (캐시·정규화·셸 결정)
+│  │  ├─ mux/wmux.js             #   win32 드라이버 — named pipe
+│  │  ├─ mux/cmux.js             #   darwin 드라이버 — cmux CLI
+│  │  ├─ proc.js  ports.js       #   claude on/off · 활성 포트 실측
+│  │  ├─ activity.js  caps.js    #   세션 활동 읽기 · 기능 인벤토리
+│  │  ├─ git.js  follow.js       #   git 칩·clone · workspace git 추적 루프
+│  │  └─ log.js                  #   중앙 이벤트 로그 (JSONL)
+│  ├─ test/cmux-parse.test.mjs   #   cmux 순수 파서 단위 테스트
+│  └─ workspace/                 #   런타임 (config·logs·activity — gitignore)
+├─ root/                         # 프로젝트 선언 (폴더 = 진실)
+│  └─ &lt;프로젝트&gt;/
+│     ├─ project.json            #   선언 파일 (cockpit 제어 · 런타임 바인딩 되쓰기)
+│     ├─ CLAUDE.md               #   격리 선언 (cockpit 정책 차단)
+│     ├─ ops/                    #   유일 git 저장소 (코드베이스·배포·운영 기준)
+│     └─ &lt;역할&gt;/                 #   역할별 작업 폴더 (세션 cwd)
+├─ launcher/cockpit-launcher.cs  # .exe 스텁 (전제조건 검사 → node boot 위임)
+├─ ClaudeCockpit.exe · start.cmd · ClaudeCockpit_cmux.command   # 콜드 부트 진입점
+├─ README.md · Manual.md · Tech.md · updates/                   # 문서
+└─ ClaudeCockpit-Guide.html · ClaudeCockpit-Cheatsheet.html</code></pre>
+
+<!-- ══════════════════════════ 4 ══════════════════════════ -->
+<h2 id="s4"><span class="n">4</span>모듈 구조 — UML 모듈 카드</h2>
+<p class="desc">클래스 대신 ES 모듈이 단위다. 각 카드는 UML 클래스 표기(«stereotype» / 책임 / 공개 연산)를 따른다. <b>굵게</b> 표시한 것이 외부에서 가장 많이 호출되는 진입점.</p>
+
+<div class="cards">
+  <div class="card"><div class="hd"><div class="st">«entry» CLI</div><div class="nm">bin/cockpit.js</div></div>
+    <div class="rs">콜드 부트 시퀀스 오케스트레이션 · 서버 단독 기동</div>
+    <div class="ops"><b>boot()</b> — ①앱 보장 ①-b클린슬레이트 ②서버 ③재수렴 ④브라우저<br>serverAlive(port, token) — 재클릭 멱등성</div></div>
+
+  <div class="card"><div class="hd"><div class="st">«hook runtime» 독립 실행형</div><div class="nm">bin/activity-hook.mjs</div></div>
+    <div class="rs">Claude Code 훅 → 활동 상태 파일 기록 · settings 병합 설치/제거</div>
+    <div class="ops"><b>record(state)</b> — env 신원 우선 · cwd 역산 폴백<br>install() / uninstall() — 백업·멱등·기존 훅 보존<br>modelFromTranscript() — 꼬리 256KB 실측</div></div>
+
+  <div class="card"><div class="hd"><div class="st">«http layer» 유일</div><div class="nm">src/server.js</div></div>
+    <div class="rs">전 엔드포인트 라우팅 · 선언⊕실측 병합 · 토큰 인증</div>
+    <div class="ops"><b>serve({port})</b> · <b>buildState(state)</b><br>routes{} — GET 4 · POST 24<br>pickFolder() — 네이티브 폴더 선택창<br>ensureHookInstalled() · scheduleExit()</div></div>
+
+  <div class="card"><div class="hd"><div class="st">«registry» 선언 관리</div><div class="nm">src/registry.js</div></div>
+    <div class="rs">project.json 스캔·생성·이사 · 격리 스캐폴드 · config 창구</div>
+    <div class="ops"><b>scanProjects()</b> · findProject() · <b>writeProject()</b>(원자적)<br>createProject() · importProject() · removeRole()<br>scaffoldIsolation() · scaffoldOpsGit() · ensureRoleDir()<br>readConfig() / patchConfig() · ROOT</div></div>
+
+  <div class="card"><div class="hd"><div class="st">«domain» 생명주기</div><div class="nm">src/lifecycle.js</div></div>
+    <div class="rs">상태 전이 · 스폰 3단계 · 선언↔실측 자기치유</div>
+    <div class="ops"><b>activate()</b> · <b>deactivate()</b> · archive() · reopen()<br><b>spawnRole()</b> · killSession() · cleanSlate()<br><b>reconcile()</b> — GRACE 3 · epoch 재검증<br>roleLabel/parseLabel/roleOf · matchWorkspaceInfo</div></div>
+
+  <div class="card"><div class="hd"><div class="st">«facade» 플랫폼 단일 창구</div><div class="nm">src/mux.js</div></div>
+    <div class="rs">드라이버 선택(darwin→cmux) · 상태 캐시 · 정규화 · 셸 결정</div>
+    <div class="ops"><b>getState()</b>(stale 허용) · <b>getFresh()</b>(실왕복) · invalidate() · refreshState()<br>spawnAgent() · sendLine() · killAgent() · create/closeWorkspace()<br>selectWorkspace() · openWeb() · ensureApp() · killApp()<br>name · ownsApp · canOpenWeb · resolveShell()</div></div>
+
+  <div class="card"><div class="hd"><div class="st">«driver» win32</div><div class="nm">src/mux/wmux.js</div></div>
+    <div class="rs">named pipe(\\.\pipe\wmux) V2 JSON 왕복 · 앱 발견/기동 · 콘솔 로깅</div>
+    <div class="ops"><b>request(method, params)</b> — 요청당 1연결·1줄<br>fetchState() · 제어 동사 · killApp(taskkill)<br>ensureApp() — WMUX_CLI→PATH→config→글롭·프롬프트<br>OWNS_APP = true</div></div>
+
+  <div class="card"><div class="hd"><div class="st">«driver» darwin</div><div class="nm">src/mux/cmux.js</div></div>
+    <div class="rs">cmux CLI(execFile) · UUID 주소 · 신원 매핑 파일 · pty wake</div>
+    <div class="ops"><b>cli(args)</b> / rpc(method) — 요청당 1프로세스<br>parseNewPane() · parseTop() · buildInitLine() — 단위 테스트 대상<br>fetchState() — window→workspace→surface 순회<br>OWNS_APP = false · openWeb 미구현(canOpenWeb=false)</div></div>
+
+  <div class="card"><div class="hd"><div class="st">«probe» 프로세스</div><div class="nm">src/proc.js</div></div>
+    <div class="rs">claude 켜짐/꺼짐 — 프로세스 트리(win32)·tty 그룹(darwin) 실측</div>
+    <div class="ops"><b>claudeAlive(pid)</b>(논블로킹) · claudeAliveFresh() · invalidateProc()<br>parsePs() — TTL 4s · single-flight</div></div>
+
+  <div class="card"><div class="hd"><div class="st">«probe» 포트</div><div class="nm">src/ports.js</div></div>
+    <div class="rs">리스닝 포트 실측 · 프로젝트 귀속 · 리스너 중지</div>
+    <div class="ops"><b>getPorts(projInfo)</b> — 부모트리·커맨드라인 귀속 · TTL 15s<br>freshListener() — 강제 재스캔 재검증 · killPid() — 트리째 종료<br>parseLsof()</div></div>
+
+  <div class="card"><div class="hd"><div class="st">«probe» 활동·훅</div><div class="nm">src/activity.js</div></div>
+    <div class="rs">훅 상태 파일 읽기 · 훅 설치 여부 절대경로 실측</div>
+    <div class="ops"><b>getActivity(proj, role)</b> — working 10분 stale 방어<br>hookInstalled() — TTL 30s · invalidateHook()</div></div>
+
+  <div class="card"><div class="hd"><div class="st">«probe» 인벤토리</div><div class="nm">src/caps.js</div></div>
+    <div class="rs">skill·agent·plugin·MCP — 이름·종류만(값·키 비노출)</div>
+    <div class="ops"><b>globalCaps()</b> (~/.claude) · <b>sessionCaps(projDir, roleDir)</b> — TTL 30s</div></div>
+
+  <div class="card"><div class="hd"><div class="st">«probe» git</div><div class="nm">src/git.js</div></div>
+    <div class="rs">브랜치·원격·웹링크 실측 · ops clone/원격 갱신</div>
+    <div class="ops"><b>getGit(dir)</b> — dir별 TTL 30s 논블로킹<br><b>connectRemote(opsDir, url)</b> — 스켈레톤 교체·실내용 백업<br>remoteToWeb() · repoNameFromUrl()</div></div>
+
+  <div class="card"><div class="hd"><div class="st">«loop» 유일 백그라운드</div><div class="nm">src/follow.js</div></div>
+    <div class="rs">활성 workspace 변경 감지 → 저장소 페이지를 내장 패널로 1회 이동</div>
+    <div class="ops"><b>startFollow()</b> / stopFollow() · tick() — 2s · unref<br>repoDirOf(cwd) — ops 우선·root/ 경계 유출 방어<br>isEnabled() / setEnabled()</div></div>
+
+  <div class="card"><div class="hd"><div class="st">«infra» 로그</div><div class="nm">src/log.js</div></div>
+    <div class="rs">중앙 이벤트 JSONL · 서버 콘솔 통합 싱크</div>
+    <div class="ops"><b>logEvent(level, project, event, detail)</b> — fire-and-forget<br>logConsole() · readLog({project, limit})</div></div>
+
+  <div class="card"><div class="hd"><div class="st">«client» SPA 아님 — 단일 파일</div><div class="nm">cockpit/dashboard.html</div></div>
+    <div class="rs">폴링·전체 재렌더 · 드로어/다이얼로그 · file:// 데모 폴백</div>
+    <div class="ops"><b>loadState()</b> 2.5s · loadGlobalCaps() 60s<br>renderAll() — active/idle/unlinked/closed/rail<br>openSession() 드로어 · confirm/namer/logbox 공용 다이얼로그<br>TOKEN — 서버가 &lt;head&gt; meta로 주입</div></div>
+</div>
+
+<h3>모듈 의존 관계 (import 방향)</h3>
+<div class="tblwrap"><table>
+  <tr><th>모듈</th><th>import 하는 것</th><th>비고</th></tr>
+  <tr><td class="mono">bin/cockpit.js</td><td class="mono">registry · mux · lifecycle(lazy) · server(lazy)</td><td>boot 시퀀스에서 동적 import</td></tr>
+  <tr><td class="mono">server.js</td><td class="mono">registry · mux · lifecycle · proc · ports · git · activity · caps · follow · log</td><td>유일 HTTP 레이어 — 전 모듈의 합류점</td></tr>
+  <tr><td class="mono">lifecycle.js</td><td class="mono">mux · registry · log</td><td>스폰 결정은 반드시 getFresh()</td></tr>
+  <tr><td class="mono">mux.js</td><td class="mono">registry(config) · mux/wmux · mux/cmux</td><td>상위는 mux.js만 import — 분기 종결점</td></tr>
+  <tr><td class="mono">mux/wmux.js · mux/cmux.js</td><td class="mono">registry(config) · log(콘솔)</td><td>서로를 모른다 (동일 계약 병렬 구현)</td></tr>
+  <tr><td class="mono">follow.js</td><td class="mono">registry · git · mux · log</td><td>canOpenWeb=false면 루프 자체가 안 돈다</td></tr>
+  <tr><td class="mono">proc · ports · caps · git · activity · log</td><td class="mono">node 내장만</td><td>말단 프로브 — 도메인 모듈에 의존 없음</td></tr>
+  <tr><td class="mono">bin/activity-hook.mjs</td><td class="mono">node 내장만 (독립 실행형)</td><td>import 금지 — top-level에서 process.exit(0)</td></tr>
+</table></div>
+
+<!-- ══════════════════════════ 5 ══════════════════════════ -->
+<h2 id="s5"><span class="n">5</span>동작 시퀀스 — UML 시퀀스 다이어그램</h2>
+
+<h3>5.1 콜드 부트 (런처 더블클릭 → 대시보드)</h3>
+<div class="fig">
+<p class="figcap">sequence — boot: 멀티플렉서 보장 → 클린 슬레이트 → 서버 → 재수렴 → 브라우저</p>
+<svg viewBox="0 0 960 500" role="img" aria-label="콜드 부트 시퀀스">
+  <g>
+    <rect class="d-box" x="20" y="8" width="100" height="36" rx="8"/><text class="d-t mid" x="70" y="31" style="font-size:11.5px">런처(.exe)</text>
+    <rect class="d-box" x="150" y="8" width="120" height="36" rx="8"/><text class="d-t mid" x="210" y="31" style="font-size:11.5px">cockpit.js boot</text>
+    <rect class="d-box" x="300" y="8" width="120" height="36" rx="8"/><text class="d-t mid" x="360" y="31" style="font-size:11.5px">lifecycle.js</text>
+    <rect class="d-box" x="450" y="8" width="120" height="36" rx="8"/><text class="d-t mid" x="510" y="31" style="font-size:11.5px">mux 파사드</text>
+    <rect class="d-box ext" x="610" y="8" width="120" height="36" rx="8"/><text class="d-t mid" x="670" y="31" style="font-size:11.5px">멀티플렉서 앱</text>
+    <rect class="d-box" x="750" y="8" width="110" height="36" rx="8"/><text class="d-t mid" x="805" y="31" style="font-size:11.5px">server.js</text>
+    <rect class="d-box ext" x="875" y="8" width="80" height="36" rx="8"/><text class="d-t mid" x="915" y="31" style="font-size:11.5px">브라우저</text>
+    <line class="ll" x1="70" y1="44" x2="70" y2="470"/><line class="ll" x1="210" y1="44" x2="210" y2="470"/>
+    <line class="ll" x1="360" y1="44" x2="360" y2="470"/><line class="ll" x1="510" y1="44" x2="510" y2="470"/>
+    <line class="ll" x1="670" y1="44" x2="670" y2="470"/><line class="ll" x1="805" y1="44" x2="805" y2="470"/>
+    <line class="ll" x1="915" y1="44" x2="915" y2="470"/>
+  </g>
+  <path class="fm" d="M70,84 L208,84" marker-end="url(#arM)"/><text class="d-l mid" x="140" y="77">node … boot</text>
+  <path class="fm" d="M210,124 L508,124" marker-end="url(#arM)"/><text class="d-l mid" x="360" y="117">① ensureApp() — 발견·기동 보장</text>
+  <path class="fm" d="M510,164 L668,164" marker-end="url(#arM)"/><text class="d-l mid" x="590" y="157">ping · 없으면 기동+폴링</text>
+  <path class="fm" d="M210,204 L358,204" marker-end="url(#arM)"/><text class="d-l mid" x="285" y="197">①-b cleanSlate() <tspan class="d-lw">[갓 기동 ∧ ownsApp]</tspan></text>
+  <path class="fm" d="M360,244 L668,244" marker-end="url(#arM)"/><text class="d-l mid" x="515" y="237">복원 세션 kill ×N · workspace close ×N</text>
+  <path class="fm" d="M210,284 L803,284" marker-end="url(#arM)"/><text class="d-l mid" x="505" y="277">② serve() <tspan class="d-lw">[기존 서버 없을 때 — 있으면 재사용]</tspan></text>
+  <path class="fm" d="M805,318 h44 v14 h-42" marker-end="url(#arM)"/><text class="d-l" x="812" y="312">훅 자동 설치/수리 · follow 루프 시작</text>
+  <path class="fm" d="M210,372 L358,372" marker-end="url(#arM)"/><text class="d-l mid" x="285" y="365">③ activate(각 active) — 멱등 재수렴</text>
+  <path class="fm" d="M360,412 L668,412" marker-end="url(#arM)"/><text class="d-l mid" x="515" y="405">workspace 보장 (재사용/생성)</text>
+  <path class="fa" d="M210,452 L913,452" marker-end="url(#arA)"/><text class="d-lc mid" x="560" y="445">④ 기본 브라우저로 대시보드 오픈 — http://127.0.0.1:7420/</text>
+</svg>
+</div>
+
+<h3>5.2 상태 폴링 (<span class="mono">GET /api/state</span>)</h3>
+<div class="fig">
+<p class="figcap">sequence — 선언 ⊕ 실측 병합 · 모든 프로브는 논블로킹</p>
+<svg viewBox="0 0 960 380" role="img" aria-label="상태 폴링 시퀀스">
+  <g>
+    <rect class="d-box" x="25" y="8" width="110" height="36" rx="8"/><text class="d-t mid" x="80" y="31" style="font-size:11.5px">대시보드</text>
+    <rect class="d-box" x="195" y="8" width="110" height="36" rx="8"/><text class="d-t mid" x="250" y="31" style="font-size:11.5px">server.js</text>
+    <rect class="d-box" x="375" y="8" width="110" height="36" rx="8"/><text class="d-t mid" x="430" y="31" style="font-size:11.5px">mux 파사드</text>
+    <rect class="d-box" x="535" y="8" width="110" height="36" rx="8"/><text class="d-t mid" x="590" y="31" style="font-size:11.5px">registry.js</text>
+    <rect class="d-box" x="675" y="8" width="110" height="36" rx="8"/><text class="d-t mid" x="730" y="31" style="font-size:11.5px">lifecycle.js</text>
+    <rect class="d-box" x="815" y="8" width="130" height="36" rx="8"/><text class="d-t mid" x="880" y="31" style="font-size:11.5px">프로브 4종</text>
+    <line class="ll" x1="80" y1="44" x2="80" y2="352"/><line class="ll" x1="250" y1="44" x2="250" y2="352"/>
+    <line class="ll" x1="430" y1="44" x2="430" y2="352"/><line class="ll" x1="590" y1="44" x2="590" y2="352"/>
+    <line class="ll" x1="730" y1="44" x2="730" y2="352"/><line class="ll" x1="880" y1="44" x2="880" y2="352"/>
+  </g>
+  <path class="fa" d="M80,84 L248,84" marker-end="url(#arA)"/><text class="d-lc mid" x="165" y="77">GET /api/state — 2.5s · 토큰</text>
+  <path class="fm" d="M250,124 L428,124" marker-end="url(#arM)"/><text class="d-l mid" x="340" y="117">getState() — TTL 1.5s · stale 허용</text>
+  <path class="fm" d="M250,164 L588,164" marker-end="url(#arM)"/><text class="d-l mid" x="420" y="157">scanProjects() — root/ 1-depth 선언 스캔</text>
+  <path class="fm" d="M250,204 L728,204" marker-end="url(#arM)"/><text class="d-l mid" x="490" y="197">reconcile() — stale wsId·채택 자기치유(GRACE 3 · epoch)</text>
+  <path class="fm" d="M250,244 L728,244" marker-end="url(#arM)"/><text class="d-l mid" x="490" y="237">matchWorkspaceInfo · agentsOfWs · roleOf — 선언⊕실측 매칭</text>
+  <path class="fm" d="M250,284 L878,284" marker-end="url(#arM)"/><text class="d-l mid" x="565" y="277">claudeAlive · getActivity · getPorts · getGit — 전부 논블로킹 캐시</text>
+  <path class="fa" d="M250,324 L82,324" marker-end="url(#arA)"/><text class="d-lc mid" x="166" y="317">{projects, unlinked, ports, hookInstalled, mux}</text>
+</svg>
+</div>
+
+<h3>5.3 세션 스폰 (<span class="mono">POST /spawn</span> — 3단계)</h3>
+<div class="fig">
+<p class="figcap">sequence — ① 초점 이동 → ② 신원 실린 스폰 → ③ 연결 검증</p>
+<svg viewBox="0 0 960 500" role="img" aria-label="세션 스폰 시퀀스">
+  <g>
+    <rect class="d-box" x="25" y="8" width="110" height="36" rx="8"/><text class="d-t mid" x="80" y="31" style="font-size:11.5px">대시보드</text>
+    <rect class="d-box" x="185" y="8" width="110" height="36" rx="8"/><text class="d-t mid" x="240" y="31" style="font-size:11.5px">server.js</text>
+    <rect class="d-box" x="355" y="8" width="110" height="36" rx="8"/><text class="d-t mid" x="410" y="31" style="font-size:11.5px">lifecycle.js</text>
+    <rect class="d-box" x="525" y="8" width="110" height="36" rx="8"/><text class="d-t mid" x="580" y="31" style="font-size:11.5px">mux 파사드</text>
+    <rect class="d-box ext" x="705" y="8" width="120" height="36" rx="8"/><text class="d-t mid" x="765" y="31" style="font-size:11.5px">멀티플렉서 앱</text>
+    <rect class="d-box" x="855" y="8" width="100" height="36" rx="8"/><text class="d-t mid" x="905" y="31" style="font-size:11.5px">registry.js</text>
+    <line class="ll" x1="80" y1="44" x2="80" y2="472"/><line class="ll" x1="240" y1="44" x2="240" y2="472"/>
+    <line class="ll" x1="410" y1="44" x2="410" y2="472"/><line class="ll" x1="580" y1="44" x2="580" y2="472"/>
+    <line class="ll" x1="765" y1="44" x2="765" y2="472"/><line class="ll" x1="905" y1="44" x2="905" y2="472"/>
+  </g>
+  <path class="fa" d="M80,84 L238,84" marker-end="url(#arA)"/><text class="d-lc mid" x="160" y="77">POST /spawn {name, role}</text>
+  <path class="fm" d="M240,124 L408,124" marker-end="url(#arM)"/><text class="d-l mid" x="325" y="117">spawnRole(name, role)</text>
+  <path class="fm" d="M410,164 L578,164" marker-end="url(#arM)"/><text class="d-l mid" x="495" y="157">getFresh() — 실왕복(중복 스폰 방지)</text>
+  <path class="fm" d="M410,204 L763,204" marker-end="url(#arM)"/><text class="d-l mid" x="585" y="197">ensureWorkspace — 없으면 workspace.create(title·cwd)</text>
+  <path class="fm" d="M410,244 L763,244" marker-end="url(#arM)"/><text class="d-l mid" x="585" y="237">① selectWorkspace — 대상 ws로 초점 이동(best-effort)</text>
+  <path class="fm" d="M410,284 L763,284" marker-end="url(#arM)"/><text class="d-l mid" x="585" y="277">② spawnAgent — label=cockpit:프로젝트:역할 · cwd · env 신원</text>
+  <path class="fm" d="M410,324 L578,324" marker-end="url(#arM)"/><text class="d-l mid" x="495" y="317">③ verifyPlacement — refreshState ≤6회 × 500ms</text>
+  <path class="fw" d="M410,364 L763,364" marker-end="url(#arW)"/><text class="d-lw mid" x="585" y="357">[오배치 감지] killAgent — 정리 후 failed 처리</text>
+  <path class="fm" d="M410,404 L903,404" marker-end="url(#arM)"/><text class="d-l mid" x="660" y="397">writeProject — status=active · wsId · 채택 바인딩</text>
+  <path class="fa" d="M240,444 L82,444" marker-end="url(#arA)"/><text class="d-lc mid" x="160" y="437">{spawned, reused, failed, focused}</text>
+</svg>
+</div>
+
+<h3>5.4 세션 활동 배지 — 훅 데이터 흐름</h3>
+<div class="fig">
+<p class="figcap">sequence — Claude Code 훅 → 상태 파일 → 폴링 노출 (전부 로컬 · 토큰 0)</p>
+<svg viewBox="0 0 960 300" role="img" aria-label="활동 훅 시퀀스">
+  <g>
+    <rect class="d-box ext" x="30" y="8" width="160" height="36" rx="8"/><text class="d-t mid" x="110" y="31" style="font-size:11.5px">Claude Code 세션</text>
+    <rect class="d-box" x="280" y="8" width="160" height="36" rx="8"/><text class="d-t mid" x="360" y="31" style="font-size:11.5px">activity-hook.mjs</text>
+    <rect class="d-box ext" x="520" y="8" width="160" height="36" rx="8"/><text class="d-t mid" x="600" y="31" style="font-size:11.5px">activity/*.json</text>
+    <rect class="d-box" x="720" y="8" width="130" height="36" rx="8"/><text class="d-t mid" x="785" y="31" style="font-size:11.5px">buildState</text>
+    <rect class="d-box" x="875" y="8" width="80" height="36" rx="8"/><text class="d-t mid" x="915" y="31" style="font-size:11.5px">대시보드</text>
+    <line class="ll" x1="110" y1="44" x2="110" y2="272"/><line class="ll" x1="360" y1="44" x2="360" y2="272"/>
+    <line class="ll" x1="600" y1="44" x2="600" y2="272"/><line class="ll" x1="785" y1="44" x2="785" y2="272"/>
+    <line class="ll" x1="915" y1="44" x2="915" y2="272"/>
+  </g>
+  <path class="fm" d="M110,84 L358,84" marker-end="url(#arM)"/><text class="d-l mid" x="235" y="77">UserPromptSubmit→working · Stop→waiting · Notification→attention</text>
+  <path class="fm" d="M360,118 h44 v14 h-42" marker-end="url(#arM)"/><text class="d-l" x="368" y="112">신원: env COCKPIT_PROJECT/ROLE ▸ cwd 역산 (비-cockpit=무동작)</text>
+  <path class="fm" d="M360,172 L598,172" marker-end="url(#arM)"/><text class="d-l mid" x="480" y="165">기록 {state, model, effort, ts} — model=transcript 꼬리 256KB</text>
+  <path class="fm" d="M785,212 L602,212" marker-end="url(#arM)"/><text class="d-l mid" x="695" y="205">getActivity() — 폴링 시 읽기</text>
+  <path class="fa" d="M785,252 L913,252" marker-end="url(#arA)"/><text class="d-lc mid" x="852" y="245">⏳/⌛/⚠ · ◆모델·effort</text>
+  <text class="d-l" x="700" y="268">claude on일 때만 노출 · working 10분 stale 방어</text>
+</svg>
+</div>
+
+<!-- ══════════════════════════ 6 ══════════════════════════ -->
+<h2 id="s6"><span class="n">6</span>상태 전이 — UML 상태머신</h2>
+<p class="desc">왼쪽: 프로젝트 <span class="mono">status</span>(선언). 오른쪽: 세션 3단계(실측). <b>kill 경로는 개별(<span class="mono">/kill-session</span>)과 전체(<span class="mono">/deactivate</span>·confirm) 둘뿐 — 무명령 자동 종료 없음.</b></p>
+
+<div class="fig">
+<p class="figcap">state machine — 프로젝트 생명주기 · 세션 3단계</p>
+<svg viewBox="0 0 960 430" role="img" aria-label="상태 다이어그램">
+  <text class="d-s" x="24" y="18" style="font-size:11px">«프로젝트 status»</text>
+  <circle cx="60" cy="62" r="6" fill="#8b97a6"/>
+  <path class="fm" d="M66,62 L138,62" marker-end="url(#arM)"/>
+  <text class="d-l mid" x="102" y="52">/create · /import</text>
+  <rect class="d-box" x="140" y="40" width="150" height="44" rx="14"/><text class="d-t mid" x="215" y="66">idle · 대기중</text>
+  <rect class="d-box hl" x="390" y="40" width="150" height="44" rx="14"/><text class="d-t mid" x="465" y="66">active · 진행중</text>
+  <rect class="d-box" x="140" y="190" width="150" height="44" rx="14"/><text class="d-t mid" x="215" y="216">archived · 종료됨</text>
+  <path class="fa" d="M290,52 L388,52" marker-end="url(#arA)"/>
+  <text class="d-lc mid" x="340" y="42">POST /activate — ws만 보장·스폰 0</text>
+  <path class="fm" d="M388,74 L292,74" marker-end="url(#arM)"/>
+  <text class="d-l mid" x="340" y="94">POST /deactivate — confirm·전체 kill+close</text>
+  <path class="fm" d="M180,84 L180,188" marker-end="url(#arM)"/>
+  <text class="d-l" x="60" y="140">POST /archive</text>
+  <path class="fm" d="M250,188 L250,86" marker-end="url(#arM)"/>
+  <text class="d-l" x="258" y="140">POST /reopen</text>
+  <path class="fm" d="M435,40 v-16 h60 v14" marker-end="url(#arM)"/>
+  <text class="d-l mid" x="465" y="14">/spawn · /kill-session (세션 개별)</text>
+  <path class="fx" d="M400,84 L295,190"/>
+  <text class="d-l" x="318" y="132" style="fill:#f4685c">✕ 409 — active는 archive 불가(비활성화 먼저)</text>
+
+  <text class="d-s" x="600" y="18" style="font-size:11px">«세션 3단계 (workspace 내 역할)»</text>
+  <rect class="d-box" x="600" y="34" width="180" height="44" rx="14"/><text class="d-t mid" x="690" y="60">○ 미연결 (선언만)</text>
+  <rect class="d-box" x="600" y="148" width="180" height="44" rx="14"/><text class="d-t mid" x="690" y="174">연결됨 · claude off</text>
+  <rect class="d-box hl" x="600" y="262" width="180" height="56" rx="14"/>
+  <text class="d-t mid" x="690" y="284">claude on</text>
+  <text class="d-s mid" x="690" y="302">⏳ working · ⌛ waiting · ⚠ attention</text>
+  <path class="fa" d="M690,78 L690,146" marker-end="url(#arA)"/>
+  <text class="d-lc" x="700" y="106">[＋ 세션 활성화] POST /spawn</text>
+  <text class="d-l" x="700" y="122">3단계: 초점→스폰→연결 검증</text>
+  <path class="fa" d="M710,192 L710,260" marker-end="url(#arA)"/>
+  <text class="d-lc" x="720" y="222">[▶ Claude 실행] POST /claude</text>
+  <text class="d-l" x="720" y="238">sendLine('claude', surfaceId)</text>
+  <path class="fm" d="M666,262 L666,194" marker-end="url(#arM)"/>
+  <text class="d-l" x="530" y="230">claude 종료(exit)</text>
+  <circle cx="690" cy="382" r="9" fill="none" stroke="#8b97a6" stroke-width="1.3"/>
+  <circle cx="690" cy="382" r="4.5" fill="#8b97a6"/>
+  <path class="fm" d="M690,318 L690,370" marker-end="url(#arM)"/>
+  <text class="d-l" x="700" y="348">[세션 비활성화] /kill-session · [비활성화] /deactivate</text>
+</svg>
+</div>
+
+<div class="note warn"><b>채택(adopt)과 역할 해석</b> — 세션→역할 매칭 우선순위: <code>adopted[agentId]</code>(채택) &gt; 네임스페이스 label <code>cockpit:&lt;프로젝트&gt;:&lt;역할&gt;</code>(같은 프로젝트만) &gt; plain label(구 형식 호환). 매칭 근거는 <span class="mono">via</span>(adopted / label-ns / label)로 페이로드에 실려 드로어에 표시된다.</div>
+
+<!-- ══════════════════════════ 7 ══════════════════════════ -->
+<h2 id="s7"><span class="n">7</span>데이터 모델 · 런타임 파일</h2>
+
+<h3>7.1 <span class="mono">project.json</span> — 프로젝트 선언 (진실의 원천)</h3>
+<pre><code>{
+  "name": "MyProject",              // 표시 이름 (부재 시 폴더명)
+  "status": "idle",                 // 'active' | 'idle' | 'archived' — 오타·부재는 idle로 관용
+  "createdAt": "…ISO…",             // 부재 시 폴더 생성시각으로 보충
+  "archivedAt": null,
+  "wsId": null,                     // 멀티플렉서 workspace 바인딩 — reconcile이 되쓰기/해제
+  "roles": [{ "id": "dev" }],       // 선언 역할 (ops는 항상 암묵 포함 · 1번 고정)
+  "links": [{ "label": "…", "url": "https://…" }],
+  "adopted": { "&lt;agentId&gt;": "&lt;role&gt;" },   // 세션 채택 매핑 (label 없는 pane 바인딩)
+  "serve": { "role": "ops", "cmd": "npm run dev" }   // [▶ 서버 시작] 선언 (선택)
+}
+// 스캔 시 런타임 필드 _dir·_folder 부여 — writeProject가 제거 후 tmp→rename 원자적 저장</code></pre>
+
+<h3>7.2 <span class="mono">GET /api/state</span> 페이로드</h3>
+<pre><code>{
+  "projects": [{
+    "name", "status", "createdAt", "archivedAt", "links": [], "roles": [{id}],
+    "serve": {role, cmd} | null,
+    "wsLive": bool, "wsVia": "wsId"|"title"|"label"|null,   // workspace 매칭 근거
+    "git": { "branch", "remote", "web" } | null,            // ops 기준 (폴백: 프로젝트 루트)
+    "sessions": [{
+      "role", "agentId", "alive": true,
+      "connected": bool, "adopted": bool, "via": "adopted"|"label-ns"|"label",
+      "claude": "on"|"off"|"unknown",                       // 프로세스 트리 실측
+      "activity": "working"|"waiting"|"attention"|null,     // claude on일 때만
+      "model": "…"|null, "effort": "…"|null                 // 훅 실측 칩
+    }]
+  }],
+  "unlinked": [{ "wsId", "title", "sessions": [{role, agentId, claude}] }],
+  "ports": [{ "p": ":5173", "port", "pid", "proc", "project"|null }],
+  "hookInstalled": bool,                                    // false → 설치 배너
+  "mux": { "name": "wmux"|"cmux", "ownsApp", "canOpenWeb", "follow" }
+}</code></pre>
+
+<h3>7.3 런타임 파일 (gitignore — 새 클론엔 없음)</h3>
+<div class="tblwrap"><table>
+  <tr><th>파일</th><th>내용</th><th>쓰는 곳 → 읽는 곳</th></tr>
+  <tr><td class="mono">cockpit/workspace/config.json</td><td>port · token · wmuxBin · cmuxBin · shell · followWorkspaceGit</td><td>serve()/드라이버 → 전 모듈 (registry가 창구)</td></tr>
+  <tr><td class="mono">cockpit/workspace/logs/events.jsonl</td><td>중앙 이벤트 로그 <span class="mono">{ts, level, project, event, detail}</span></td><td>log.logEvent → GET /api/log</td></tr>
+  <tr><td class="mono">cockpit/workspace/activity/&lt;프로젝트&gt;__&lt;역할&gt;.json</td><td>세션 활동 <span class="mono">{state, model, effort, ts}</span></td><td>activity-hook.mjs → activity.getActivity</td></tr>
+  <tr><td class="mono">cockpit/workspace/cmux-agents.json</td><td>cmux 세션 신원 매핑 <span class="mono">{surfaceUUID: label}</span> — wmux label의 정본 대응물</td><td>cmux 드라이버 스폰 시 기록 · kill 시 삭제</td></tr>
+  <tr><td class="mono">~/.claude/settings.json</td><td>활동 훅 3종 등록(병합·백업 <span class="mono">settings.json.cockpit-bak</span>)</td><td>activity-hook install → Claude Code</td></tr>
+</table></div>
+
+<!-- ══════════════════════════ 8 ══════════════════════════ -->
+<h2 id="s8"><span class="n">8</span>API 엔드포인트 요약</h2>
+<p class="desc"><span class="mono">GET /</span> 제외 전 경로 <span class="mono">X-Cockpit-Token</span> 필수(401). body 1MB 상한(413). 상세 body·가드는 Tech.md §4 참조.</p>
+<div class="tblwrap"><table>
+  <tr><th>분류</th><th>엔드포인트</th><th>역할</th></tr>
+  <tr><td rowspan="2">조회</td><td class="mono">GET / · /api/state · /api/log · /api/caps</td><td>대시보드 서빙(토큰 주입) · 상태 폴링 · 이벤트 로그 · 기능 인벤토리</td></tr>
+  <tr><td class="mono">POST /pick-folder · /console</td><td>네이티브 폴더 선택창 · 토스트 콘솔 미러 (순수 읽기/관측)</td></tr>
+  <tr><td rowspan="2">생명주기</td><td class="mono">POST /activate · /deactivate<b>†</b> · /archive · /reopen</td><td>idle↔active(전체 kill은 confirm 필수) · idle↔archived</td></tr>
+  <tr><td class="mono">POST /spawn · /kill-session · /claude · /attach</td><td>역할별 개별 스폰(3단계) · 개별 종료 · claude 기동 전송 · wmux 점프</td></tr>
+  <tr><td rowspan="2">프로젝트 구성</td><td class="mono">POST /create · /import · /create-git · /roles · /adopt</td><td>스캐폴드 생성 · 폴더 연동(이동/제자리) · git URL 생성 · 역할 제거 · 세션 채택</td></tr>
+  <tr><td class="mono">POST /links · /git-remote · /open</td><td>서비스 링크(http만) · ops 원격 clone/갱신 · 탐색기 열기(root/ 밖 400)</td></tr>
+  <tr><td>포트·서버</td><td class="mono">POST /port-kill<b>†</b> · /serve · /serve-start</td><td>리스너 중지(재검증·트리 종료) · 시작 명령 선언 · pane에 명령 전송(claude on이면 409)</td></tr>
+  <tr><td>운영</td><td class="mono">POST /open-web · /follow · /hook-install · /shutdown<b>†</b></td><td>내장 패널로 URL · git 추적 토글 · 훅 설치 · 전체 종료(전 프로젝트 비활성화→앱†→서버)</td></tr>
+</table></div>
+<p class="desc"><b>†</b> = <span class="mono">confirm:true</span> 필수(400 confirm-required) — kill 경유는 항상 확인 게이트. <span class="mono">/shutdown</span>의 앱 종료는 <span class="mono">ownsApp=true</span>(wmux)일 때만, cmux는 일상 터미널이라 서버만 내린다.</p>
+
+<!-- ══════════════════════════ 9 ══════════════════════════ -->
+<h2 id="s9"><span class="n">9</span>캐시 · 신뢰성 설계</h2>
+
+<h3>9.1 캐시 지도 (전부 single-flight · 논블로킹)</h3>
+<div class="tblwrap"><table>
+  <tr><th>캐시</th><th>TTL</th><th>모듈</th><th>비고</th></tr>
+  <tr><td>멀티플렉서 상태(workspaces·agents)</td><td class="mono">1.5s</td><td class="mono">mux.js</td><td>getState=stale 허용 · getFresh=실왕복 · epoch로 재연결 감지</td></tr>
+  <tr><td>claude 프로세스 스냅샷</td><td class="mono">4s</td><td class="mono">proc.js</td><td>win32=CIM 전체 1회 · darwin=ps + tty 그룹</td></tr>
+  <tr><td>리스닝 포트 스냅샷</td><td class="mono">15s</td><td class="mono">ports.js</td><td>kill 전엔 freshListener로 TTL 무시 재검증</td></tr>
+  <tr><td>git 정보 (dir별)</td><td class="mono">30s</td><td class="mono">git.js</td><td>콜드=null 즉시 반환, 다음 폴링에 채움</td></tr>
+  <tr><td>기능 인벤토리 (global/세션별)</td><td class="mono">30s</td><td class="mono">caps.js</td><td>이름·종류만 수집</td></tr>
+  <tr><td>훅 설치 여부</td><td class="mono">30s</td><td class="mono">activity.js</td><td>절대경로 대조 · 설치 직후 invalidateHook</td></tr>
+  <tr><td>대시보드 폴링</td><td class="mono">2.5s / 60s</td><td class="mono">dashboard.html</td><td>state / global caps · 전체 종료 시 폴링 중단</td></tr>
+  <tr><td>follow 루프 틱</td><td class="mono">2s</td><td class="mono">follow.js</td><td>유일 백그라운드 루프 — getState 캐시 공유(추가 부하 0)</td></tr>
+</table></div>
+
+<h3>9.2 신뢰성 기전</h3>
+<ul>
+  <li><b>캐시 계약</b> — 폴링·읽기는 <code>getState()</code>(stale 허용), 변이 결정은 <code>getFresh()</code>(실왕복), 변이 후 <code>invalidate()</code>/<code>refreshState()</code>(read-your-writes). stale로 스폰을 결정하면 중복 pane이 생긴다.</li>
+  <li><b>reconcile(자기치유)</b> — 긍정 신호(제목/label 재발견)는 wsId 즉시 되쓰기, 부정 신호(실측 부재)는 <b>연속 3스냅샷(GRACE)</b> 관찰 후에만 해제. 오프라인 스냅샷에선 판정하지 않고, 재연결(epoch 변화) 시 카운트를 리셋한다.</li>
+  <li><b>label 네임스페이스</b> — 스폰 label은 <code>cockpit:&lt;폴더&gt;:&lt;역할&gt;</code>. wmux 재시작으로 wsId·agentId가 전부 갈려도 label만 살아있으면 프로젝트·역할이 복원된다. env(<span class="mono">COCKPIT_PROJECT/ROLE</span>) 주입은 훅 오귀속 방지의 2차 신원.</li>
+  <li><b>낙관적 재검증</b> — kill류(세션·포트)는 실행 직전 fresh 실측과 대조해 불일치면 409(화면이 낡음). 엉뚱한 대상 kill을 구조적으로 차단.</li>
+  <li><b>우아한 성능 저하</b> — 멀티플렉서 다운 시 offline/demo 배지, 프로브 실패 시 해당 표시만 생략. 어떤 프로브도 폴링 응답을 막지 않는다.</li>
+</ul>
+
+<!-- ══════════════════════════ 10 ══════════════════════════ -->
+<h2 id="s10"><span class="n">10</span>플랫폼 추상화 — 드라이버 계약</h2>
+<p class="desc"><span class="mono">mux.js</span>가 계약을 정의하고 드라이버가 구현한다. 파사드가 아는 것: 캐시·정규화·dead 필터·스폰 인자 검사·셸 결정. 드라이버가 아는 것: 앱 발견/기동·프로토콜 왕복·제어 동사·앱 종료.</p>
+<div class="tblwrap"><table>
+  <tr><th>계약</th><th>wmux (win32)</th><th>cmux (darwin)</th></tr>
+  <tr><td class="mono">전송</td><td>named pipe <span class="mono">\\.\pipe\wmux</span> — 요청당 1연결, JSON 1줄 왕복(~1ms) + V2 권한 토큰</td><td>cmux CLI <span class="mono">execFile</span> — 요청당 1프로세스(~30ms), <span class="mono">rpc</span>/<span class="mono">top</span> 서브커맨드</td></tr>
+  <tr><td class="mono">OWNS_APP</td><td><b>true</b> — cockpit 전용 앱: boot 클린 슬레이트·전체 종료 시 앱도 내림</td><td><b>false</b> — 사용자의 일상 터미널: 둘 다 하지 않음</td></tr>
+  <tr><td class="mono">세션 신원</td><td>스폰 label 파라미터 (네임스페이스 형식)</td><td>surface에 label 없음 → <span class="mono">workspace/cmux-agents.json</span> 매핑 파일이 정본</td></tr>
+  <tr><td class="mono">주소</td><td>wmux 발급 id (wsId·agentId·surfaceId)</td><td><b>UUID만</b> (short ref는 변이 사이 재번호 — 실측)</td></tr>
+  <tr><td class="mono">pid 실측</td><td><span class="mono">agent.list</span>가 pid 제공 → proc.js 트리 워크</td><td><span class="mono">top --processes</span> tsv 파싱(parseTop) → proc.js tty 그룹</td></tr>
+  <tr><td class="mono">openWeb (선택)</td><td><span class="mono">browser.navigate {url}</span> — 내장 패널 지원(canOpenWeb=true → follow 가동)</td><td><b>미구현</b>(계약 미문서) → canOpenWeb=false — git 칩은 기본 브라우저 폴백 · follow 루프 미가동</td></tr>
+  <tr><td class="mono">스폰 방식</td><td><span class="mono">agent.spawn {cmd, label, cwd, env, workspaceId}</span></td><td><span class="mono">new-pane</span> 후 <span class="mono">buildInitLine</span>(cd·export·cmd)을 sendLine — pty wake용 read-screen 1줄</td></tr>
+  <tr><td class="mono">앱 종료</td><td><span class="mono">taskkill /F /IM wmux.exe</span></td><td>skipped — 앱 유지, 서버만 종료</td></tr>
+</table></div>
+
+<!-- ══════════════════════════ 11 ══════════════════════════ -->
+<h2 id="s11"><span class="n">11</span>보안 · 불변 규칙</h2>
+<h3>보안</h3>
+<ul>
+  <li>서버는 <span class="mono">127.0.0.1</span> 전용 + 토큰(<span class="mono">config.token</span>, gitignore) — 방화벽 허용 불필요, 원격 노출 비목표.</li>
+  <li><span class="mono">POST /open</span>은 <span class="mono">root/</span> 밖 경로 400(경로 탈출 방지) · 링크/open-web은 http(s)만.</li>
+  <li>시크릿(<span class="mono">.env</span>·deploy-keys·connections.json)은 격리 <span class="mono">.gitignore</span>가 선제 차단 — 값은 저장·표시하지 않는다(키 존재만).</li>
+  <li>git 명령은 비대화 강제(<span class="mono">GIT_TERMINAL_PROMPT=0</span>·SSH BatchMode) — 자격증명 프롬프트로 서버가 멈추지 않는다.</li>
+</ul>
+<h3>불변 규칙 (어기면 재발하는 버그 — 코드 실측 확정)</h3>
+<ol>
+  <li>읽기=<code>getState()</code> · 변이 결정=<code>getFresh()</code> · 변이 후 <code>invalidate()</code> — stale 스폰 결정 금지.</li>
+  <li>agent kill은 리스트에서 안 지워진다 → 파사드의 <code>isDead</code> 중앙 필터가 거른다.</li>
+  <li>세션 전송은 <b>surfaceId 명시 필수</b> — 포커스 기반 전송은 오발송.</li>
+  <li>경로 진실 = 폴더 — 스폰엔 항상 <code>cwd</code> 명시(드리프트 차단).</li>
+  <li>git 저장소는 <b>ops/ 에만</b> — 프로젝트 루트·상위 cockpit 저장소는 대상 아님.</li>
+  <li>kill은 두 명시 경로뿐(개별·전체 confirm) — 무명령 자동 종료 없음.</li>
+  <li>세션 활동은 Claude 훅 실측 — claude on일 때만 노출 · working 10분 stale 방어.</li>
+  <li>논블로킹 프로브 — 어떤 프로브도 <span class="mono">/api/state</span>를 막지 않는다.</li>
+  <li>격리 스캐폴드 — clone·import된 코드 폴더에 cockpit 파일 미주입, 기존 파일 미덮어쓰기.</li>
+  <li>대시보드는 토큰 프리 — 폴링·표시가 Claude API를 호출하는 구조를 만들지 않는다(사용량 표시 재도입 금지).</li>
+</ol>
+
+<!-- ══════════════════════════ 12 ══════════════════════════ -->
+<h2 id="s12"><span class="n">12</span>검증 컨벤션 · 코드 규모 · 알려진 경계</h2>
+
+<h3>12.1 검증 컨벤션 (테스트 프레임워크 없음)</h3>
+<ul>
+  <li><code>node --check &lt;파일&gt;</code> — 수정한 모든 JS(대시보드는 <span class="mono">&lt;script&gt;</span> 추출 후 검사).</li>
+  <li><b>라이브 프로브</b> — 스크래치패드 일회성 <span class="mono">.mjs</span>로 실제 wmux/HTTP/모듈에 검증(미커밋 · 반드시 뒷정리).</li>
+  <li>단위 테스트는 순수 파서만 — <span class="mono">cockpit/test/cmux-parse.test.mjs</span>(parseNewPane·parseTop·buildInitLine).</li>
+  <li>코드 수정 후 <b>서버 재시작 필수</b>(HTML만 수정 시 새로고침 — <span class="mono">readFileSync</span> 매 요청).</li>
+</ul>
+
+<h3>12.2 코드 규모 (2026-07-20 실측)</h3>
+<div class="tblwrap"><table>
+  <tr><th>파일</th><th>라인</th><th>파일</th><th>라인</th></tr>
+  <tr><td class="mono">cockpit/dashboard.html</td><td class="mono">1,408</td><td class="mono">cockpit/src/ports.js</td><td class="mono">155</td></tr>
+  <tr><td class="mono">cockpit/src/server.js</td><td class="mono">571</td><td class="mono">cockpit/bin/activity-hook.mjs</td><td class="mono">136</td></tr>
+  <tr><td class="mono">cockpit/src/lifecycle.js</td><td class="mono">323</td><td class="mono">cockpit/src/proc.js</td><td class="mono">123</td></tr>
+  <tr><td class="mono">cockpit/src/mux/wmux.js</td><td class="mono">250</td><td class="mono">cockpit/src/follow.js</td><td class="mono">108</td></tr>
+  <tr><td class="mono">cockpit/src/registry.js</td><td class="mono">243</td><td class="mono">cockpit/src/git.js</td><td class="mono">107</td></tr>
+  <tr><td class="mono">cockpit/src/mux/cmux.js</td><td class="mono">228</td><td class="mono">cockpit/bin/cockpit.js</td><td class="mono">96</td></tr>
+  <tr><td class="mono">cockpit/src/mux.js</td><td class="mono">172</td><td class="mono">launcher/cockpit-launcher.cs</td><td class="mono">76</td></tr>
+  <tr><td class="mono">cockpit/src/caps.js</td><td class="mono">65</td><td class="mono">cockpit/src/activity.js 43 · log.js 41</td><td class="mono">84</td></tr>
+</table></div>
+<p class="desc">합계 약 4,100라인(코드) — 런타임 npm 의존성 0, Node 내장 모듈 + wmux/cmux·git·claude CLI만 사용.</p>
+
+<h3>12.3 알려진 경계 · v1 비목표</h3>
+<ul>
+  <li><b>cmux openWeb 미구현</b> — 여는 CLI/RPC 계약이 미문서. macOS에서 실측 후 드라이버에 추가하면 상위 코드 변경 없이 git 칩 내장 패널·FS-21 추적이 함께 켜진다.</li>
+  <li><b>크로스 볼륨 연동 미지원</b> — <span class="mono">/import</span> 이동은 동일 볼륨 rename만(EXDEV는 안내 후 원본 무변경).</li>
+  <li><b>darwin 포트 kill의 손자 고아 가능성</b> — <span class="mono">pkill -P</span>+<span class="mono">kill</span>은 <span class="mono">taskkill /T</span>와 달리 손자를 못 잡는다(알려진 차이).</li>
+  <li>원격 노출·인증 확장 · DB/배포 조작 · git diff 뷰 · 트랜스크립트 파싱(훅 모델 판별만 예외) · 사용량 표시(제거됨) — 전부 범위 밖.</li>
+</ul>
+
+<p class="desc" style="margin-top:34px;border-top:1px solid var(--border);padding-top:14px">
+문서 버전: 2026-07-20 · 코드 실측 기준 (v0.3.0) — 함께 볼 것: <span class="mono">README.md</span>(인트로) · <span class="mono">Tech.md</span>(기능명세서 FS/API 전체) · <span class="mono">Manual.md</span>(사용법)
+</p>
+
+</div>
+</body>
+</html>
