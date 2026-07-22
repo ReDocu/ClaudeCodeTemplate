@@ -1,9 +1,9 @@
 <!doctype html>
-<html lang="ko">
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>ClaudeCockpit — 치트시트 (1페이지)</title>
+<title>ClaudeCockpit — Cheatsheet (1 page)</title>
 <style>
   @page{ size:A4; margin:10mm }
   :root{ --line:#d9dee6; --ink:#1a2230; --dim:#5b6675; --teal:#0e8f83; --tealbg:#e6f7f5;
@@ -42,98 +42,98 @@
 </style>
 </head>
 <body>
-<p style="text-align:center;font-size:12px"><strong>한국어</strong> · <a href="ClaudeCockpit-Cheatsheet-en.html">English</a></p>
+<p style="text-align:center;font-size:12px"><a href="ClaudeCockpit-Cheatsheet.html">한국어</a> · <strong>English</strong></p>
 <div class="sheet">
   <header>
-    <h1>ClaudeCockpit 치트시트</h1>
-    <span class="s">여러 Claude Code를 한 화면에서 관제 · 로컬</span>
+    <h1>ClaudeCockpit Cheatsheet</h1>
+    <span class="s">Manage multiple Claude Code instances on one screen · Local</span>
     <span class="u">http://127.0.0.1:7420/</span>
   </header>
 
   <div class="cols">
 
     <div class="box">
-      <h2><span class="b">1</span>시작</h2>
+      <h2><span class="b">1</span>Getting started</h2>
       <ul>
-        <li><b>ClaudeCockpit.exe</b> 더블클릭 (막히면 <code>start.cmd</code>) → 브라우저에 대시보드가 열림</li>
-        <li>자동: wmux 켜기 → 서버 → 브라우저. 여러 번 눌러도 안전</li>
-        <li>검은 콘솔 = 서버. <b>닫아도 세션은 안 죽음</b></li>
+        <li>Double-click <b>ClaudeCockpit.exe</b> (if blocked, use <code>start.cmd</code>) → the dashboard opens in your browser</li>
+        <li>Automatic: start wmux → server → browser. Safe to press multiple times</li>
+        <li>The black console = the server. <b>Closing it does not kill sessions</b></li>
       </ul>
     </div>
 
     <div class="box">
-      <h2><span class="b">2</span>전체 흐름</h2>
+      <h2><span class="b">2</span>Overall flow</h2>
       <div class="flow">
-        <span class="step">＋ 새 프로젝트</span><span class="arr">→</span>
-        <span class="step">▶ 활성화</span><span class="arr">→</span>
-        <span class="step teal" style="border-radius:5px">＋ 세션 활성화</span><span class="arr">→</span>
-        <span class="step blue" style="border-radius:5px">▶ Claude 실행</span>
+        <span class="step">＋ New project</span><span class="arr">→</span>
+        <span class="step">▶ Activate</span><span class="arr">→</span>
+        <span class="step teal" style="border-radius:5px">＋ Activate session</span><span class="arr">→</span>
+        <span class="step blue" style="border-radius:5px">▶ Run Claude</span>
       </div>
-      <div class="note">활성화는 <b>방만 여는 것</b> — 세션(터미널)은 역할마다 따로 엽니다.</div>
+      <div class="note">Activating <b>only opens the room</b> — sessions (terminals) are opened separately per role.</div>
     </div>
 
     <div class="box">
-      <h2><span class="b">3</span>세션 3단계 ★</h2>
+      <h2><span class="b">3</span>Session in 3 steps ★</h2>
       <table>
-        <tr><td class="k"><span class="chip gray">○ 미연결</span></td><td>세션 없음 → <span class="chip teal">＋ 세션 활성화</span> 누름</td></tr>
-        <tr><td class="k"><span class="chip gray">? 확인 중</span></td><td>연결 확인 중 (잠깐 대기)</td></tr>
-        <tr><td class="k"><span class="chip gray">❯ 준비됨</span></td><td><span class="chip teal">↗ 세션 열기</span> <span class="chip blue">▶ Claude 실행</span></td></tr>
+        <tr><td class="k"><span class="chip gray">○ Not connected</span></td><td>No session → press <span class="chip teal">＋ Activate session</span></td></tr>
+        <tr><td class="k"><span class="chip gray">? Checking</span></td><td>Checking connection (wait a moment)</td></tr>
+        <tr><td class="k"><span class="chip gray">❯ Ready</span></td><td><span class="chip teal">↗ Open session</span> <span class="chip blue">▶ Run Claude</span></td></tr>
       </table>
-      <div class="note">한 번에: 카드 아래 <b>[＋ 모든 세션 활성화]</b>. 이미 열린 건 재사용(중복 없음).</div>
+      <div class="note">All at once: <b>[＋ Activate all sessions]</b> below the card. Already-open ones are reused (no duplicates).</div>
     </div>
 
     <div class="box">
-      <h2><span class="b">4</span>활동 배지 = 지금 뭘 하나</h2>
+      <h2><span class="b">4</span>Activity badge = what it's doing now</h2>
       <table>
-        <tr><td class="k"><span class="chip teal">⏳ 진행중</span></td><td>작업 중 → <b>놔두기</b></td></tr>
-        <tr><td class="k"><span class="chip gray">⌛ 대기중</span></td><td>지시 대기 → <b>일 시키기</b></td></tr>
-        <tr><td class="k"><span class="chip amber">⚠ 입력 대기</span></td><td>승인 대기 → <b>먼저 처리</b></td></tr>
+        <tr><td class="k"><span class="chip teal">⏳ In progress</span></td><td>Working → <b>leave it be</b></td></tr>
+        <tr><td class="k"><span class="chip gray">⌛ Waiting</span></td><td>Awaiting instruction → <b>give it work</b></td></tr>
+        <tr><td class="k"><span class="chip amber">⚠ Awaiting input</span></td><td>Awaiting approval → <b>handle first</b></td></tr>
       </table>
-      <div class="note">안 보이면: Claude 미실행 / 첫 프롬프트 전 / 훅 미설치.<br>훅 설치(1회): <code>node cockpit/bin/activity-hook.mjs install</code></div>
+      <div class="note">If not shown: Claude not running / before first prompt / hook not installed.<br>Install hook (once): <code>node cockpit/bin/activity-hook.mjs install</code></div>
     </div>
 
     <div class="box">
-      <h2><span class="b">5</span>프로젝트 상태 & 끄기</h2>
+      <h2><span class="b">5</span>Project state & turning off</h2>
       <table>
-        <tr><td class="k"><span class="chip gray">⏸ 대기중</span></td><td>안 열림 → <b>▶ 활성화</b> / ▪ 아카이브</td></tr>
-        <tr><td class="k"><span class="chip teal">● 진행중</span></td><td>열림 → 세션 활성화 · Claude 실행</td></tr>
-        <tr><td class="k"><span class="chip gray">▪ 종료됨</span></td><td>보관 → <b>재개</b></td></tr>
+        <tr><td class="k"><span class="chip gray">⏸ Waiting</span></td><td>Not open → <b>▶ Activate</b> / ▪ Archive</td></tr>
+        <tr><td class="k"><span class="chip teal">● In progress</span></td><td>Open → activate sessions · run Claude</td></tr>
+        <tr><td class="k"><span class="chip gray">▪ Ended</span></td><td>Archived → <b>resume</b></td></tr>
       </table>
-      <div class="note" style="margin-top:4px">끄기 두 가지(둘 다 확인 창): <span class="chip red">세션 비활성화</span> 하나 · <span class="chip red">비활성화</span> 전체. <b>되돌리기 없음.</b></div>
+      <div class="note" style="margin-top:4px">Two ways to turn off (both confirm): <span class="chip red">Deactivate session</span> one · <span class="chip red">Deactivate</span> all. <b>No undo.</b></div>
     </div>
 
     <div class="box">
-      <h2><span class="b">6</span>프로젝트 추가 3가지</h2>
+      <h2><span class="b">6</span>Three ways to add a project</h2>
       <table>
-        <tr><td class="k"><b>＋ 새 프로젝트</b></td><td>빈 폴더 새로 생성</td></tr>
-        <tr><td class="k"><b>기존 프로젝트 연동</b></td><td>있는 폴더를 <code>ops/</code>로 이동 등록</td></tr>
-        <tr><td class="k"><b>＋ git 주소</b></td><td>저장소를 <code>ops/</code>에 clone</td></tr>
+        <tr><td class="k"><b>＋ New project</b></td><td>Create a new empty folder</td></tr>
+        <tr><td class="k"><b>Link existing project</b></td><td>Move an existing folder into <code>ops/</code> and register it</td></tr>
+        <tr><td class="k"><b>＋ git URL</b></td><td>Clone a repository into <code>ops/</code></td></tr>
       </table>
-      <div class="note">git 저장소는 <b>ops 폴더에만</b>. 프로젝트 루트는 단순 폴더.</div>
+      <div class="note">Git repositories go <b>in the ops folder only</b>. The project root is a plain folder.</div>
     </div>
 
     <div class="box">
-      <h2><span class="b">7</span>문제 해결</h2>
+      <h2><span class="b">7</span>Troubleshooting</h2>
       <table>
-        <tr><td class="k"><span class="chip gray">▲ offline</span></td><td>서버 죽음 → <b>exe 재실행</b></td></tr>
-        <tr><td class="k">세션 안 열림</td><td>대개 <b>wmux 꺼짐</b> → exe로 켜기</td></tr>
-        <tr><td class="k">원인 보기</td><td><code>node cockpit/bin/cockpit.js serve</code> → 콘솔의 <code>[wmux✗]</code> 줄</td></tr>
-        <tr><td class="k">포트 충돌</td><td><code>serve --port 8080</code></td></tr>
-        <tr><td class="k">옛 코드로 동작</td><td>콘솔 닫고 exe 재실행 (디자인만 고쳤으면 새로고침)</td></tr>
+        <tr><td class="k"><span class="chip gray">▲ offline</span></td><td>Server down → <b>relaunch the exe</b></td></tr>
+        <tr><td class="k">Session won't open</td><td>Usually <b>wmux is off</b> → start it via the exe</td></tr>
+        <tr><td class="k">See the cause</td><td><code>node cockpit/bin/cockpit.js serve</code> → the <code>[wmux✗]</code> line in the console</td></tr>
+        <tr><td class="k">Port conflict</td><td><code>serve --port 8080</code></td></tr>
+        <tr><td class="k">Running old code</td><td>Close the console and relaunch the exe (if only the design changed, refresh)</td></tr>
       </table>
     </div>
 
     <div class="box">
-      <h2><span class="b">8</span>안전 장치</h2>
+      <h2><span class="b">8</span>Safety features</h2>
       <ul>
-        <li><b>로컬 전용</b> — 127.0.0.1 + 토큰. 외부 접속 불가</li>
-        <li><b>자동 종료 없음</b> — 끄는 건 항상 내 버튼 + 확인</li>
-        <li><b>중복 없음</b> — 열린 세션은 재사용</li>
-        <li><b>시크릿 보호</b> — <code>.env</code> 값은 안 보여줌</li>
+        <li><b>Local only</b> — 127.0.0.1 + token. No external access</li>
+        <li><b>No auto-shutdown</b> — turning off is always your button + confirmation</li>
+        <li><b>No duplicates</b> — open sessions are reused</li>
+        <li><b>Secret protection</b> — <code>.env</code> values are not shown</li>
       </ul>
     </div>
 
-    <div class="foot">더 알아보기: <b>Manual.md</b>(사용법) · <b>Tech.md</b>(전체 기능·API) · <b>ClaudeCockpit-Guide.html</b>(시각 가이드) — 인쇄: Ctrl+P · 색까지 인쇄하려면 "배경 그래픽" 켜기</div>
+    <div class="foot">Learn more: <b>Manual.md</b> (usage) · <b>Tech.md</b> (full features · API) · <b>ClaudeCockpit-Guide.html</b> (visual guide) — Print: Ctrl+P · to print colors too, enable "background graphics"</div>
 
   </div>
 </div>

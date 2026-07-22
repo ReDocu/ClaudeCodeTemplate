@@ -1,231 +1,230 @@
-> **Language:** **한국어** · [English](Manual.en.md)
 
-# ClaudeCockpit 사용 설명서 (초보자용)
+# ClaudeCockpit User Manual (For Beginners)
 
-여러 개의 Claude Code를 **하나의 화면에서 보고 켜고 끄는** 로컬 대시보드입니다.
-터미널 창을 여러 개 띄워 놓고 왔다 갔다 할 필요 없이, **어떤 프로젝트의 어떤 세션이 지금 일하는 중인지 / 내 입력을 기다리는지**를 한눈에 보고, 필요할 때만 그 세션으로 이동합니다.
+A local dashboard that lets you **view, start, and stop multiple Claude Code instances from a single screen.**
+Instead of juggling several terminal windows and switching back and forth, you can see at a glance **which session of which project is currently working / waiting for your input**, and jump into that session only when you need to.
 
-> ### 용어 3개만 기억하세요
-> - **프로젝트** = 작업 하나 (예: 내 게임, 내 홈페이지). 화면의 "카드" 하나가 프로젝트 하나입니다.
-> - **역할 / 세션** = 프로젝트 안에서 일하는 터미널 하나. 역할 이름으로 구분합니다 (예: `dev`, `art`).
-> - **ops** = 모든 프로젝트에 자동으로 들어있는 **1번 고정 세션**. git·배포 같은 운영 작업의 거처입니다.
+> ### Just remember these 3 terms
+> - **Project** = a single body of work (e.g., my game, my website). One "card" on the screen is one project.
+> - **Role / Session** = one terminal working inside a project. Distinguished by role name (e.g., `dev`, `art`).
+> - **ops** = the **fixed session #1** that every project includes automatically. It's the home for operational tasks like git and deployment.
 
 ---
 
-## 1. 준비물
+## 1. Prerequisites
 
-| 항목 | 확인 방법 |
+| Item | How to check |
 |---|---|
 | Windows 11 | — |
-| Node.js | 터미널에서 `node -v` 입력 → 버전이 나오면 OK |
-| wmux (터미널 도구) | 설치되어 있으면 됨. 위치는 처음 실행할 때 자동으로 찾습니다 |
-| Claude Code | 터미널에서 `claude` 라고 쳐서 실행되면 OK |
+| Node.js | Type `node -v` in the terminal → OK if a version appears |
+| wmux (terminal tool) | Just needs to be installed. Its location is found automatically on first run |
+| Claude Code | OK if it runs when you type `claude` in the terminal |
 
-> 설치할 프로그램(npm 패키지)은 **없습니다.** Node와 wmux만 있으면 됩니다.
-
----
-
-## 2. 시작하기 — 더블클릭 한 번
-
-**`ClaudeCockpit.exe`를 더블클릭**하세요. (막히면 `start.cmd`를 대신 실행)
-
-그러면 자동으로:
-
-1. wmux가 꺼져 있으면 **켭니다** (켜져 있으면 그대로 사용)
-2. 대시보드 **서버를 띄웁니다** (검은 콘솔 창이 서버입니다)
-3. **브라우저에 대시보드가 열립니다** → `http://127.0.0.1:7420/`
-
-> - 여러 번 눌러도 안전합니다 (이미 떠 있으면 그대로 재사용).
-> - **콘솔 창(검은 창)을 닫아도 세션은 안 죽습니다.** 대시보드만 꺼집니다. 다시 exe를 누르면 이어집니다.
-> - wmux 위치를 못 찾으면 콘솔이 경로를 물어봅니다. 나중에 다시 설정: `node cockpit/bin/cockpit.js boot --setup`
+> There is **no program (npm package) to install.** You only need Node and wmux.
 
 ---
 
-## 3. 화면 읽는 법
+## 2. Getting Started — One Double-Click
+
+**Double-click `ClaudeCockpit.exe`.** (If that's blocked, run `start.cmd` instead.)
+
+It will then automatically:
+
+1. **Start** wmux if it's off (if it's already on, it's used as-is)
+2. **Launch the dashboard server** (the black console window is the server)
+3. **Open the dashboard in your browser** → `http://127.0.0.1:7420/`
+
+> - It's safe to click multiple times (if it's already running, it's simply reused).
+> - **Closing the console window (the black window) does NOT kill your sessions.** Only the dashboard shuts down. Press the exe again to resume.
+> - If it can't find the wmux location, the console will ask for the path. To reconfigure later: `node cockpit/bin/cockpit.js boot --setup`
+
+---
+
+## 3. How to Read the Screen
 
 ```
-┌ 상단바 ── ClaudeCockpit · 진행중/대기중 개수 · [새로고침][기존 프로젝트 연동][＋ git 주소][＋ 새 프로젝트]
-├ 범례 ──── 상태를 색·모양·글자 3가지로 함께 표시
-├ 왼쪽(메인) ── ● 진행중  : 지금 열려 있는 프로젝트 (세션 카드)
-│              ⏸ 대기중  : 만들어 뒀지만 아직 안 연 프로젝트 (접을 수 있음)
-│              ○ 미연결  : 내가 wmux에서 직접 연 세션 (cockpit 관리 밖)
-│              ▪ 종료됨  : 보관한 프로젝트 (접힘 · [재개]로 되살림)
-└ 오른쪽(레일) ── 🔌 활성 포트 · 🧩 기능 목록
-세션 행을 클릭하면 오른쪽에 상세 서랍(드로어)이 열립니다.
+┌ Top bar ── ClaudeCockpit · in-progress/waiting counts · [Refresh][Link existing project][＋ git address][＋ New project]
+├ Legend ──── Status is shown together in 3 ways: color, shape, and text
+├ Left (main) ── ● In progress : currently open projects (session cards)
+│               ⏸ Waiting     : projects created but not yet opened (collapsible)
+│               ○ Unlinked    : sessions I opened directly in wmux (outside cockpit's control)
+│               ▪ Stopped     : archived projects (collapsed · revive with [Resume])
+└ Right (rail) ── 🔌 Active ports · 🧩 Feature list
+Click a session row to open a detail drawer on the right.
 ```
 
-### 상단 오른쪽 배지 (지금 상태)
+### Top-right badge (current status)
 
-| 배지 | 뜻 |
+| Badge | Meaning |
 |---|---|
-| `● live` | 서버 정상 (실데이터) |
-| `▲ offline` | 서버가 죽음 → **exe 다시 실행** |
-| `○ demo` | 파일을 직접 연 상태 (가짜 예시 데이터) |
+| `● live` | Server healthy (real data) |
+| `▲ offline` | Server is down → **run the exe again** |
+| `○ demo` | Opened the file directly (fake sample data) |
 
 ---
 
-## 4. 프로젝트의 3가지 상태
+## 4. A Project's 3 States
 
-| 상태 | 뜻 | 할 수 있는 것 |
+| State | Meaning | What you can do |
 |---|---|---|
-| **⏸ 대기중** | 만들어 뒀지만 안 열림 | `[▶ 활성화]`로 열기 · `[아카이브]`로 보관 |
-| **● 진행중** | 지금 열려 있음 (wmux에 떠 있음) | 세션 열기·Claude 실행·비활성화 |
-| **▪ 종료됨** | 보관함 | `[재개]`로 대기중으로 되살림 |
+| **⏸ Waiting** | Created but not open | Open with `[▶ Activate]` · store with `[Archive]` |
+| **● In progress** | Currently open (running in wmux) | Open sessions · run Claude · deactivate |
+| **▪ Stopped** | Archive | Revive to Waiting with `[Resume]` |
 
-> **활성화(▶ 활성화)** 는 프로젝트를 여는 것일 뿐, **세션(터미널)을 자동으로 만들지 않습니다.** 세션은 다음 단계에서 하나씩 엽니다.
+> **Activating (▶ Activate)** only *opens* the project — it **does not create sessions (terminals) automatically.** You open sessions one by one in the next step.
 
 ---
 
-## 5. 세션을 여는 3단계 ⭐ (가장 중요)
+## 5. The 3 Steps to Open a Session ⭐ (Most Important)
 
-진행중 카드 안의 각 역할(ops, dev …)은 아래 3단계를 거칩니다.
+Each role (ops, dev …) inside an in-progress card goes through the 3 steps below.
 
 ```
-①  ○ 미연결            →   [＋ 세션 활성화] 클릭
-②  세션이 열림(터미널)  →   잠깐 "연결 확인 중…"
-③  연결 확인됨          →   [↗ 세션 열기] [세션 비활성화] [▶ Claude 실행]
+①  ○ Unlinked           →   Click [＋ Activate session]
+②  Session opens (terminal) →   Briefly "Verifying connection…"
+③  Connection verified   →   [↗ Open session] [Deactivate session] [▶ Run Claude]
 ```
 
-1. **① 미연결** — 아직 그 역할의 터미널이 없습니다. `[＋ 세션 활성화]` 를 누릅니다.
-2. **② 열림** — wmux에 터미널(pane)이 하나 생깁니다.
-3. **③ 준비됨** — 연결이 확인되면 `[▶ Claude 실행]` 버튼이 나타납니다. 누르면 그 터미널에서 Claude가 켜집니다.
+1. **① Unlinked** — There's no terminal for that role yet. Click `[＋ Activate session]`.
+2. **② Open** — One terminal (pane) is created in wmux.
+3. **③ Ready** — Once the connection is verified, the `[▶ Run Claude]` button appears. Click it to start Claude in that terminal.
 
-> - 한 번에 다 열고 싶으면 카드 아래 **`[＋ 모든 세션 활성화]`** 를 누르세요 (빠진 세션을 전부 엽니다).
-> - 이미 같은 역할이 열려 있으면 **새로 만들지 않고** 기존 것을 씁니다 (중복 없음).
+> - To open them all at once, click **`[＋ Activate all sessions]`** at the bottom of the card (it opens every missing session).
+> - If the same role is already open, the existing one is used **instead of creating a new one** (no duplicates).
 
 ---
 
-## 6. Claude가 지금 뭘 하는지 — 활동 배지
+## 6. What Claude Is Doing Right Now — Activity Badges
 
-Claude가 켜진 세션에는 **지금 상태 배지**가 붙습니다. 세션에 들어가지 않고도 무엇을 할지 판단할 수 있습니다.
+Sessions where Claude is running get a **current-status badge**. You can judge what to do without even entering the session.
 
-| 배지 | 뜻 | 내가 할 일 |
+| Badge | Meaning | What you should do |
 |---|---|---|
-| `⏳ 진행중` | Claude가 **작업하는 중** | 놔두면 됩니다 |
-| `⌛ 대기중` | 응답을 마치고 **다음 지시를 기다림** | 시킬 일을 입력 |
-| `⚠ 입력 대기` | **승인·권한 입력을 기다림** | 먼저 처리하세요 |
-| `◆ fable-5[1m] · xhigh` | 이 세션이 쓰는 **모델·effort** (경로 자리에 표시 · 폴더 경로는 마우스 오버) | 참고용 — 바꾸려면 그 세션에서 `/model`·`/effort` |
-| (배지 없음) `❯ 터미널` | Claude를 아직 안 켬 | 필요하면 `[▶ Claude 실행]` |
+| `⏳ In progress` | Claude is **working** | Just leave it |
+| `⌛ Waiting` | Finished responding and **waiting for your next instruction** | Enter a task |
+| `⚠ Awaiting input` | **Waiting for approval / permission input** | Handle it first |
+| `◆ fable-5[1m] · xhigh` | The **model · effort** this session uses (shown in place of the path · hover for the folder path) | For reference — to change it, use `/model` · `/effort` in that session |
+| (no badge) `❯ terminal` | Claude isn't started yet | Use `[▶ Run Claude]` if needed |
 
-> 배지가 안 보인다면? ①그 세션에서 Claude를 아직 안 켰거나, ②첫 프롬프트를 아직 안 넣었거나, ③(새로 설치한 경우) 활동 훅이 아직 설치 안 된 것입니다.
-> **활동 훅 설치(최초 1회):** 터미널에서 `node cockpit/bin/activity-hook.mjs install` → 끄기: `... uninstall`
-> (이 배지는 Claude Code의 "훅" 기능으로 동작합니다. wmux가 아니라 Claude가 직접 알려줍니다.)
-
----
-
-## 7. 기본 사용 흐름 (처음부터 끝까지)
-
-### ① 프로젝트 만들기
-상단 **`[＋ 새 프로젝트]`** → 이름과 역할(쉼표로 여러 개: `dev, art`) 입력 → 생성.
-- `root/<이름>/` 폴더가 만들어지고 **대기중**으로 등록됩니다. `ops` 역할은 자동 포함됩니다.
-
-### ② 열기
-그 카드의 **`[▶ 활성화]`** → 진행중으로 이동 (아직 세션은 없음).
-
-### ③ 세션 열기 + Claude 실행
-각 역할의 **`[＋ 세션 활성화]`** → 연결 확인 후 **`[▶ Claude 실행]`** (5장·6장 참고).
-
-### ④ 관찰 (들어가지 않고 보기)
-세션 행을 **클릭**하면 오른쪽 서랍이 열립니다:
-- Claude 상태·활동 배지 · 작업 폴더(cwd) · 이 세션이 쓰는 기능 목록(skill/MCP 이름만)
-- **`[📁 폴더]`** — 작업 폴더를 탐색기로 열기
-- 카드의 **git 칩(↗)** — 원격 저장소 웹페이지 열기
-
-### ⑤ 개입 (필요할 때만 점프)
-서랍의 **`[열기 ↗ (wmux 점프)]`** → wmux의 그 터미널로 이동합니다. 승인·명령을 직접 한 뒤 대시보드로 돌아오면 됩니다.
-
-### ⑥ 정리
-- **세션 하나 끄기**: 서랍의 **`[세션 비활성화]`** (Claude가 일하는 중이면 확인 창).
-- **프로젝트 전체 끄기**: 카드의 **`[비활성화]`** → 확인 창(끄는 세션 목록 표시) → 모든 세션 종료 + 창 닫힘 → 대기중.
-- **보관**: 대기중 카드의 **`[아카이브]`** → 종료됨 섹션으로. 나중에 `[재개]`.
-
-> ⚠️ **되돌리기(undo)는 없습니다.** 세션을 끄면 그 터미널의 상태는 사라집니다(다시 열 수는 있음). 그래서 끄기 전에 확인 창이 뜹니다.
+> Don't see a badge? Either ① Claude isn't started in that session yet, ② you haven't entered the first prompt yet, or ③ (for a fresh install) the activity hook isn't installed yet.
+> **Install the activity hook (one time only):** `node cockpit/bin/activity-hook.mjs install` in the terminal → to remove: `... uninstall`
+> (This badge works via Claude Code's "hooks" feature. It's Claude reporting directly, not wmux.)
 
 ---
 
-## 8. 프로젝트를 추가하는 3가지 방법
+## 7. Basic Workflow (Start to Finish)
 
-| 버튼 | 언제 | 결과 |
+### ① Create a project
+Top **`[＋ New project]`** → enter a name and roles (multiple, comma-separated: `dev, art`) → create.
+- A `root/<name>/` folder is created and registered as **Waiting**. The `ops` role is included automatically.
+
+### ② Open it
+The card's **`[▶ Activate]`** → moves to In progress (no sessions yet).
+
+### ③ Open sessions + run Claude
+Each role's **`[＋ Activate session]`** → after the connection is verified, **`[▶ Run Claude]`** (see sections 5 and 6).
+
+### ④ Observe (watch without entering)
+**Click** a session row to open the drawer on the right:
+- Claude status · activity badge · working folder (cwd) · the list of features this session uses (skill/MCP names only)
+- **`[📁 Folder]`** — open the working folder in Explorer
+- The card's **git chip (↗)** — open the remote repository's web page
+
+### ⑤ Intervene (jump in only when needed)
+The drawer's **`[Open ↗ (wmux jump)]`** → moves you to that terminal in wmux. Handle the approval/command yourself, then return to the dashboard.
+
+### ⑥ Clean up
+- **Stop a single session**: the drawer's **`[Deactivate session]`** (a confirmation dialog appears if Claude is working).
+- **Stop the whole project**: the card's **`[Deactivate]`** → confirmation dialog (shows the list of sessions being stopped) → all sessions terminate + window closes → Waiting.
+- **Archive**: the Waiting card's **`[Archive]`** → moves to the Stopped section. Later, `[Resume]`.
+
+> ⚠️ **There is no undo.** Once you stop a session, that terminal's state is gone (you can reopen it, though). That's why a confirmation dialog appears before stopping.
+
+---
+
+## 8. 3 Ways to Add a Project
+
+| Button | When | Result |
 |---|---|---|
-| **`[＋ 새 프로젝트]`** | 새로 시작 | 빈 폴더 + 기본 구조 생성 |
-| **`[기존 프로젝트 연동]`** | 이미 있는 폴더를 관리하고 싶을 때 | 그 폴더를 `root/<이름>/ops/`로 **이동**해 등록 |
-| **`[＋ git 주소]`** | GitHub 등 저장소로 시작 | 주소를 `ops/`에 **clone**해 새 프로젝트로 등록 |
+| **`[＋ New project]`** | Starting fresh | Creates an empty folder + default structure |
+| **`[Link existing project]`** | When you want to manage a folder you already have | **Moves** that folder into `root/<name>/ops/` and registers it |
+| **`[＋ git address]`** | Starting from a repository like GitHub | **Clones** the address into `ops/` and registers it as a new project |
 
-> **git은 `ops` 폴더에만** 있습니다. 프로젝트 루트는 저장소가 아니라 단순 폴더입니다. (코드·커밋·원격은 전부 `ops/` 기준)
-
----
-
-## 9. 오른쪽 정보 패널
-
-- **🔌 활성 포트** — 실행 중인 개발/DB 서버(포트)를 감지해 어느 프로젝트 것인지 표시합니다. 시스템 잡음은 접어서 가립니다.
-  - **끄기(OFF)**: 프로젝트에 귀속된 행의 **[✕]** — 확인 후 그 서버 프로세스를 종료합니다(세션 pane은 유지 · 프로젝트 세션발 리스너만 가능).
-  - **켜기(ON)**: 프로젝트 카드의 **[＋ 서버]** 로 시작 명령을 한 번 선언(예: `npm run dev`) → 이후 **[▶ 서버 시작]** 클릭이 그 역할 세션의 터미널에 명령을 대신 입력합니다. 그 pane에 Claude가 켜져 있으면 (입력창에 명령이 들어가지 않도록) 거부돼요.
-- **🧩 기능 목록** — 모든 세션이 공통으로 쓰는 기능(skill·플러그인·MCP)의 **이름·종류만** 보여줍니다 (설정값·키는 절대 안 보여줌). 세션별 전용 기능은 그 세션 서랍에서 확인.
-
-> **사용량 표시는 없습니다.** 예전엔 오늘/주간 토큰 사용량을 보여줬지만 제거했습니다. Claude의 실제 한도는 **5시간·7일** 두 창으로 서버가 관리하는데, 내 컴퓨터의 기록만 합산해서는 그 사용률을 맞출 수 없었습니다("일간"이라는 한도 창은 아예 없습니다). 정확한 사용률은 Claude Code에서 **`/usage`** 로 확인하세요.
+> **git lives only in the `ops` folder.** The project root is not a repository — it's just a plain folder. (Code, commits, and remotes are all based in `ops/`)
 
 ---
 
-## 10. 자주 묻는 질문 (FAQ)
+## 9. Right-Side Info Panel
 
-**Q. `▲ offline` 이라고 떠요 / 데이터가 안 나와요**
-서버가 안 떠 있는 것입니다. `ClaudeCockpit.exe`를 다시 실행하세요.
+- **🔌 Active ports** — Detects running dev/DB servers (ports) and shows which project they belong to. System noise is collapsed and hidden.
+  - **Turning OFF**: the **[✕]** on a row attributed to a project — after confirmation, it terminates that server process (the session pane is kept · only listeners originating from a project session are eligible).
+  - **Turning ON**: on a project card, use **[＋ Server]** to declare a start command once (e.g., `npm run dev`) → after that, clicking **[▶ Start server]** enters the command into that role session's terminal on your behalf. If Claude is running in that pane, it's rejected (so the command doesn't go into the input box).
+- **🧩 Feature list** — Shows only the **name · type** of features (skill · plugin · MCP) that all sessions use in common (config values · keys are never shown). Session-specific features are checked in that session's drawer.
 
-**Q. `[＋ 세션 활성화]`를 눌러도 세션이 안 생겨요**
-대부분 **wmux가 꺼져 있어서**입니다. exe(=boot)를 실행해 wmux를 켜세요. (자세한 원인은 서버 콘솔의 `[wmux✗] …` 줄에 나옵니다 — 보려면 아래 Q 참고)
-
-**Q. 서버 콘솔에서 무슨 일이 일어나는지 보고 싶어요**
-`ClaudeCockpit.exe`는 콘솔을 숨깁니다. 로그를 보려면 터미널에서 직접 실행하세요:
-`node cockpit/bin/cockpit.js serve` → wmux로 보내는 명령이 `[wmux→] …` / 실패는 `[wmux✗] …` 로 찍힙니다.
-
-**Q. 진행중 카드인데 모든 역할이 "○ 미연결"이에요**
-정상입니다. 활성화는 방을 여는 것일 뿐, 세션은 `[＋ 세션 활성화]`로 하나씩 엽니다(5장).
-
-**Q. `[▶ Claude 실행]` 버튼이 안 보여요**
-세션이 아직 "연결 확인 중"이거나 이미 Claude가 켜져 있는 것입니다. 잠깐 기다리거나 배지를 확인하세요.
-
-**Q. 상태가 바로 안 바뀌어요**
-대시보드는 몇 초마다 갱신하고 일부 정보는 캐시를 씁니다. 잠깐 기다리면 반영됩니다. 급하면 `[새로고침]`.
-
-**Q. 포트 7420이 이미 쓰인다고 해요**
-다른 포트로: `node cockpit/bin/cockpit.js serve --port 8080` (그 주소로 접속).
-
-**Q. 코드를 고쳤는데 대시보드가 옛날처럼 동작해요**
-서버가 옛 코드로 떠 있는 것입니다. 콘솔 창을 닫고 exe를 다시 실행하세요. (단, 화면 디자인만 고친 경우는 브라우저 새로고침이면 됩니다)
-
-**Q. 대시보드를 닫으면 세션이 죽나요?**
-아니요. 서버·대시보드를 꺼도 wmux 세션은 그대로 돕니다. 다시 exe를 누르면 이어서 관제합니다.
+> **There is no usage display.** It used to show today's/weekly token usage, but that was removed. Claude's actual limits are managed by the server across two windows — **5-hour and 7-day** — and summing only the records on my computer couldn't match that usage rate (there is no "daily" limit window at all). For the accurate usage rate, check with **`/usage`** in Claude Code.
 
 ---
 
-## 11. 안전 장치 (알아두면 안심)
+## 10. Frequently Asked Questions (FAQ)
 
-- **로컬 전용** — 서버는 이 PC(127.0.0.1)에서만·토큰 인증으로만 접속됩니다. 외부에서 못 들어옵니다.
-- **끄는 건 항상 내 손으로** — cockpit은 세션을 **마음대로 끄지 않습니다.** 끄기는 `[세션 비활성화]`(하나)와 `[비활성화]`(전체) 두 가지뿐이고, 둘 다 확인을 거칩니다.
-- **중복 없음** — 이미 열려 있는 세션과 겹치면 새로 만들지 않고 그것을 씁니다.
-- **git은 ops만** — 프로젝트 루트는 저장소가 아니라 코드가 섞이지 않습니다.
-- **시크릿 보호** — `.env` 값은 읽지도 보여주지도 않습니다(이름·존재만).
+**Q. It says `▲ offline` / no data appears**
+The server isn't running. Run `ClaudeCockpit.exe` again.
+
+**Q. I click `[＋ Activate session]` but no session appears**
+Usually it's because **wmux is off.** Run the exe (= boot) to start wmux. (The detailed cause appears on the server console's `[wmux✗] …` line — see the Q below to view it)
+
+**Q. I want to see what's happening in the server console**
+`ClaudeCockpit.exe` hides the console. To see the logs, run it directly in the terminal:
+`node cockpit/bin/cockpit.js serve` → commands sent to wmux are printed as `[wmux→] …` / failures as `[wmux✗] …`.
+
+**Q. It's an in-progress card, but all roles say "○ Unlinked"**
+That's normal. Activating just opens the room; you open sessions one by one with `[＋ Activate session]` (section 5).
+
+**Q. I don't see the `[▶ Run Claude]` button**
+The session is still "Verifying connection," or Claude is already running. Wait a moment or check the badge.
+
+**Q. The status doesn't change immediately**
+The dashboard refreshes every few seconds and some information is cached. Wait a moment and it will update. If you're in a hurry, `[Refresh]`.
+
+**Q. It says port 7420 is already in use**
+Use a different port: `node cockpit/bin/cockpit.js serve --port 8080` (then connect to that address).
+
+**Q. I fixed the code but the dashboard behaves like the old version**
+The server is running the old code. Close the console window and run the exe again. (But if you only changed the screen design, a browser refresh is enough)
+
+**Q. Does closing the dashboard kill my sessions?**
+No. Even if you shut down the server/dashboard, the wmux sessions keep running. Press the exe again to resume monitoring.
 
 ---
 
-## 12. 더 알아보기
+## 11. Safeguards (Good to Know for Peace of Mind)
 
-| 문서 | 내용 |
+- **Local only** — The server is accessible only from this PC (127.0.0.1) and only with token authentication. Nothing gets in from outside.
+- **Stopping is always by your own hand** — cockpit **never stops sessions on its own.** Stopping is only done two ways — `[Deactivate session]` (one) and `[Deactivate]` (all) — and both require confirmation.
+- **No duplicates** — If it overlaps with an already-open session, it uses that one instead of creating a new one.
+- **git is ops-only** — The project root is not a repository, so code doesn't get mixed in.
+- **Secret protection** — `.env` values are neither read nor shown (only names · existence).
+
+---
+
+## 12. Learn More
+
+| Document | Contents |
 |---|---|
-| `Tech.md` | **기능명세서** — 모든 기능·API·규칙 상세 (개발자용) |
-| `handover.md` | 개발 진행 상황(세션별 기록) |
-| `CLAUDE.md` | 개발자/Claude용 코드맵·수정 지점 |
-| `README.md` | 프로젝트 소개 |
+| `Tech.md` | **Functional specification** — details of all features · APIs · rules (for developers) |
+| `handover.md` | Development progress (session-by-session records) |
+| `CLAUDE.md` | Code map · edit points for developers/Claude |
+| `README.md` | Project introduction |
 
 ---
 
-### 한 장 요약
+### One-Page Summary
 
 ```
-exe 더블클릭  →  [＋ 새 프로젝트]  →  [▶ 활성화]  →  [＋ 세션 활성화]  →  [▶ Claude 실행]
-                                                            │
-                        세션 행 클릭 → 서랍(관찰) → [열기 ↗]로 점프(개입)
-                                                            │
-                        끝: [세션 비활성화](하나) / [비활성화](전체) / [아카이브](보관)
-   배지:  ⏳ 진행중 = 놔두기   ⌛ 대기중 = 지시하기   ⚠ 입력 대기 = 먼저 처리
+Double-click exe  →  [＋ New project]  →  [▶ Activate]  →  [＋ Activate session]  →  [▶ Run Claude]
+                                                              │
+                        Click a session row → drawer (observe) → jump via [Open ↗] (intervene)
+                                                              │
+                        End: [Deactivate session] (one) / [Deactivate] (all) / [Archive] (store)
+   Badges:  ⏳ In progress = leave it   ⌛ Waiting = give an instruction   ⚠ Awaiting input = handle first
 ```

@@ -1,9 +1,9 @@
 <!doctype html>
-<html lang="ko">
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>ClaudeCockpit — 시각 가이드</title>
+<title>ClaudeCockpit — Visual Guide</title>
 <style>
   :root{
     --bg:#0b0e13; --bg-grid:#0e131a; --panel:#141a22; --panel-2:#171f29;
@@ -101,135 +101,135 @@
 </style>
 </head>
 <body>
-<p style="text-align:center;font-size:12px"><strong>한국어</strong> · <a href="ClaudeCockpit-Guide-en.html">English</a></p>
+<p style="text-align:center;font-size:12px"><a href="ClaudeCockpit-Guide.html">한국어</a> · <strong>English</strong></p>
 <div class="wrap">
 
-  <h1>ClaudeCockpit — 시각 가이드</h1>
-  <p class="lead">아래 화면 예시는 실제 대시보드의 색·버튼을 그대로 재현한 것입니다. 번호 <span class="mk">1</span> 를 따라 읽으세요.</p>
+  <h1>ClaudeCockpit — Visual Guide</h1>
+  <p class="lead">The screen examples below faithfully reproduce the actual dashboard's colors and buttons. Follow the numbers <span class="mk">1</span> as you read.</p>
 
   <!-- 1. 전체 화면 -->
-  <h2><span class="n">1</span>전체 화면 한눈에</h2>
-  <p class="desc">대시보드는 크게 <b>상단바</b> + <b>왼쪽(프로젝트 목록)</b> + <b>오른쪽(정보 레일)</b> 로 나뉩니다.</p>
+  <h2><span class="n">1</span>The Whole Screen at a Glance</h2>
+  <p class="desc">The dashboard is broadly divided into a <b>top bar</b> + <b>left side (project list)</b> + <b>right side (info rail)</b>.</p>
   <div class="fig">
-    <div class="figcap">상단바</div>
+    <div class="figcap">Top bar</div>
     <div class="tb">
-      <div><h1>ClaudeCockpit</h1><div class="sub">프로젝트 관제 · 로컬</div></div>
-      <div class="ministat mono muted" style="font-size:12px">진행중 <b style="color:var(--text)">2</b> · 대기중 <b style="color:var(--text)">3</b> · <span class="badge-live">● live</span></div>
+      <div><h1>ClaudeCockpit</h1><div class="sub">Project control · Local</div></div>
+      <div class="ministat mono muted" style="font-size:12px">In progress <b style="color:var(--text)">2</b> · Waiting <b style="color:var(--text)">3</b> · <span class="badge-live">● live</span></div>
       <div style="margin-left:auto;display:flex;gap:7px">
-        <span class="tbtn">새로고침</span><span class="tbtn">기존 프로젝트 연동</span>
-        <span class="tbtn">＋ git 주소</span><span class="tbtn primary">＋ 새 프로젝트</span>
+        <span class="tbtn">Refresh</span><span class="tbtn">Link existing project</span>
+        <span class="tbtn">＋ git URL</span><span class="tbtn primary">＋ New project</span>
       </div>
     </div>
   </div>
   <ol class="ann">
-    <li><b>진행중 / 대기중 개수 · 소스 배지</b> — <span class="pill ok"><span class="g">●</span>live</span> 는 서버 정상. <span class="muted mono">▲ offline</span> 이면 exe를 다시 실행하세요.</li>
-    <li><b>＋ 새 프로젝트</b> 로 새로 만들고, <b>기존 프로젝트 연동 / ＋ git 주소</b> 로 이미 있는 코드를 등록합니다. (자세히는 §5)</li>
-    <li>왼쪽 목록은 <b>● 진행중 → ⏸ 대기중 → ○ 미연결 → ▪ 종료됨</b> 순서로 쌓입니다.</li>
+    <li><b>In-progress / waiting counts · source badge</b> — <span class="pill ok"><span class="g">●</span>live</span> means the server is healthy. If it shows <span class="muted mono">▲ offline</span>, launch the exe again.</li>
+    <li>Create a new one with <b>＋ New project</b>, and register code you already have with <b>Link existing project / ＋ git URL</b>. (Details in §5)</li>
+    <li>The left list stacks in the order <b>● in progress → ⏸ waiting → ○ not connected → ▪ ended</b>.</li>
   </ol>
 
   <!-- 2. 세션 3단계 -->
-  <h2><span class="n">2</span>세션을 여는 3단계 <span style="font-size:13px;color:var(--faint)">— 가장 중요</span></h2>
-  <p class="desc"><b>활성화(▶ 활성화)는 방을 여는 것</b>일 뿐, 세션(터미널)은 만들지 않습니다. 세션은 각 역할 행에서 하나씩 엽니다.</p>
+  <h2><span class="n">2</span>Three Steps to Open a Session <span style="font-size:13px;color:var(--faint)">— most important</span></h2>
+  <p class="desc"><b>Activating (▶ Activate) just opens the room</b>; it does not create a session (terminal). You open sessions one at a time from each role row.</p>
   <div class="fig">
-    <div class="figcap">진행중 카드 안의 세션 행 — 상태에 따라 버튼이 달라집니다</div>
+    <div class="figcap">Session rows inside an in-progress card — the buttons change with the state</div>
 
     <div class="rrow-wrap">
-      <div class="rrow dead"><span class="pill idle"><span class="g">○</span>미연결</span>
-        <span class="rn">ops <span class="pin">ops 고정</span></span><span class="now">세션 없음 — 활성화 필요</span></div>
-      <span class="cg spawn">＋ 세션 활성화</span>
+      <div class="rrow dead"><span class="pill idle"><span class="g">○</span>Not connected</span>
+        <span class="rn">ops <span class="pin">ops pinned</span></span><span class="now">No session — activation needed</span></div>
+      <span class="cg spawn">＋ Activate session</span>
     </div>
 
     <div class="rrow-wrap">
-      <div class="rrow"><span class="pill idle"><span class="g">❯</span>터미널</span>
-        <span class="rn">dev</span><span class="now">연결 확인 중…</span></div>
-      <span class="cg" style="opacity:.55;border-style:dashed">? 연결 확인 중</span>
+      <div class="rrow"><span class="pill idle"><span class="g">❯</span>Terminal</span>
+        <span class="rn">dev</span><span class="now">Checking connection…</span></div>
+      <span class="cg" style="opacity:.55;border-style:dashed">? Checking connection</span>
     </div>
 
     <div class="rrow-wrap">
-      <div class="rrow"><span class="pill idle"><span class="g">❯</span>터미널</span>
+      <div class="rrow"><span class="pill idle"><span class="g">❯</span>Terminal</span>
         <span class="rn">art</span><span class="now">root/MyApp/art/</span><span class="chev">↗</span></div>
-      <span class="cg open">↗ 세션 열기</span><span class="cg">▶ Claude 실행</span>
+      <span class="cg open">↗ Open session</span><span class="cg">▶ Run Claude</span>
     </div>
   </div>
   <ol class="ann">
-    <li><b>① 미연결</b> — 아직 터미널이 없습니다. <span class="cg spawn" style="padding:2px 7px;font-size:11px">＋ 세션 활성화</span> 를 누르면 그 역할의 터미널이 wmux에 생깁니다.</li>
-    <li><b>② 연결 확인 중</b> — 잠깐 기다립니다. 이때는 아직 Claude 실행 버튼이 안 나옵니다(오발동 방지).</li>
-    <li><b>③ 준비됨</b> — <span class="cg open" style="padding:2px 7px;font-size:11px">↗ 세션 열기</span> 로 그 터미널로 점프하고, <span class="cg" style="padding:2px 7px;font-size:11px">▶ Claude 실행</span> 으로 Claude를 켭니다.</li>
+    <li><b>① Not connected</b> — there is no terminal yet. Pressing <span class="cg spawn" style="padding:2px 7px;font-size:11px">＋ Activate session</span> creates that role's terminal in wmux.</li>
+    <li><b>② Checking connection</b> — wait a moment. During this time the Run Claude button does not appear yet (to prevent misfires).</li>
+    <li><b>③ Ready</b> — use <span class="cg open" style="padding:2px 7px;font-size:11px">↗ Open session</span> to jump to that terminal, and <span class="cg" style="padding:2px 7px;font-size:11px">▶ Run Claude</span> to turn Claude on.</li>
   </ol>
-  <div class="tip">한 번에 다 열려면 카드 아래 <b>[＋ 모든 세션 활성화]</b>. 이미 열린 세션은 새로 만들지 않고 재사용합니다(중복 없음).</div>
+  <div class="tip">To open everything at once, use <b>[＋ Activate all sessions]</b> below the card. Sessions that are already open are reused rather than recreated (no duplicates).</div>
 
   <!-- 3. 활동 배지 -->
-  <h2><span class="n">3</span>Claude가 지금 뭘 하는지 — 활동 배지</h2>
-  <p class="desc">Claude가 켜진 세션에 붙는 배지로, 들어가지 않고도 무엇을 할지 압니다.</p>
+  <h2><span class="n">3</span>What Claude Is Doing Right Now — Activity Badges</h2>
+  <p class="desc">Badges attach to sessions where Claude is running, so you know what it's doing without going in.</p>
   <div class="fig">
-    <div class="figcap">세션 행의 활동 배지</div>
-    <div class="rrow-wrap"><div class="rrow"><span class="pill claude"><span class="g">✦</span>claude</span><span class="pill work"><span class="g">⏳</span>진행중</span>
-      <span class="rn">dev</span><span class="now">root/MyApp/dev/</span></div><span class="cg open">↗ 세션 열기</span></div>
-    <div class="rrow-wrap"><div class="rrow"><span class="pill claude"><span class="g">✦</span>claude</span><span class="pill wait"><span class="g">⌛</span>대기중</span>
-      <span class="rn">ops <span class="pin">ops 고정</span></span><span class="now">root/MyApp/ops/</span></div><span class="cg open">↗ 세션 열기</span></div>
-    <div class="rrow-wrap"><div class="rrow"><span class="pill claude"><span class="g">✦</span>claude</span><span class="pill attn"><span class="g">⚠</span>입력 대기</span>
-      <span class="rn">art</span><span class="now">root/MyApp/art/</span></div><span class="cg open">↗ 세션 열기</span></div>
+    <div class="figcap">Activity badges on session rows</div>
+    <div class="rrow-wrap"><div class="rrow"><span class="pill claude"><span class="g">✦</span>claude</span><span class="pill work"><span class="g">⏳</span>In progress</span>
+      <span class="rn">dev</span><span class="now">root/MyApp/dev/</span></div><span class="cg open">↗ Open session</span></div>
+    <div class="rrow-wrap"><div class="rrow"><span class="pill claude"><span class="g">✦</span>claude</span><span class="pill wait"><span class="g">⌛</span>Waiting</span>
+      <span class="rn">ops <span class="pin">ops pinned</span></span><span class="now">root/MyApp/ops/</span></div><span class="cg open">↗ Open session</span></div>
+    <div class="rrow-wrap"><div class="rrow"><span class="pill claude"><span class="g">✦</span>claude</span><span class="pill attn"><span class="g">⚠</span>Awaiting input</span>
+      <span class="rn">art</span><span class="now">root/MyApp/art/</span></div><span class="cg open">↗ Open session</span></div>
   </div>
   <table>
-    <tr><th>배지</th><th>뜻</th><th>내가 할 일</th></tr>
-    <tr><td><span class="pill work"><span class="g">⏳</span>진행중</span></td><td>Claude가 작업하는 중</td><td>놔두면 됩니다</td></tr>
-    <tr><td><span class="pill wait"><span class="g">⌛</span>대기중</span></td><td>응답을 마치고 다음 지시 대기</td><td>시킬 일을 입력</td></tr>
-    <tr><td><span class="pill attn"><span class="g">⚠</span>입력 대기</span></td><td>승인·권한 입력을 기다림</td><td><b style="color:var(--warn)">먼저 처리</b></td></tr>
+    <tr><th>Badge</th><th>Meaning</th><th>What you should do</th></tr>
+    <tr><td><span class="pill work"><span class="g">⏳</span>In progress</span></td><td>Claude is working</td><td>Leave it be</td></tr>
+    <tr><td><span class="pill wait"><span class="g">⌛</span>Waiting</span></td><td>Finished responding, waiting for the next instruction</td><td>Type what you want done</td></tr>
+    <tr><td><span class="pill attn"><span class="g">⚠</span>Awaiting input</span></td><td>Waiting for approval or permission input</td><td><b style="color:var(--warn)">Handle first</b></td></tr>
   </table>
-  <div class="tip">배지가 안 보이면: Claude를 아직 안 켰거나(<span class="pill idle"><span class="g">❯</span>터미널</span>), 첫 프롬프트 전이거나, 활동 훅 미설치입니다. 훅 설치(최초 1회): <code>node cockpit/bin/activity-hook.mjs install</code></div>
+  <div class="tip">If no badge shows: Claude isn't turned on yet (<span class="pill idle"><span class="g">❯</span>Terminal</span>), it's before the first prompt, or the activity hook isn't installed. Install the hook (once): <code>node cockpit/bin/activity-hook.mjs install</code></div>
 
   <!-- 4. 드로어 -->
-  <h2><span class="n">4</span>세션 서랍 — 클릭해서 자세히 보기</h2>
-  <p class="desc">세션 행을 <b>클릭</b>하면 오른쪽에 상세 서랍이 열립니다.</p>
+  <h2><span class="n">4</span>Session Drawer — Click for Details</h2>
+  <p class="desc"><b>Click</b> a session row to open a detail drawer on the right.</p>
   <div class="fig">
-    <div class="figcap">세션 상세 드로어</div>
+    <div class="figcap">Session detail drawer</div>
     <div style="border:1px solid var(--border);border-radius:11px;background:var(--panel);padding:14px;max-width:430px">
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px"><b style="font-size:15px">MyApp / ops</b><span class="sp"></span><span class="muted">✕</span></div>
       <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px">
-        <span class="pill claude"><span class="g">✦</span>claude 실행중</span><span class="pill wait"><span class="g">⌛</span>응답 대기중</span>
-        <span class="pin" style="padding:2px 6px">📌 ops 고정</span></div>
+        <span class="pill claude"><span class="g">✦</span>claude running</span><span class="pill wait"><span class="g">⌛</span>awaiting response</span>
+        <span class="pin" style="padding:2px 6px">📌 ops pinned</span></div>
       <div class="cact" style="margin:0">
-        <span class="btn primary">열기 ↗ (wmux 점프)</span><span class="btn">📁 폴더</span>
-        <span class="btn" style="color:var(--blue);border-color:#5aa9f066">▶ Claude 실행</span><span class="btn danger">세션 비활성화</span></div>
+        <span class="btn primary">Open ↗ (wmux jump)</span><span class="btn">📁 Folder</span>
+        <span class="btn" style="color:var(--blue);border-color:#5aa9f066">▶ Run Claude</span><span class="btn danger">Deactivate session</span></div>
     </div>
   </div>
   <ol class="ann">
-    <li><b>상태·활동 배지</b> — claude on/off, 진행중/대기중, ops 고정 여부, 작업 폴더(cwd)를 봅니다.</li>
-    <li><b>열기 ↗ (wmux 점프)</b> — 그 터미널로 이동해 직접 승인·명령. <b>📁 폴더</b> — 탐색기로 폴더 열기.</li>
-    <li><b>세션 비활성화</b> — 이 세션 하나만 종료(빨강). Claude가 일하는 중이면 확인 창이 뜹니다.</li>
+    <li><b>Status · activity badges</b> — check claude on/off, in progress/waiting, whether ops is pinned, and the working folder (cwd).</li>
+    <li><b>Open ↗ (wmux jump)</b> — move to that terminal to approve or run commands directly. <b>📁 Folder</b> — open the folder in the file explorer.</li>
+    <li><b>Deactivate session</b> — end just this one session (red). If Claude is working, a confirmation dialog appears.</li>
   </ol>
 
   <!-- 5. 프로젝트 만들기/끝내기 -->
-  <h2><span class="n">5</span>프로젝트 만들기 · 끝내기</h2>
+  <h2><span class="n">5</span>Creating · Ending Projects</h2>
   <div class="fig">
-    <div class="figcap">대기중 카드 (아직 안 연 프로젝트)</div>
+    <div class="figcap">Waiting card (a project not yet opened)</div>
     <div class="tcard" style="border-left-color:var(--idle)">
-      <div class="tc-head"><span class="nm">MyApp</span><span class="tg"><span class="pill idle"><span class="g">⏸</span>대기중</span></span><span class="sp"></span><span class="ptbtn">root/MyApp/</span></div>
+      <div class="tc-head"><span class="nm">MyApp</span><span class="tg"><span class="pill idle"><span class="g">⏸</span>Waiting</span></span><span class="sp"></span><span class="ptbtn">root/MyApp/</span></div>
       <div><span class="rchip ops">📌 ops</span><span class="rchip">❯ dev ✕</span><span class="rchip">❯ art ✕</span></div>
-      <div class="cact"><span class="btn primary">▶ 활성화</span><span class="btn">＋ 역할</span><span class="sp"></span><span class="btn">▪ 아카이브</span></div>
+      <div class="cact"><span class="btn primary">▶ Activate</span><span class="btn">＋ Role</span><span class="sp"></span><span class="btn">▪ Archive</span></div>
     </div>
   </div>
   <table>
-    <tr><th>버튼</th><th>동작</th></tr>
-    <tr><td><span class="btn primary" style="padding:3px 9px">▶ 활성화</span></td><td>프로젝트를 엶 (wmux 워크스페이스 생성 · <b>세션은 안 만듦</b> → §2로 세션 열기)</td></tr>
-    <tr><td><span class="btn" style="padding:3px 9px">＋ 역할</span></td><td>새 역할(예: qa)을 선언에 추가</td></tr>
-    <tr><td><span class="btn" style="padding:3px 9px">▪ 아카이브</span></td><td>보관함으로 (종료됨 섹션 · 나중에 [재개])</td></tr>
-    <tr><td><span class="btn danger" style="padding:3px 9px">비활성화</span></td><td>(진행중 카드) 모든 세션 종료 + 창 닫기 → 확인 창 거침</td></tr>
+    <tr><th>Button</th><th>Action</th></tr>
+    <tr><td><span class="btn primary" style="padding:3px 9px">▶ Activate</span></td><td>Opens the project (creates a wmux workspace · <b>does not create sessions</b> → open sessions via §2)</td></tr>
+    <tr><td><span class="btn" style="padding:3px 9px">＋ Role</span></td><td>Adds a new role (e.g. qa) to the declaration</td></tr>
+    <tr><td><span class="btn" style="padding:3px 9px">▪ Archive</span></td><td>Move to the archive (Ended section · [Resume] later)</td></tr>
+    <tr><td><span class="btn danger" style="padding:3px 9px">Deactivate</span></td><td>(In-progress card) End all sessions + close the window → goes through a confirmation dialog</td></tr>
   </table>
-  <div class="tip">⚠️ <b>되돌리기(undo)는 없습니다.</b> 그래서 끄는 버튼은 항상 확인 창을 거칩니다. 끄는 방법은 <b>[세션 비활성화]</b>(하나)와 <b>[비활성화]</b>(전체) 둘뿐 — cockpit이 마음대로 끄는 일은 없습니다.</div>
+  <div class="tip">⚠️ <b>There is no undo.</b> That's why every turn-off button goes through a confirmation dialog. The only ways to turn things off are <b>[Deactivate session]</b> (one) and <b>[Deactivate]</b> (all) — cockpit never turns anything off on its own.</div>
 
   <!-- 6. 버튼 색 규칙 -->
-  <h2><span class="n">6</span>버튼 색으로 구분하기</h2>
+  <h2><span class="n">6</span>Telling Buttons Apart by Color</h2>
   <table>
-    <tr><th>색</th><th>예</th><th>뜻</th></tr>
-    <tr><td>청록(accent)</td><td><span class="cg spawn" style="padding:3px 9px">＋ 세션 활성화</span> <span class="cg open" style="padding:3px 9px">↗ 세션 열기</span></td><td>열기·활성화(주 동작)</td></tr>
-    <tr><td>파랑(blue)</td><td><span class="cg" style="padding:3px 9px">▶ Claude 실행</span></td><td>Claude 켜기</td></tr>
-    <tr><td>주황(warn)</td><td><span class="cg sync" style="padding:3px 9px">⎇ 역할로 동기화</span></td><td>주의·연결 필요</td></tr>
-    <tr><td>빨강(crit)</td><td><span class="btn danger" style="padding:3px 9px">세션 비활성화</span></td><td>종료(파괴적)</td></tr>
+    <tr><th>Color</th><th>Example</th><th>Meaning</th></tr>
+    <tr><td>Teal (accent)</td><td><span class="cg spawn" style="padding:3px 9px">＋ Activate session</span> <span class="cg open" style="padding:3px 9px">↗ Open session</span></td><td>Open · activate (primary action)</td></tr>
+    <tr><td>Blue</td><td><span class="cg" style="padding:3px 9px">▶ Run Claude</span></td><td>Turn Claude on</td></tr>
+    <tr><td>Amber (warn)</td><td><span class="cg sync" style="padding:3px 9px">⎇ Sync to role</span></td><td>Caution · connection needed</td></tr>
+    <tr><td>Red (crit)</td><td><span class="btn danger" style="padding:3px 9px">Deactivate session</span></td><td>End (destructive)</td></tr>
   </table>
 
-  <p class="foot">ClaudeCockpit 리라이트 v1 · 이 가이드는 실제 UI를 재현한 예시입니다 · 자세한 사용법은 <code>Manual.md</code>, 전체 기능은 <code>Tech.md</code>.<br>
-  인쇄: 브라우저에서 <b>Ctrl+P</b> (배경 그래픽 켜면 색까지 인쇄).</p>
+  <p class="foot">ClaudeCockpit rewrite v1 · This guide is an example that reproduces the actual UI · For detailed usage see <code>Manual.md</code>, for the full feature set see <code>Tech.md</code>.<br>
+  Print: press <b>Ctrl+P</b> in the browser (enable background graphics to print the colors too).</p>
 </div>
 </body>
 </html>
