@@ -306,76 +306,77 @@
       <svg class="beacon" viewBox="0 0 30 30" aria-hidden="true">
         <circle class="ring" cx="15" cy="15" r="12"/><circle class="ring" cx="15" cy="15" r="7.5"/><circle class="core" cx="15" cy="15" r="3"/>
       </svg>
-      <div><h1>ClaudeCockpit</h1><div class="sub">프로젝트 관제 · 로컬 · rewrite v1</div></div>
+      <div><h1>ClaudeCockpit</h1><div class="sub" data-i18n="brand.sub">프로젝트 관제 · 로컬 · rewrite v1</div></div>
     </div>
     <div class="ministat">
-      <span>진행중 <b id="m-active">0</b></span><span>대기중 <b id="m-idle">0</b></span>
-      <span id="m-arc-wrap" hidden>종료 <b id="m-arc">0</b></span>
+      <span><span data-i18n="stat.active">진행중</span> <b id="m-active">0</b></span><span><span data-i18n="stat.idle">대기중</span> <b id="m-idle">0</b></span>
+      <span id="m-arc-wrap" hidden><span data-i18n="stat.archived">종료</span> <b id="m-arc">0</b></span>
       <span id="src-badge" style="color:var(--faint)"></span>
     </div>
     <div class="tools">
-      <span class="refresh mono" id="refresh">⟳ 방금</span>
-      <button class="tbtn" onclick="doRefresh()">새로고침</button>
-      <button class="tbtn" onclick="openFeedback()" title="버그·문의·제안 — 문의 폼 열기(새 탭)">💬 문의</button>
-      <button class="tbtn" onclick="importPrompt()" title="📁 탐색창으로 기존 프로젝트 폴더를 골라 root/로 이동(move)하고 대기중으로 등록 — POST /pick-folder · /import">기존 프로젝트 연동</button>
-      <button class="tbtn" onclick="createFromGitPrompt()" title="git 저장소를 clone해 root/<이름>/ops/ 코드베이스로 새 프로젝트 등록 — POST /create-git">＋ git 주소</button>
-      <button class="tbtn primary" onclick="createPrompt()" title="root/<프로젝트>/ 스캐폴드 생성 후 대기중 등록 — POST /create">＋ 새 프로젝트</button>
+      <span class="refresh mono" id="refresh" data-i18n="refresh.just">⟳ 방금</span>
+      <button class="tbtn" id="lang-btn" onclick="toggleLang()" title="English로 전환">🌐 EN</button>
+      <button class="tbtn" onclick="doRefresh()" data-i18n="tb.refresh">새로고침</button>
+      <button class="tbtn" onclick="openFeedback()" data-i18n="tb.feedback" data-i18n-title="tb.feedback.t" title="버그·문의·제안 — 문의 폼 열기(새 탭)">💬 문의</button>
+      <button class="tbtn" onclick="importPrompt()" data-i18n="tb.import" data-i18n-title="tb.import.t" title="📁 탐색창으로 기존 프로젝트 폴더를 골라 root/로 이동(move)하고 대기중으로 등록 — POST /pick-folder · /import">기존 프로젝트 연동</button>
+      <button class="tbtn" onclick="createFromGitPrompt()" data-i18n="tb.git" data-i18n-title="tb.git.t" title="git 저장소를 clone해 root/<이름>/ops/ 코드베이스로 새 프로젝트 등록 — POST /create-git">＋ git 주소</button>
+      <button class="tbtn primary" onclick="createPrompt()" data-i18n="tb.create" data-i18n-title="tb.create.t" title="root/<프로젝트>/ 스캐폴드 생성 후 대기중 등록 — POST /create">＋ 새 프로젝트</button>
       <!-- workspace git 추적(FS-21) — 멀티플렉서가 내장 브라우저를 지원할 때만 노출(renderFollow) -->
       <button class="tbtn" id="follow-btn" onclick="toggleFollow()" hidden></button>
-      <button class="tbtn danger" onclick="shutdownPrompt()" title="전체 종료 — 모든 진행중 프로젝트를 비활성화(세션 종료 후 대기중 전환)하고 wmux 앱과 서버를 내림 — POST /shutdown (확인 필수)">⏻ 종료</button>
+      <button class="tbtn danger" onclick="shutdownPrompt()" data-i18n="tb.shutdown" data-i18n-title="tb.shutdown.t" title="전체 종료 — 모든 진행중 프로젝트를 비활성화(세션 종료 후 대기중 전환)하고 wmux 앱과 서버를 내림 — POST /shutdown (확인 필수)">⏻ 종료</button>
     </div>
   </header>
 
   <div class="legend">
-    <b>상태 = 색 + 형태 + 텍스트</b>
-    <span class="pill ok"><span class="g">●</span>진행중</span>
-    <span class="pill idle"><span class="g">⏸</span>대기중</span>
-    <span class="pill idle"><span class="g">▪</span>종료(보관)</span>
-    <span class="pill idle"><span class="g">❯</span>터미널</span>
-    <span class="pill claude"><span class="g">✦</span>claude 실행중</span>
-    <span class="pill model" title="세션이 쓰는 모델·effort — Claude Code 훅 실측(로컬 파일만 읽음 · 토큰 소비 0)"><span class="g">◆</span>모델·effort</span>
-    <span class="pill idle"><span class="g">○</span>프로젝트 미연결</span>
-    <span style="margin-left:auto;color:var(--faint)">활성화한 프로젝트만 wmux에 뜸 · 세션 클릭 → 상세(기능 인벤토리·점프)</span>
+    <b data-i18n="legend.title">상태 = 색 + 형태 + 텍스트</b>
+    <span class="pill ok"><span class="g">●</span><span data-i18n="legend.active">진행중</span></span>
+    <span class="pill idle"><span class="g">⏸</span><span data-i18n="legend.idle">대기중</span></span>
+    <span class="pill idle"><span class="g">▪</span><span data-i18n="legend.archived">종료(보관)</span></span>
+    <span class="pill idle"><span class="g">❯</span><span data-i18n="legend.terminal">터미널</span></span>
+    <span class="pill claude"><span class="g">✦</span><span data-i18n="legend.claude">claude 실행중</span></span>
+    <span class="pill model" data-i18n-title="legend.model.t" title="세션이 쓰는 모델·effort — Claude Code 훅 실측(로컬 파일만 읽음 · 토큰 소비 0)"><span class="g">◆</span><span data-i18n="legend.model">모델·effort</span></span>
+    <span class="pill idle"><span class="g">○</span><span data-i18n="legend.unlinked">프로젝트 미연결</span></span>
+    <span style="margin-left:auto;color:var(--faint)" data-i18n="legend.hint">활성화한 프로젝트만 wmux에 뜸 · 세션 클릭 → 상세(기능 인벤토리·점프)</span>
   </div>
 
   <!-- 활동 배지 훅 설치 안내(FS-7) — /api/state.hookInstalled=false일 때 노출 · 수동 명령 + 원클릭 설치 -->
   <div class="hookbn" id="hook-banner" role="status">
-    <span class="hb-t">⚠ 세션 활동 배지 꺼짐</span>
-    <span>Claude Code 훅 미설치 — <b>진행중 / 대기중 / 입력 대기</b> 배지와 <b>모델·effort</b> 칩이 표시되지 않습니다. 설치하면 새로 시작하는 Claude 세션부터 표시돼요.</span>
-    <span class="mono" title="수동 설치 — 저장소 루트에서 이 명령을 실행해도 됩니다 (클릭하면 전체 선택)">node cockpit/bin/activity-hook.mjs install</span>
+    <span class="hb-t" data-i18n="hook.off">⚠ 세션 활동 배지 꺼짐</span>
+    <span data-i18n-html="hook.desc">Claude Code 훅 미설치 — <b>진행중 / 대기중 / 입력 대기</b> 배지와 <b>모델·effort</b> 칩이 표시되지 않습니다. 설치하면 새로 시작하는 Claude 세션부터 표시돼요.</span>
+    <span class="mono" data-i18n-title="hook.cmd.t" title="수동 설치 — 저장소 루트에서 이 명령을 실행해도 됩니다 (클릭하면 전체 선택)">node cockpit/bin/activity-hook.mjs install</span>
     <span class="sp"></span>
-    <button class="btn bluish" onclick="doHookInstall(this)" title="~/.claude/settings.json에 병합 설치 — 백업(settings.json.cockpit-bak) 생성 · 기존 훅 보존 · 멱등 — POST /hook-install">🪝 훅 설치</button>
-    <button class="btn" onclick="hideHookBanner()" title="이 안내 숨기기(이 브라우저에서) — 다시 보려면 localStorage의 ck-hook-hide를 지우세요">숨기기</button>
+    <button class="btn bluish" onclick="doHookInstall(this)" data-i18n="hook.install" data-i18n-title="hook.install.t" title="~/.claude/settings.json에 병합 설치 — 백업(settings.json.cockpit-bak) 생성 · 기존 훅 보존 · 멱등 — POST /hook-install">🪝 훅 설치</button>
+    <button class="btn" onclick="hideHookBanner()" data-i18n="hook.hide" data-i18n-title="hook.hide.t" title="이 안내 숨기기(이 브라우저에서) — 다시 보려면 localStorage의 ck-hook-hide를 지우세요">숨기기</button>
   </div>
 
   <div class="grid">
     <div class="colmain">
-      <div class="eyebrow"><span style="color:var(--quiet)">●</span> 진행중 <span class="cnt" id="c-active">0</span>
-        <span class="hint">wmux workspace 실측 연결 · 1번 세션은 ops 고정</span></div>
+      <div class="eyebrow"><span style="color:var(--quiet)">●</span> <span data-i18n="eb.active">진행중</span> <span class="cnt" id="c-active">0</span>
+        <span class="hint" data-i18n="eb.active.hint">wmux workspace 실측 연결 · 1번 세션은 ops 고정</span></div>
       <div class="cards" id="g-active"></div>
 
       <button class="eyebrow tgl" id="idle-eyebrow" aria-expanded="true" aria-controls="g-idle" onclick="toggleIdle()">
-        <span class="chev-e" id="idle-chev">▾</span> 대기중 <span class="cnt" id="c-idle">0</span>
-        <span class="hint">선언만 존재 — 활성화 1클릭으로 세션 기동 · 클릭하여 접기/펼치기</span></button>
+        <span class="chev-e" id="idle-chev">▾</span> <span data-i18n="eb.idle">대기중</span> <span class="cnt" id="c-idle">0</span>
+        <span class="hint" data-i18n="eb.idle.hint">선언만 존재 — 활성화 1클릭으로 세션 기동 · 클릭하여 접기/펼치기</span></button>
       <div class="cards" id="g-idle"></div>
 
       <button class="eyebrow tgl" id="unlinked-eyebrow" aria-expanded="false" aria-controls="g-unlinked" onclick="toggleUnlinked()" hidden>
-        <span class="chev-e" id="unlinked-chev">▸</span> 프로젝트 미연결 세션 <span class="cnt" id="c-unlinked">0</span>
-        <span class="hint">cockpit 프로젝트에 연결되지 않은 wmux workspace — 직접 연 외부 세션 · 클릭하여 펼치기</span></button>
+        <span class="chev-e" id="unlinked-chev">▸</span> <span data-i18n="eb.unlinked">프로젝트 미연결 세션</span> <span class="cnt" id="c-unlinked">0</span>
+        <span class="hint" data-i18n="eb.unlinked.hint">cockpit 프로젝트에 연결되지 않은 wmux workspace — 직접 연 외부 세션 · 클릭하여 펼치기</span></button>
       <div class="cards" id="g-unlinked" hidden></div>
 
       <div id="closed"></div>
     </div>
 
     <div class="rail">
-      <div class="panel"><h3>🔌 활성 포트 <span class="count" id="port-count"></span></h3>
+      <div class="panel"><h3><span data-i18n="rail.ports">🔌 활성 포트</span> <span class="count" id="port-count"></span></h3>
         <div class="body pmap" id="portmap"></div></div>
-      <div class="panel"><h3>🧩 기능 인벤토리 <span class="count">global</span></h3>
+      <div class="panel"><h3><span data-i18n="rail.caps">🧩 기능 인벤토리</span> <span class="count">global</span></h3>
         <div class="body" id="gcaps"></div></div>
     </div>
   </div>
 
-  <p class="foot">ClaudeCockpit 리라이트 v1 — 프로젝트 생명주기 관제 · 활성화→<code>POST /activate</code>(ops 1번+역할, 멱등) · 비활성화(확인)→<code>POST /deactivate</code> · 전체 종료(확인)→<code>POST /shutdown</code>(전 프로젝트 비활성화→대기중→서버 종료) · 보관/재개→<code>POST /archive</code>·<code>/reopen</code> · 연동/생성→<code>POST /import</code>·<code>/create</code>·<code>/create-git</code> · 역할 추가/제거→<code>POST /create</code>(병합)·<code>/roles</code> · 세션 클릭→상세 드로어(기능 인벤토리), [열기 ↗]→<code>POST /attach</code> · ▶ Claude 실행→<code>POST /claude</code> · 폴더→<code>POST /open</code> · 링크→<code>POST /links</code> · 포트/기능→<code>GET /api/state.ports</code>·<code>GET /api/caps</code> · 데이터는 <code>GET /api/state</code>·<code>/api/log</code> 폴링</p>
+  <p class="foot" data-i18n-html="foot">ClaudeCockpit 리라이트 v1 — 프로젝트 생명주기 관제 · 활성화→<code>POST /activate</code>(ops 1번+역할, 멱등) · 비활성화(확인)→<code>POST /deactivate</code> · 전체 종료(확인)→<code>POST /shutdown</code>(전 프로젝트 비활성화→대기중→서버 종료) · 보관/재개→<code>POST /archive</code>·<code>/reopen</code> · 연동/생성→<code>POST /import</code>·<code>/create</code>·<code>/create-git</code> · 역할 추가/제거→<code>POST /create</code>(병합)·<code>/roles</code> · 세션 클릭→상세 드로어(기능 인벤토리), [열기 ↗]→<code>POST /attach</code> · ▶ Claude 실행→<code>POST /claude</code> · 폴더→<code>POST /open</code> · 링크→<code>POST /links</code> · 포트/기능→<code>GET /api/state.ports</code>·<code>GET /api/caps</code> · 데이터는 <code>GET /api/state</code>·<code>/api/log</code> 폴링</p>
 </div>
 
 <!-- drawer — 세션 상세(FS-15) -->
@@ -383,7 +384,7 @@
 <aside class="drawer" id="drawer" aria-hidden="true" inert>
   <div class="dr-head">
     <span class="team" id="dr-team"></span><span class="role" id="dr-role"></span>
-    <button class="x" onclick="closeDrawer()" aria-label="닫기">✕</button>
+    <button class="x" onclick="closeDrawer()" data-i18n-aria="dr.close.aria" aria-label="닫기">✕</button>
   </div>
   <div class="dr-meta" id="dr-meta"></div>
   <div class="dr-ctrl" id="dr-ctrl"></div>
@@ -393,45 +394,45 @@
 <!-- confirm dialog (비활성화 — kill은 항상 확인 경유, §9-3) -->
 <div class="scrim" id="confirm-scrim" onclick="closeConfirm()"></div>
 <div class="confirm" id="confirm" role="alertdialog" aria-modal="true" aria-labelledby="cf-title" aria-describedby="cf-sub" inert>
-  <h2 id="cf-title">확인</h2>
+  <h2 id="cf-title" data-i18n="cf.title">확인</h2>
   <div class="cf-sub" id="cf-sub"></div>
   <div class="cf-warn" id="cf-warn" hidden></div>
   <div class="cf-sess" id="cf-sess" hidden></div>
   <div class="cf-ctrl">
-    <button class="btn" id="cf-cancel" onclick="closeConfirm()">취소</button>
-    <button class="btn danger" id="cf-confirm">확인</button>
+    <button class="btn" id="cf-cancel" onclick="closeConfirm()" data-i18n="cf.cancel">취소</button>
+    <button class="btn danger" id="cf-confirm" data-i18n="cf.ok">확인</button>
   </div>
 </div>
 
 <!-- 이름 입력 다이얼로그 (새 프로젝트 · 연동 · 링크 추가 공용) -->
 <div class="scrim" id="namer-scrim" onclick="closeNamer()"></div>
 <div class="confirm namer" id="namer" role="dialog" aria-modal="true" aria-labelledby="nm-title" aria-describedby="nm-sub" inert>
-  <h2 id="nm-title">이름 입력</h2>
+  <h2 id="nm-title" data-i18n="nm.title">이름 입력</h2>
   <div class="cf-sub" id="nm-sub"></div>
   <div class="cf-warn" id="nm-warn" hidden></div>
-  <div class="field"><label for="nm-a" id="nm-a-label">이름</label>
-    <div class="nm-a-row"><input id="nm-a" autocomplete="off" spellcheck="false"><button type="button" class="btn" id="nm-browse" hidden onclick="nmBrowse()">📁 찾아보기</button></div></div>
+  <div class="field"><label for="nm-a" id="nm-a-label" data-i18n="nm.a">이름</label>
+    <div class="nm-a-row"><input id="nm-a" autocomplete="off" spellcheck="false"><button type="button" class="btn" id="nm-browse" hidden onclick="nmBrowse()" data-i18n="nm.browse">📁 찾아보기</button></div></div>
   <div class="field" id="nm-b-row" hidden><label for="nm-b" id="nm-b-label"></label><input id="nm-b" class="mono" autocomplete="off" spellcheck="false"></div>
   <div class="err" id="nm-err"></div>
   <div class="cf-ctrl">
-    <button class="btn" onclick="closeNamer()">취소</button>
-    <button class="btn primary" id="nm-ok" onclick="submitNamer()">생성</button>
+    <button class="btn" onclick="closeNamer()" data-i18n="nm.cancel">취소</button>
+    <button class="btn primary" id="nm-ok" onclick="submitNamer()" data-i18n="nm.ok">생성</button>
   </div>
 </div>
 
 <!-- 관리 로그 (FS-12) -->
 <div class="scrim" id="logbox-scrim" onclick="closeLog()"></div>
 <div class="confirm logbox" id="logbox" role="dialog" aria-modal="true" aria-labelledby="lg-title" inert>
-  <h2 id="lg-title">관리 로그</h2>
-  <div class="cf-sub">중앙 이벤트 로그(<span class="mono">workspace/logs/events.jsonl</span>) — 상태 전이·스폰/kill·에러, 최근 20건</div>
+  <h2 id="lg-title" data-i18n="lg.title">관리 로그</h2>
+  <div class="cf-sub" data-i18n-html="lg.sub">중앙 이벤트 로그(<span class="mono">workspace/logs/events.jsonl</span>) — 상태 전이·스폰/kill·에러, 최근 20건</div>
   <div class="feed" id="lg-feed"></div>
-  <div class="cf-ctrl"><button class="btn" onclick="closeLog()">닫기</button></div>
+  <div class="cf-ctrl"><button class="btn" onclick="closeLog()" data-i18n="lg.close">닫기</button></div>
 </div>
 
 <!-- 전체 종료 안내 — POST /shutdown 성공 후 표시(터미널 상태 — 닫기 없음, 폴링 중단) -->
 <div id="bye" hidden>
   <div class="box" role="alertdialog" aria-modal="true" aria-labelledby="bye-title" aria-describedby="bye-sub">
-    <h2 id="bye-title">⏻ Cockpit 종료됨</h2>
+    <h2 id="bye-title" data-i18n="bye.title">⏻ Cockpit 종료됨</h2>
     <p id="bye-sub"></p>
   </div>
 </div>
@@ -439,6 +440,653 @@
 <div class="sr-only" id="sr-assertive" aria-live="assertive" role="alert"></div>
 <div class="sr-only" id="sr-polite" aria-live="polite" role="status"></div>
 <div class="toasts" id="toasts"></div>
+
+<!-- ═══ i18n (ko/en 이중 언어 토글) — 사용자 노출 문자열 카탈로그 · data-i18n[-html|-title|-ph|-aria] + t(key,params) ═══ -->
+<script>
+'use strict';
+let LANG='ko'; try{LANG=localStorage.getItem('ck-lang')||'ko';}catch(e){} if(LANG!=='ko'&&LANG!=='en')LANG='ko';
+const I18N={
+ ko:{
+  'doc.title':'ClaudeCockpit — 프로젝트 관제 (리라이트 v1)',
+  'brand.sub':'프로젝트 관제 · 로컬 · rewrite v1',
+  'lang.toggle.t':'English로 전환',
+  'stat.active':'진행중','stat.idle':'대기중','stat.archived':'종료',
+  'refresh.just':'⟳ 방금','refresh.ago':'⟳ {n}초 전',
+  'tb.refresh':'새로고침',
+  'tb.feedback':'💬 문의','tb.feedback.t':'버그·문의·제안 — 문의 폼 열기(새 탭)',
+  'tb.import':'기존 프로젝트 연동','tb.import.t':'📁 탐색창으로 기존 프로젝트 폴더를 골라 root/로 이동(move)하고 대기중으로 등록 — POST /pick-folder · /import',
+  'tb.git':'＋ git 주소','tb.git.t':'git 저장소를 clone해 root/<이름>/ops/ 코드베이스로 새 프로젝트 등록 — POST /create-git',
+  'tb.create':'＋ 새 프로젝트','tb.create.t':'root/<프로젝트>/ 스캐폴드 생성 후 대기중 등록 — POST /create',
+  'tb.shutdown':'⏻ 종료','tb.shutdown.t':'전체 종료 — 모든 진행중 프로젝트를 비활성화(세션 종료 후 대기중 전환)하고 wmux 앱과 서버를 내림 — POST /shutdown (확인 필수)',
+  'legend.title':'상태 = 색 + 형태 + 텍스트',
+  'legend.active':'진행중','legend.idle':'대기중','legend.archived':'종료(보관)','legend.terminal':'터미널','legend.claude':'claude 실행중',
+  'legend.model':'모델·effort','legend.model.t':'세션이 쓰는 모델·effort — Claude Code 훅 실측(로컬 파일만 읽음 · 토큰 소비 0)',
+  'legend.unlinked':'프로젝트 미연결',
+  'legend.hint':'활성화한 프로젝트만 wmux에 뜸 · 세션 클릭 → 상세(기능 인벤토리·점프)',
+  'hook.off':'⚠ 세션 활동 배지 꺼짐',
+  'hook.desc':'Claude Code 훅 미설치 — <b>진행중 / 대기중 / 입력 대기</b> 배지와 <b>모델·effort</b> 칩이 표시되지 않습니다. 설치하면 새로 시작하는 Claude 세션부터 표시돼요.',
+  'hook.cmd.t':'수동 설치 — 저장소 루트에서 이 명령을 실행해도 됩니다 (클릭하면 전체 선택)',
+  'hook.install':'🪝 훅 설치','hook.install.t':'~/.claude/settings.json에 병합 설치 — 백업(settings.json.cockpit-bak) 생성 · 기존 훅 보존 · 멱등 — POST /hook-install',
+  'hook.hide':'숨기기','hook.hide.t':'이 안내 숨기기(이 브라우저에서) — 다시 보려면 localStorage의 ck-hook-hide를 지우세요',
+  'eb.active':'진행중','eb.active.hint':'wmux workspace 실측 연결 · 1번 세션은 ops 고정',
+  'eb.idle':'대기중','eb.idle.hint':'선언만 존재 — 활성화 1클릭으로 세션 기동 · 클릭하여 접기/펼치기',
+  'eb.unlinked':'프로젝트 미연결 세션','eb.unlinked.hint':'cockpit 프로젝트에 연결되지 않은 wmux workspace — 직접 연 외부 세션 · 클릭하여 펼치기',
+  'rail.ports':'🔌 활성 포트','rail.caps':'🧩 기능 인벤토리',
+  'foot':'ClaudeCockpit 리라이트 v1 — 프로젝트 생명주기 관제 · 활성화→<code>POST /activate</code>(ops 1번+역할, 멱등) · 비활성화(확인)→<code>POST /deactivate</code> · 전체 종료(확인)→<code>POST /shutdown</code>(전 프로젝트 비활성화→대기중→서버 종료) · 보관/재개→<code>POST /archive</code>·<code>/reopen</code> · 연동/생성→<code>POST /import</code>·<code>/create</code>·<code>/create-git</code> · 역할 추가/제거→<code>POST /create</code>(병합)·<code>/roles</code> · 세션 클릭→상세 드로어(기능 인벤토리), [열기 ↗]→<code>POST /attach</code> · ▶ Claude 실행→<code>POST /claude</code> · 폴더→<code>POST /open</code> · 링크→<code>POST /links</code> · 포트/기능→<code>GET /api/state.ports</code>·<code>GET /api/caps</code> · 데이터는 <code>GET /api/state</code>·<code>/api/log</code> 폴링',
+  'dr.close.aria':'닫기',
+  'cf.title':'확인','cf.cancel':'취소','cf.ok':'확인',
+  'nm.title':'이름 입력','nm.a':'이름','nm.browse':'📁 찾아보기','nm.cancel':'취소','nm.ok':'생성',
+  'lg.title':'관리 로그','lg.sub':'중앙 이벤트 로그(<span class="mono">workspace/logs/events.jsonl</span>) — 상태 전이·스폰/kill·에러, 최근 20건','lg.close':'닫기',
+  'bye.title':'⏻ Cockpit 종료됨',
+  'rel.min':'{n}분 전','rel.hour':'{n}시간 전','rel.day':'{n}일 전','rel.month':'{n}개월 전','rel.year':'{n}년 전'
+ },
+ en:{
+  'doc.title':'ClaudeCockpit — Project Control (rewrite v1)',
+  'brand.sub':'Project control · local · rewrite v1',
+  'lang.toggle.t':'Switch to Korean (한국어)',
+  'stat.active':'Active','stat.idle':'Idle','stat.archived':'Archived',
+  'refresh.just':'⟳ just now','refresh.ago':'⟳ {n}s ago',
+  'tb.refresh':'Refresh',
+  'tb.feedback':'💬 Feedback','tb.feedback.t':'Bugs · questions · suggestions — open the feedback form (new tab)',
+  'tb.import':'Link existing project','tb.import.t':'📁 Pick an existing project folder in the file dialog, move it under root/, and register it as idle — POST /pick-folder · /import',
+  'tb.git':'＋ git URL','tb.git.t':'Clone a git repo into root/<name>/ops/ as the codebase and register a new project — POST /create-git',
+  'tb.create':'＋ New project','tb.create.t':'Create a root/<project>/ scaffold and register it as idle — POST /create',
+  'tb.shutdown':'⏻ Shut down','tb.shutdown.t':'Shut down everything — deactivate all active projects (kill sessions → idle) and bring down the wmux app and server — POST /shutdown (confirmation required)',
+  'legend.title':'Status = color + shape + text',
+  'legend.active':'Active','legend.idle':'Idle','legend.archived':'Archived (stored)','legend.terminal':'Terminal','legend.claude':'claude running',
+  'legend.model':'model · effort','legend.model.t':'Model · effort the session uses — measured via Claude Code hook (reads local files only · zero token cost)',
+  'legend.unlinked':'Not linked to a project',
+  'legend.hint':'Only activated projects appear in wmux · click a session → details (capability inventory · jump)',
+  'hook.off':'⚠ Session activity badges off',
+  'hook.desc':'Claude Code hook not installed — the <b>working / waiting / needs-input</b> badges and the <b>model · effort</b> chip will not show. Once installed, they appear for newly started Claude sessions.',
+  'hook.cmd.t':'Manual install — you can run this command from the repo root (click to select all)',
+  'hook.install':'🪝 Install hook','hook.install.t':'Merge-install into ~/.claude/settings.json — creates a backup (settings.json.cockpit-bak) · preserves existing hooks · idempotent — POST /hook-install',
+  'hook.hide':'Hide','hook.hide.t':'Hide this notice (in this browser) — to show it again, clear ck-hook-hide in localStorage',
+  'eb.active':'Active','eb.active.hint':'Live-linked to wmux workspaces · session #1 is pinned to ops',
+  'eb.idle':'Idle','eb.idle.hint':'Declaration only — one click to activate and spawn sessions · click to fold/unfold',
+  'eb.unlinked':'Sessions not linked to a project','eb.unlinked.hint':'wmux workspaces not linked to a cockpit project — external sessions you opened yourself · click to expand',
+  'rail.ports':'🔌 Active ports','rail.caps':'🧩 Capability inventory',
+  'foot':'ClaudeCockpit rewrite v1 — project lifecycle control · activate→<code>POST /activate</code> (ops #1 + roles, idempotent) · deactivate (confirm)→<code>POST /deactivate</code> · shut down (confirm)→<code>POST /shutdown</code> (deactivate all projects→idle→stop server) · archive/reopen→<code>POST /archive</code>·<code>/reopen</code> · link/create→<code>POST /import</code>·<code>/create</code>·<code>/create-git</code> · add/remove role→<code>POST /create</code> (merge)·<code>/roles</code> · click a session→detail drawer (capability inventory), [Open ↗]→<code>POST /attach</code> · ▶ Run Claude→<code>POST /claude</code> · folder→<code>POST /open</code> · links→<code>POST /links</code> · ports/caps→<code>GET /api/state.ports</code>·<code>GET /api/caps</code> · data via <code>GET /api/state</code>·<code>/api/log</code> polling',
+  'dr.close.aria':'Close',
+  'cf.title':'Confirm','cf.cancel':'Cancel','cf.ok':'Confirm',
+  'nm.title':'Enter a name','nm.a':'Name','nm.browse':'📁 Browse','nm.cancel':'Cancel','nm.ok':'Create',
+  'lg.title':'Management log','lg.sub':'Central event log (<span class="mono">workspace/logs/events.jsonl</span>) — state transitions · spawn/kill · errors, most recent 20','lg.close':'Close',
+  'bye.title':'⏻ Cockpit shut down',
+  'rel.min':'{n} min ago','rel.hour':'{n}h ago','rel.day':'{n}d ago','rel.month':'{n}mo ago','rel.year':'{n}y ago'
+ }
+};
+/* ── 동적 문자열(렌더·다이얼로그·토스트) — {param} 보간 ── */
+Object.assign(I18N.ko,{
+  'msg.refresh':'상태 갱신 — <span class="mono">GET /api/state</span>',
+  'follow.label':'↺ git 추적',
+  'follow.on.t':'켜짐 — wmux에서 workspace를 전환하면 그 저장소 페이지가 {mux} 브라우저 패널에 자동으로 뜹니다. 클릭하면 끕니다 — POST /follow',
+  'follow.off.t':'꺼짐 — 패널을 자동으로 바꾸지 않습니다(git 칩 클릭 시에만 이동). 클릭하면 켭니다 — POST /follow',
+  'msg.follow.on':'git 추적 켜짐 — workspace 전환 시 저장소가 {mux} 패널에 자동 표시 ✓',
+  'msg.follow.off':'git 추적 꺼짐 — 패널은 그대로 둡니다 ✓',
+  'msg.follow.fail':'git 추적 전환 실패 — {err}',
+  'src.offline':'<span style="color:var(--crit)">▲</span> <span style="color:var(--crit)">offline</span> — 서버 확인 · exe 재실행',
+  'src.live':'live · wmux',
+  'hook.installing':'설치 중…',
+  'msg.hook.ok':'활동 배지 훅 설치 ✓ — <span class="mono">~/.claude/settings.json</span> 병합(백업 생성·기존 훅 보존) · <b>새로 시작하는 Claude 세션부터</b> 배지가 표시됩니다',
+  'msg.hook.ok.a':'활동 배지 훅을 설치했습니다. 새로 시작하는 Claude 세션부터 배지가 표시됩니다.',
+  'msg.hook.fail':'훅 설치 실패 — {err} · 수동 설치: <span class="mono">node cockpit/bin/activity-hook.mjs install</span>',
+  'ev.log.t':'관리 로그 — 프로젝트별 최근 20건 (GET /api/log)',
+  'ev.log':'≡ 로그',
+  'git.open.t':'{remote} — 원격 저장소 열기({panel})',
+  'git.panel.embedded':'{mux} 브라우저 패널',
+  'git.panel.browser':'기본 브라우저 새 탭',
+  'git.connect.t':'git 원격(origin) 연결 — URL 입력 시 git remote set-url origin 실행, 다음 실측에 칩 자동 표시',
+  'git.connect':'＋ 원격 연결',
+  'msg.git.panel':'{mux} 브라우저 패널 — <span class="mono">{web}</span> ✓',
+  'msg.git.panel.fail':'패널 열기 실패 — {err} · 기본 브라우저로 폴백',
+  'link.open.t':'{url} — 기본 브라우저로 열기',
+  'link.add':'＋ 링크',
+  'link.add.t':'서비스 링크 등록(배포·DB 콘솔 등) — POST /links',
+  'serve.start.t':"[{role}] pane에 '{cmd}' 전송(터미널에 치는 것과 동일) — pane에 claude가 켜져 있으면 거부 · POST /serve-start",
+  'serve.start':'서버 시작',
+  'serve.edit.t':'서버 시작 명령 변경 — 명령을 비우고 확인하면 해제 · 현재: [{role}] {cmd}',
+  'serve.add.t':'세션 pane에서 실행할 서버 시작 명령 선언(예: npm run dev) — 실행은 [▶ 서버 시작] · 중지는 우측 활성 포트 [✕] · POST /serve',
+  'serve.add':'＋ 서버',
+  'pill.terminal':'터미널','pill.unlinked':'미연결',
+  'act.working':'진행중','act.waiting':'대기중','act.attention':'입력 대기',
+  'act.tip':'Claude Code 훅 실측 — {label}','act.tip2':'Claude Code 훅 실측',
+  'ops.pin':'ops 고정','ops.pin.t':'1번 고정 세션 — git/DB/배포 확인 거처',
+  'btn.openSession':'↗ 세션 열기','btn.openSession.t':'wmux 해당 pane으로 바로 점프(포커스 이동) — POST /attach',
+  'row.detail.t':'세션 상세 — 기능 인벤토리(skill/agent/MCP)·wmux 점프·폴더',
+  'btn.claude':'▶ Claude 실행','btn.claude.t':'이 pane에서 claude 실행 — POST /claude (이미 실행 중이면 재전송 생략)',
+  'conn.checking':'? 연결 확인 중','conn.checking.t':'연결 확인 중 — 확인되면 Claude 실행 버튼 노출',
+  'dead.t':'이 역할의 세션이 아직 열리지 않았습니다 — [＋ 세션 활성화]로 wmux에 스폰',
+  'dead.none':'세션 없음 — 활성화 필요',
+  'btn.spawn1':'＋ 세션 활성화','btn.spawn1.t':'워크스페이스로 이동 → 그 자리에서 세션(pane) 스폰 → 연결 검증 — POST /spawn {role} (확인 실패 시 이 버튼 유지)',
+  'orphan.pin':'○ 미연결','orphan.pin.t':'cockpit 역할에 연결 안 됨 — [⎇ 역할로 동기화]로 빈 역할에 채택',
+  'orphan.now':'미연결 세션 · ',
+  'btn.adopt':'⎇ 역할로 동기화','btn.adopt.t':'이 세션을 빈 선언 역할에 바인딩 — POST /adopt (중복 스폰 방지·연결)',
+  'health.missing':'세션 {n}개 누락','health.ok':'세션 {a}/{b}',
+  'card.started':'{rel} 시작','card.started.t':'시작 {date}',
+  'btn.folder.t':'탐색기에서 폴더 열기 — POST /open',
+  'active.nosess':'세션 없음 — [＋ 세션 활성화]로 여세요',
+  'btn.spawnAll':'＋ 모든 세션 활성화','btn.spawnAll.t':'워크스페이스로 이동 → 빠진 선언 세션 전부 스폰 → 연결 검증 — POST /spawn (역할 생략=전체 수렴·중복 0·확인 실패분은 버튼 유지)',
+  'btn.addRole':'＋ 역할','btn.addRole.t':'선언 경유 역할 추가(FS-8 — 자유 스폰 아님) · 스폰은 [＋ 세션 활성화]로',
+  'btn.deactivate':'비활성화','btn.deactivate.t':'세션 전체 종료(확인 필수) 후 대기중으로 — POST /deactivate',
+  'active.empty':'진행중인 프로젝트 없음 — 대기중 프로젝트를 활성화하세요',
+  'idle.ops.t':'1번 고정 세션 — git/DB/배포 확인 거처 (세션은 활성화 후 [＋ 세션 활성화]로 개별 열기)',
+  'idle.role.t':'클릭 — 역할 제거(선언에서만, 폴더 보존 · FS-8)',
+  'btn.activate':'▶ 활성화','btn.activate.t':'workspace만 생성(세션 스폰 없음) — POST /activate · 세션은 진행중 카드에서 [＋ 세션 활성화]로 개별 열기',
+  'idle.addRole.t':'선언 경유 역할 추가(FS-8 — 자유 스폰 아님)',
+  'btn.archive':'▪ 아카이브','btn.archive.t':'보관 — 폴더·선언 유지, 하단 종료됨 섹션으로 (재개 가능)',
+  'idle.empty':'대기중인 프로젝트 없음 — 새 프로젝트를 만들거나 기존 프로젝트를 연동하세요',
+  'unlinked.attach.t':'wmux 해당 pane으로 포커스 이동 — POST /attach',
+  'unlinked.now':'외부 · 프로젝트 미연결','unlinked.empty':'세션 없음(빈 workspace)','unlinked.unmanaged':'cockpit 관리 대상 아님',
+  'msg.jump.ext':'wmux 점프 ✓ — 외부 세션','msg.jump.fail':'점프 실패 — {err}','msg.jump.demo':'데모 — 실제 wmux 점프는 서버 연결 시 동작',
+  'closed.period.t':'생성 {created} · 종료 {archived}','btn.folder2.t':'탐색기에서 폴더 열기',
+  'btn.reopen':'재개','btn.reopen.t':'재개 — 대기중으로 복귀(즉시 활성화 없음) — POST /reopen',
+  'closed.label':'종료됨','closed.hint':'보관된 프로젝트 — 활성화 차단 · 재개로 대기중 복귀',
+  'port.kill.t':':{port} {proc} 리스너 중지 — 프로세스 트리 종료(확인 필수) · POST /port-kill',
+  'port.other':'기타','port.none':'감지된 dev/db 리스너 없음','port.noneOwned':'프로젝트에 귀속된 리스너 없음',
+  'port.sys.t':'프로젝트와 무관한 시스템·기타 리스너 — 접어서 가림','port.sys':'시스템·기타','port.sysHint':'프로젝트 무관',
+  'port.count':'{owned} 귀속 · {system} 기타',
+  'caps.global.desc':'모든 세션 상속 — ','caps.empty':'항목 없음',
+  'caps.hint':'세션 전용(skill/agent/MCP)은 <b style="color:var(--muted)">세션 행 클릭 → 상세</b>에서 — 이름·종류만 표시(값 비노출)',
+  'drawer.claude.on':'claude 실행중','drawer.claude.off':'터미널 (claude off)','drawer.claude.unknown':'claude 확인 중',
+  'drawer.act.working':'명령 진행중','drawer.act.waiting':'응답 대기중','drawer.act.attention':'입력/권한 대기',
+  'drawer.orphan':'○ cockpit 미연결','drawer.orphan.t':'cockpit 역할에 연결 안 됨 — [⎇ 역할로 동기화]로 빈 역할에 채택',
+  'drawer.ops':'📌 ops 고정','drawer.ops.t':'1번 고정 세션 — 비활성화 시에만 함께 종료 · git/DB/배포 확인 거처',
+  'drawer.match':'🧭 매칭','drawer.match.t':'cockpit이 이 세션을 역할로 인식한 근거 — adopted=채택 매핑 · label-ns=네임스페이스 label(스폰 시 각인) · label=구형식 label 일치',
+  'drawer.open':'열기 ↗ (wmux 점프)','drawer.open.t':'wmux 해당 pane으로 포커스 이동 — POST /attach',
+  'drawer.folder':'📁 폴더','drawer.folder.t':'탐색기에서 역할 폴더 열기 — POST /open {name, role}',
+  'drawer.claude.t':'이 pane에서 claude 실행 — POST /claude',
+  'drawer.adopt.t':'이 세션을 빈 선언 역할에 바인딩 — POST /adopt (연결·중복 스폰 방지)',
+  'drawer.kill':'세션 비활성화','drawer.kill.t':'이 세션 종료(개별 비활성화) — POST /kill-session · claude 실행 중이면 확인',
+  'msg.drawer.open':'{name} {role} 세션 상세를 열었습니다.',
+  'drawer.caps.title':'🧩 기능 인벤토리','drawer.caps.src':'이름·종류만','drawer.caps.scoped':'이 세션 전용',
+  'drawer.caps.noscope':'세션 전용 기능 없음 — global 상속만 사용','drawer.caps.global':'모든 세션 상속',
+  'drawer.info.title':'ℹ 범위 안내',
+  'drawer.info.body':'트랜스크립트·활동 피드·git diff는 v1 범위 밖(§13) — 작업 내용은 <b style="color:var(--text)">열기 ↗</b>로 wmux에서 직접 확인. 기능 목록은 <span class="mono">~/.claude</span>(global)와 역할 폴더의 <span class="mono">.claude/·.mcp.json</span>(전용) 실측 — 설정 값·키는 표시하지 않음.',
+  'msg.activate.ok':'활성화 — <span class="mono">{name}</span> ✓ 세션은 <b>[＋ 세션 활성화]</b>로 개별 열기',
+  'msg.activate.a':'{name} 활성화 — 세션을 개별로 열 수 있습니다.',
+  'msg.activate.archived':'보관된 프로젝트 — 재개 후 활성화하세요','msg.activate.fail':'활성화 실패 — ',
+  'msg.activate.demo':'활성화 — <span class="mono">{name}</span> ✓ (세션 없음 — [＋ 세션 활성화]로 열기)',
+  'msg.activate.demo.a':'{name} 프로젝트를 활성화했습니다.',
+  'msg.spawn.failAll':'세션 연결 확인 실패 — <span class="mono">{label}</span> ({failed}) — [＋ 세션 활성화] 버튼 유지, 다시 시도하세요',
+  'msg.spawn.failAll.a':'세션 연결이 확인되지 않았습니다 — 다시 시도하세요.',
+  'msg.spawn.ok':'세션 활성화 — <span class="mono">{label}</span>{focused} 스폰 {spawned}{reused}{failed} ✓ 연결 확인됨',
+  'spawn.focused':' 워크스페이스 이동 →','spawn.reused':' · 재사용 {n}','spawn.failedTail':' · <b>연결 실패 {failed} (버튼 유지)</b>',
+  'msg.spawn.ok.a':'{role}을 열고 연결을 확인했습니다.','spawn.session':'세션',
+  'msg.spawn.archived':'보관된 프로젝트 — 재개 후','msg.spawn.fail':'세션 활성화 실패 — ',
+  'msg.spawn.demo.none':'이미 활성화됨 — 빠진 세션 없음',
+  'msg.spawn.demo.ok':'세션 활성화 — <span class="mono">{list}</span> ✓ 연결 확인 중…',
+  'msg.kill.ok':'세션 비활성화 — <span class="mono">{label}</span> 종료 ✓','msg.kill.ok.a':'{role} 세션을 종료했습니다.',
+  'msg.kill.changed':'세션 상태가 바뀌었어요 — 종료를 중단하고 화면을 갱신했습니다. 다시 확인 후 시도하세요',
+  'msg.kill.fail':'세션 비활성화 실패 — {err}','msg.kill.demo':'세션 비활성화 — <span class="mono">{role}</span> 종료 ✓',
+  'dlg.kill.title':'세션을 종료합니다',
+  'dlg.kill.sub':'<span class="who">{name} / {role}</span> — 이 세션에서 <b>claude가 실행 중</b>입니다. 종료하면 작업이 중단되고 되돌릴 수 없습니다.',
+  'dlg.kill.ok':'세션 종료',
+  'dlg.deact.title':'프로젝트를 비활성화합니다',
+  'dlg.deact.sub':'<span class="who">{name}</span> — 아래 세션 {n}개가 모두 종료(kill)되고 대기중으로 전환됩니다.{ports}<br><b>종료된 세션은 되돌릴 수 없습니다(undo 없음).</b>',
+  'dlg.deact.ports':'<br>귀속 서버 리스너 <b>{n}개</b>(<span class="mono">{ports}</span>)도 함께 중지됩니다.',
+  'dlg.deact.warn':'claude가 실행 중인 세션 {n}개가 있습니다 — 작업 중일 수 있습니다.',
+  'dlg.deact.ok':'세션 종료 후 비활성화','pin.fixed':'고정',
+  'msg.deact.ok':'비활성화 — <span class="mono">{name}</span> 세션 {n}개 종료{ports} ✓','msg.deact.ports':' · 서버 {n}개 중지',
+  'msg.deact.a':'{name} 비활성화 — 세션을 종료했습니다.','msg.deact.fail':'비활성화 실패 — {err}',
+  'msg.deact.demo':'비활성화 — <span class="mono">{name}</span> 세션 {n}개 종료{ports} · 대기중 ✓','msg.deact.demo.a':'{name} 프로젝트를 비활성화했습니다.',
+  'dlg.shut.title':'Cockpit을 종료합니다',
+  'dlg.shut.sub.has':'진행중 프로젝트 <b>{n}개</b>가 모두 비활성화됩니다 — 아래 세션 {sn}개가 종료(kill)되고{ports} <b>대기중</b>으로 전환된 뒤 {fate}.<br><b>종료된 세션은 되돌릴 수 없습니다(undo 없음).</b>',
+  'dlg.shut.sub.none':'진행중 프로젝트가 없습니다 — {fate}. 대시보드는 더 이상 응답하지 않아요.',
+  'dlg.shut.ports':' 귀속 서버 리스너 <b>{n}개</b>(<span class="mono">{ports}</span>)가 중지되고',
+  'shut.fate.owns':'<b>{mux} 앱과 서버가 함께</b> 내려갑니다','shut.fate.keep':'<b>서버가</b> 내려갑니다 ({mux}는 그대로 유지)',
+  'dlg.shut.ok.has':'모두 비활성화 후 종료','dlg.shut.ok.owns':'{mux}·서버 종료','dlg.shut.ok.keep':'서버 종료',
+  'msg.shut.ok':'전체 종료 — 프로젝트 {n}개 비활성화{ports} · 서버 종료 중…','msg.shut.fail':'전체 종료 실패 — {err}',
+  'bye.sub':'프로젝트 {n}개를 비활성화하고 <b>대기중</b>으로 전환했습니다.',
+  'bye.failed':'<br><span style="color:var(--warn)">⚠ 비활성화 실패: {failed} — {mux}에서 직접 확인하세요.</span>',
+  'bye.demo':'<br>(시뮬 — 새로고침하면 데모로 복귀합니다)',
+  'bye.owns':'<br>{mux} 앱과 서버가 내려갔으니 이 창은 닫아도 됩니다. 다시 시작하려면 boot(exe)를 실행하세요.',
+  'bye.keep':'<br>서버가 내려갔으니 이 창은 닫아도 됩니다({mux}는 그대로 열려 있습니다). 다시 시작하려면 boot을 실행하세요.',
+  'bye.a':'Cockpit이 종료되었습니다 — 모든 프로젝트가 대기중으로 전환되었습니다.',
+  'msg.archive.needDeact':'진행중 프로젝트는 먼저 비활성화하세요 (409 — kill을 아카이브에 숨기지 않음)',
+  'msg.archive.ok':'아카이브 — <span class="mono">{name}</span> ✓ (하단 종료됨 섹션)','msg.archive.fail':'아카이브 실패 — {err}',
+  'msg.archive.demo':'아카이브 — <span class="mono">{name}</span> ✓ (재개로 복귀 가능)',
+  'msg.reopen.ok':'재개 — <span class="mono">{name}</span> ✓ 대기중 복귀','msg.reopen.fail':'재개 실패 — {err}',
+  'msg.reopen.demo':'재개 — <span class="mono">{name}</span> 대기중 복귀 (활성화는 별도 액션) ✓','msg.reopen.demo.a':'{name} 프로젝트를 재개했습니다.',
+  'claude.starting':'시작 중…',
+  'msg.claude.already':'이미 실행 중 — <span class="mono">{role}</span> pane의 claude에 연결 (재전송 생략)',
+  'msg.claude.ok':'Claude 시작 — <span class="mono">{role}</span> pane ✓ (상태는 실측 확인 후 전환)','msg.claude.ok.a':'{role} 세션에서 Claude를 시작했습니다.',
+  'msg.claude.fail':'Claude 시작 실패 — {err}','msg.claude.demo':'Claude 시작(시뮬) — <span class="mono">{role}</span> (실측 갱신 대기)',
+  'msg.attach.ok':'wmux 점프 — <span class="mono">{label}</span> ✓','msg.attach.fail':'점프 실패 — {err}','msg.attach.demo':'wmux 점프(시뮬) — <span class="mono">{label}</span>',
+  'msg.open.ok':'폴더 열림 — <span class="mono">{path}</span>','msg.open.fail':'폴더 열기 실패 — {err}','msg.open.demo':'폴더 열기(시뮬) — <span class="mono">{path}</span>',
+  'msg.link.demo':'링크 열기(시뮬) — <span class="mono">{url}</span>',
+  'msg.feedback.unset':'문의 폼 URL이 아직 설정되지 않았어요 — <span class="mono">dashboard.html</span>의 <span class="mono">FEEDBACK_URL</span>을 교체하세요',
+  'cf.ann':'{title} — 확인이 필요합니다.','nm.err.empty':'값을 입력하세요.',
+  'lg.title.p':'관리 로그 — {name}','lg.empty':'기록 없음',
+  'dlg.create.title':'새 프로젝트',
+  'dlg.create.sub':'<b>root/&lt;프로젝트&gt;/</b> 폴더와 격리 스캐폴드(프로젝트 CLAUDE.md)를 만들고 <b>대기중</b>으로 등록합니다. <b>git 저장소는 ops/에만</b> 생성(git init · .gitignore) — 프로젝트 루트는 저장소 아님. ops 폴더는 자동 포함.',
+  'dlg.create.a':'프로젝트 이름','dlg.create.aph':'예: MyApp','dlg.create.b':'역할 (쉼표 구분 — ops는 자동 포함)','dlg.create.bph':'예: dev, art',
+  'msg.create.ok':'프로젝트 생성 — <span class="mono">{name}</span> ✓ 대기중 등록','msg.create.fail':'생성 실패 — {err}',
+  'msg.create.demo':'프로젝트 생성(시뮬) — <span class="mono">{name}</span> 대기중 등록 ✓',
+  'dlg.import.title':'기존 프로젝트 연동',
+  'dlg.import.sub':'<b>📁 찾아보기</b>로 연동할 폴더를 고르면 아래 경로가 채워집니다(경로를 직접 입력해도 됩니다). 그 폴더를 <b>root/&lt;프로젝트&gt;/ops/</b>로 <b>이동(move)</b>합니다 (기본 프로젝트 = ops 코드베이스, <b>git 저장소도 ops/</b>). 프로젝트 루트엔 격리 CLAUDE.md만 생기고(저장소 아님) <b>대기중</b>으로 등록됩니다. 경로가 이미 root/ 아래면 <b>이동 없이 제자리 등록</b>(구 팀 재등록 — B7).',
+  'dlg.import.warn':'폴더가 실제로 ops/로 이동됩니다 — 같은 드라이브만 지원, 실패 시 원본은 변경되지 않습니다. 이동 후 프로젝트 내부의 절대경로 참조(.env·IDE 설정·스크립트)는 깨질 수 있습니다.',
+  'dlg.import.a':'기존 프로젝트 경로','dlg.import.aph':'📁 찾아보기로 폴더 선택 (또는 경로 직접 입력)','dlg.import.aph2':'예: D:\\work\\my-old-project',
+  'dlg.import.b':'프로젝트 이름 (비우면 폴더명)','dlg.import.bph':'my-old-project','dlg.import.ok':'ops/로 연동',
+  'msg.import.ok':'연동 완료 — <span class="mono">root/{name}/ops/</span> ✓{backup} 대기중 등록','msg.import.backup':' · 기존 ops 백업: <span class="mono">{backup}</span>',
+  'msg.import.fail':'연동 실패 — {err} (원본 무변경)','msg.import.demo':'이사(시뮬) — <span class="mono">root/{name}/</span> 대기중 등록 ✓',
+  'browse.opening':'탐색창 여는 중…','browse.pickTitle':'연동할 기존 프로젝트 폴더를 선택하세요',
+  'browse.unsupported':'이 환경에서는 탐색창을 열 수 없어요 — 경로를 직접 입력하세요.','browse.fail':'탐색창 열기 실패 — {err}',
+  'dlg.role.title':'역할 추가',
+  'dlg.role.sub':'<span class="who">{name}</span> — 선언(project.json)에 역할을 추가하고 <b>root/{name}/&lt;역할&gt;/</b> 폴더를 준비합니다. 자유 스폰이 아니라 <b>선언 경유</b> — 스폰은 활성화/[세션 복구]가 수행합니다.',
+  'dlg.role.a':'역할 이름','dlg.role.aph':'예: dev · art · qa','dlg.role.ok':'추가',
+  'msg.role.opsReserved':'ops는 예약 역할 — 항상 포함됩니다','msg.role.needName':'역할 이름을 입력하세요',
+  'msg.role.ok':'역할 추가 — <span class="mono">{role}</span> ✓{spawnHint}','msg.role.spawnHint':' · [세션 복구]로 스폰하세요',
+  'msg.role.fail':'역할 추가 실패 — {err}','msg.role.demo':'역할 추가(시뮬) — <span class="mono">{role}</span>{spawnHint2} ✓','msg.role.spawnHint2':' · [세션 복구]로 스폰',
+  'dlg.rmrole.title':'역할을 제거합니다',
+  'dlg.rmrole.sub':'<span class="who">{name}</span> / <span class="mono">{role}</span> — <b>선언에서만 제거</b>합니다. 역할 폴더·파일은 보존됩니다(파괴 없음). 살아있는 세션이 있으면 거부(409)됩니다.',
+  'dlg.rmrole.ok':'선언에서 제거',
+  'msg.rmrole.ok':'역할 제거 — <span class="mono">{role}</span> ✓ (폴더 보존)','msg.rmrole.live':'살아있는 세션이 있는 역할 — 비활성화 후 제거하세요 (409)',
+  'msg.rmrole.fail':'역할 제거 실패 — {err}','msg.rmrole.demo':'역할 제거(시뮬) — <span class="mono">{role}</span> ✓',
+  'dlg.link.title':'서비스 링크 등록',
+  'dlg.link.sub':'<span class="who">{name}</span> — 배포 URL·DB 콘솔 등 연동 서비스 바로가기를 카드에 추가합니다 (표시 전용 · http/https만).',
+  'dlg.link.a':'라벨','dlg.link.aph':'예: 배포 · DB 콘솔','dlg.link.b':'URL (http/https)','dlg.link.bph':'https://…','dlg.link.ok':'등록',
+  'msg.link.badUrl':'http(s):// URL만 등록할 수 있습니다','msg.link.ok':'링크 등록 — <span class="mono">{label}</span> ✓',
+  'msg.link.fail':'링크 등록 실패 — {err}','msg.link.regdemo':'링크 등록(시뮬) — <span class="mono">{label}</span> ✓',
+  'dlg.serve.title':'서버 시작 명령 선언',
+  'dlg.serve.sub':'<span class="who">{name}</span> — [▶ 서버 시작]이 이 명령을 역할 pane의 셸에 그대로 입력합니다(터미널에서 치는 것과 동일 · pane에 claude가 켜져 있으면 거부). <b>명령을 비우고 확인하면 해제</b>됩니다.{cur}',
+  'dlg.serve.cur':'<br>현재: <span class="mono">[{role}] {cmd}</span>','dlg.serve.a':'시작 명령','dlg.serve.aph':'예: npm run dev','dlg.serve.b':'역할(pane) — 비우면 ops','dlg.serve.ok':'저장',
+  'msg.serve.noCmd':'선언된 서버 명령이 없습니다 — 명령을 입력하세요',
+  'msg.serve.saved':'서버 명령 저장 — <span class="mono">[{role}] {cmd}</span> ✓','msg.serve.cleared':'서버 명령 해제 ✓',
+  'msg.serve.unknownRole':'선언에 없는 역할입니다 — ops 또는 카드의 선언 역할만 가능','msg.serve.saveFail':'저장 실패 — {err}',
+  'msg.serve.saved.demo':'서버 명령 저장(시뮬) — <span class="mono">[{role}] {cmd}</span> ✓','msg.serve.cleared.demo':'서버 명령 해제(시뮬) ✓',
+  'msg.serve.start':'서버 시작 전송 — <span class="mono">[{role}] {cmd}</span> ✓ 리스너가 뜨면 우측 활성 포트에 표시됩니다',
+  'msg.serve.claudeOn':'그 pane엔 claude가 실행 중이라 차단했습니다(명령이 claude 입력창으로 들어감) — 다른 역할로 바꾸거나 claude를 종료하세요',
+  'msg.serve.unknownState':'pane 상태 확인 불가 — 잠시 후 다시 시도하세요','msg.serve.roleMissing':'그 역할 세션이 없습니다 — [＋ 세션 활성화]로 먼저 여세요',
+  'msg.serve.inactive':'프로젝트가 비활성입니다 — 먼저 활성화하세요','msg.serve.noConfig':'서버 명령 미선언 — [＋ 서버]로 먼저 선언하세요',
+  'msg.serve.startFail':'서버 시작 실패 — {err}','msg.serve.start.demo':'서버 시작(시뮬) — 데모에서는 실제 리스너가 생기지 않습니다',
+  'dlg.pkill.title':'리스너를 중지합니다',
+  'dlg.pkill.sub':'<span class="who">{project}</span> — <span class="mono">:{port} {proc}</span> 프로세스 트리가 종료됩니다(세션 pane은 유지).<br><b>저장 안 된 서버 상태는 사라집니다(undo 없음).</b>',
+  'dlg.pkill.ok':'리스너 중지',
+  'msg.pkill.ok':'리스너 중지 — <span class="mono">:{port} {proc}</span> ✓','msg.pkill.gone':'이미 내려간 리스너입니다 — 목록을 새로고침했어요',
+  'msg.pkill.notProject':'프로젝트 세션발 리스너만 중지할 수 있습니다','msg.pkill.fail':'중지 실패 — {err}','msg.pkill.demo':'리스너 중지(시뮬) — <span class="mono">{p}</span> ✓',
+  'dlg.gitremote.title':'git 원격 연결 → ops에 clone',
+  'dlg.gitremote.sub':'<span class="who">{name}</span> — 입력한 저장소를 <b>root/{name}/ops/</b>에 clone합니다 (ops = 코드베이스). 기존 ops 내용이 있으면 <b>백업 후</b> 진행하고, 이미 저장소면 원격만 갱신합니다. 비공개 repo는 인증(SSH 키·자격증명)이 필요할 수 있어요.{cur}',
+  'dlg.gitremote.cur':'<br>현재 ops 원격: <span class="mono">{remote}</span>','dlg.gitremote.a':'git 원격 URL','dlg.gitremote.aph':'예: https://github.com/you/repo.git · git@github.com:you/repo.git','dlg.gitremote.ok':'ops에 연결·clone',
+  'msg.git.badUrl':'git URL 형식이 아닙니다 (https:// · git@ · ssh://)',
+  'msg.gitremote.cloning':'ops로 연결·clone 중… (저장소 크기·네트워크에 따라 시간이 걸릴 수 있어요)',
+  'msg.gitremote.ok':'ops에 git {action} — <span class="mono">{url}</span> ✓{backup}','git.action.cloned':'clone 완료','git.action.updated':'원격 갱신',
+  'msg.gitremote.backup':' · 기존 ops 백업: <span class="mono">{backup}</span>','msg.gitremote.fail':'연결 실패 — {err}','msg.gitremote.demo':'ops에 git 연결(시뮬) — <span class="mono">{url}</span> ✓',
+  'dlg.creategit.title':'git 주소로 프로젝트 추가',
+  'dlg.creategit.sub':'입력한 git 저장소를 <b>root/&lt;이름&gt;/ops/</b>에 clone하고, 격리 스캐폴드(프로젝트 CLAUDE.md · git · .gitignore)와 함께 <b>대기중</b>으로 등록합니다. 이름을 비우면 <b>저장소 이름</b>을 씁니다. 비공개 repo는 인증(SSH 키·자격증명)이 필요할 수 있어요.',
+  'dlg.creategit.b':'프로젝트 이름 (비우면 저장소 이름)','dlg.creategit.bph':'예: MyApp','dlg.creategit.ok':'clone·생성',
+  'msg.creategit.cloning':'저장소 clone 중… (크기·네트워크에 따라 시간이 걸릴 수 있어요)',
+  'msg.creategit.ok':'프로젝트 생성 — <span class="mono">{name}</span> ✓ git {action}{backup} · 대기중 등록','msg.creategit.fail':'생성 실패 — {err}',
+  'msg.creategit.demo':'프로젝트 생성(시뮬) — <span class="mono">{name}</span> 대기중 등록 ✓',
+  'msg.adopt.noEmpty':'빈 선언 역할이 없습니다 — 채택할 역할이 없어요(모두 연결됨)','msg.adopt.onlyEmpty':'비어있는 역할만 채택할 수 있습니다: {roles}',
+  'msg.adopt.ok':'세션 채택 — <span class="mono">{agent}</span> → 역할 <span class="mono">{role}</span> ✓','msg.adopt.taken':'그 역할은 이미 다른 세션이 차지함 — 비어있는 역할로 채택하세요',
+  'msg.adopt.fail':'채택 실패 — {err}','msg.adopt.demo':'세션 채택(시뮬) — <span class="mono">{agent}</span> → <span class="mono">{role}</span> ✓',
+  'dlg.adopt.title':'세션을 역할로 동기화(채택)',
+  'dlg.adopt.sub':'<span class="who">{name}</span> — 연결 안 된 세션 <span class="mono">{agent}</span>을(를) 빈 선언 역할에 바인딩합니다. cockpit이 그 역할 세션으로 인식하고 중복 스폰을 막습니다. <b>빈 역할:</b> {roles}',
+  'dlg.adopt.a':'역할 (빈 역할만)','dlg.adopt.ok':'채택',
+  'me.tip':'Claude Code 훅 실측 — {full} (로컬 파일 · 토큰 소비 0)','me.model':'모델 {m}','me.effort':'effort {e}','me.cwd':' · cwd {cwd}'
+});
+Object.assign(I18N.en,{
+  'msg.refresh':'State refreshed — <span class="mono">GET /api/state</span>',
+  'follow.label':'↺ git follow',
+  'follow.on.t':'On — when you switch workspace in wmux, that repo page opens automatically in the {mux} browser panel. Click to turn off — POST /follow',
+  'follow.off.t':'Off — the panel is not switched automatically (only when you click a git chip). Click to turn on — POST /follow',
+  'msg.follow.on':'git follow on — the repo shows automatically in the {mux} panel on workspace switch ✓',
+  'msg.follow.off':'git follow off — the panel is left as-is ✓',
+  'msg.follow.fail':'git follow toggle failed — {err}',
+  'src.offline':'<span style="color:var(--crit)">▲</span> <span style="color:var(--crit)">offline</span> — check the server · re-run the exe',
+  'src.live':'live · wmux',
+  'hook.installing':'Installing…',
+  'msg.hook.ok':'Activity-badge hook installed ✓ — merged into <span class="mono">~/.claude/settings.json</span> (backup created · existing hooks preserved) · badges appear <b>from newly started Claude sessions</b>',
+  'msg.hook.ok.a':'Activity-badge hook installed. Badges will appear from newly started Claude sessions.',
+  'msg.hook.fail':'Hook install failed — {err} · manual install: <span class="mono">node cockpit/bin/activity-hook.mjs install</span>',
+  'ev.log.t':'Management log — most recent 20 per project (GET /api/log)',
+  'ev.log':'≡ log',
+  'git.open.t':'{remote} — open remote repo ({panel})',
+  'git.panel.embedded':'{mux} browser panel',
+  'git.panel.browser':'new tab in default browser',
+  'git.connect.t':'Connect git remote (origin) — entering a URL runs git remote set-url origin; the chip appears at the next poll',
+  'git.connect':'＋ Connect remote',
+  'msg.git.panel':'{mux} browser panel — <span class="mono">{web}</span> ✓',
+  'msg.git.panel.fail':'Panel open failed — {err} · falling back to default browser',
+  'link.open.t':'{url} — open in default browser',
+  'link.add':'＋ Link',
+  'link.add.t':'Register a service link (deploy · DB console, etc.) — POST /links',
+  'serve.start.t':"Send '{cmd}' to the [{role}] pane (same as typing in the terminal) — refused if claude is on in the pane · POST /serve-start",
+  'serve.start':'Start server',
+  'serve.edit.t':'Change the start command — confirm with an empty command to clear · current: [{role}] {cmd}',
+  'serve.add.t':'Declare a server start command to run in a session pane (e.g. npm run dev) — run it via [▶ Start server] · stop via [✕] in Active ports on the right · POST /serve',
+  'serve.add':'＋ Server',
+  'pill.terminal':'terminal','pill.unlinked':'unlinked',
+  'act.working':'working','act.waiting':'waiting','act.attention':'needs input',
+  'act.tip':'Measured via Claude Code hook — {label}','act.tip2':'Measured via Claude Code hook',
+  'ops.pin':'ops pinned','ops.pin.t':'Pinned session #1 — home base for git/DB/deploy checks',
+  'btn.openSession':'↗ Open session','btn.openSession.t':'Jump straight to the pane in wmux (move focus) — POST /attach',
+  'row.detail.t':'Session details — capability inventory (skill/agent/MCP) · wmux jump · folder',
+  'btn.claude':'▶ Run Claude','btn.claude.t':'Run claude in this pane — POST /claude (skipped if already running)',
+  'conn.checking':'? verifying link','conn.checking.t':'Verifying link — the Run Claude button appears once confirmed',
+  'dead.t':'The session for this role is not open yet — spawn it in wmux via [＋ Activate session]',
+  'dead.none':'No session — needs activation',
+  'btn.spawn1':'＋ Activate session','btn.spawn1.t':'Move to the workspace → spawn the session (pane) there → verify link — POST /spawn {role} (button stays if verification fails)',
+  'orphan.pin':'○ unlinked','orphan.pin.t':'Not linked to a cockpit role — adopt it into an empty role via [⎇ Sync to role]',
+  'orphan.now':'unlinked session · ',
+  'btn.adopt':'⎇ Sync to role','btn.adopt.t':'Bind this session to an empty declared role — POST /adopt (prevents duplicate spawns · links it)',
+  'health.missing':'{n} session(s) missing','health.ok':'sessions {a}/{b}',
+  'card.started':'started {rel}','card.started.t':'Started {date}',
+  'btn.folder.t':'Open the folder in the file explorer — POST /open',
+  'active.nosess':'No sessions — open them via [＋ Activate session]',
+  'btn.spawnAll':'＋ Activate all sessions','btn.spawnAll.t':'Move to the workspace → spawn all missing declared sessions → verify link — POST /spawn (no role = converge all · zero duplicates · buttons stay for any that fail)',
+  'btn.addRole':'＋ Role','btn.addRole.t':'Add a role via declaration (FS-8 — not free spawning) · spawn via [＋ Activate session]',
+  'btn.deactivate':'Deactivate','btn.deactivate.t':'Kill all sessions (confirmation required) then move to idle — POST /deactivate',
+  'active.empty':'No active projects — activate an idle project',
+  'idle.ops.t':'Pinned session #1 — home base for git/DB/deploy checks (after activation, open sessions individually via [＋ Activate session])',
+  'idle.role.t':'Click — remove role (declaration only, folder preserved · FS-8)',
+  'btn.activate':'▶ Activate','btn.activate.t':'Create the workspace only (no session spawn) — POST /activate · open sessions individually from the active card via [＋ Activate session]',
+  'idle.addRole.t':'Add a role via declaration (FS-8 — not free spawning)',
+  'btn.archive':'▪ Archive','btn.archive.t':'Archive — keep folder & declaration, move to the Archived section below (can be reopened)',
+  'idle.empty':'No idle projects — create a new project or link an existing one',
+  'unlinked.attach.t':'Move focus to the pane in wmux — POST /attach',
+  'unlinked.now':'external · not linked to a project','unlinked.empty':'No sessions (empty workspace)','unlinked.unmanaged':'not managed by cockpit',
+  'msg.jump.ext':'wmux jump ✓ — external session','msg.jump.fail':'Jump failed — {err}','msg.jump.demo':'Demo — real wmux jump works when connected to the server',
+  'closed.period.t':'Created {created} · archived {archived}','btn.folder2.t':'Open the folder in the file explorer',
+  'btn.reopen':'Reopen','btn.reopen.t':'Reopen — return to idle (no immediate activation) — POST /reopen',
+  'closed.label':'Archived','closed.hint':'Archived projects — activation blocked · reopen to return to idle',
+  'port.kill.t':'Stop the :{port} {proc} listener — kill the process tree (confirmation required) · POST /port-kill',
+  'port.other':'other','port.none':'No dev/db listeners detected','port.noneOwned':'No listeners bound to a project',
+  'port.sys.t':'System/other listeners unrelated to a project — folded away','port.sys':'System/other','port.sysHint':'project-unrelated',
+  'port.count':'{owned} bound · {system} other',
+  'caps.global.desc':'inherited by all sessions — ','caps.empty':'No items',
+  'caps.hint':'Session-scoped (skill/agent/MCP) is under <b style="color:var(--muted)">click a session row → details</b> — names & kinds only (values hidden)',
+  'drawer.claude.on':'claude running','drawer.claude.off':'terminal (claude off)','drawer.claude.unknown':'claude checking',
+  'drawer.act.working':'command running','drawer.act.waiting':'awaiting response','drawer.act.attention':'awaiting input/permission',
+  'drawer.orphan':'○ cockpit-unlinked','drawer.orphan.t':'Not linked to a cockpit role — adopt it into an empty role via [⎇ Sync to role]',
+  'drawer.ops':'📌 ops pinned','drawer.ops.t':'Pinned session #1 — killed only on deactivation · home base for git/DB/deploy checks',
+  'drawer.match':'🧭 match','drawer.match.t':'How cockpit recognized this session as a role — adopted=adoption mapping · label-ns=namespace label (stamped at spawn) · label=legacy label match',
+  'drawer.open':'Open ↗ (wmux jump)','drawer.open.t':'Move focus to the pane in wmux — POST /attach',
+  'drawer.folder':'📁 Folder','drawer.folder.t':'Open the role folder in the file explorer — POST /open {name, role}',
+  'drawer.claude.t':'Run claude in this pane — POST /claude',
+  'drawer.adopt.t':'Bind this session to an empty declared role — POST /adopt (links it · prevents duplicate spawns)',
+  'drawer.kill':'Deactivate session','drawer.kill.t':'Kill this session (individual deactivation) — POST /kill-session · confirms if claude is running',
+  'msg.drawer.open':'Opened details for the {name} {role} session.',
+  'drawer.caps.title':'🧩 Capability inventory','drawer.caps.src':'names & kinds only','drawer.caps.scoped':'this session only',
+  'drawer.caps.noscope':'No session-scoped capabilities — inherits global only','drawer.caps.global':'inherited by all sessions',
+  'drawer.info.title':'ℹ Scope notes',
+  'drawer.info.body':'Transcripts, activity feed, and git diff are out of scope for v1 (§13) — check the work directly in wmux via <b style="color:var(--text)">Open ↗</b>. The capability list is measured from <span class="mono">~/.claude</span> (global) and the <span class="mono">.claude/·.mcp.json</span> (scoped) in the role folder — setting values & keys are never shown.',
+  'msg.activate.ok':'Activated — <span class="mono">{name}</span> ✓ open sessions individually via <b>[＋ Activate session]</b>',
+  'msg.activate.a':'{name} activated — you can open sessions individually.',
+  'msg.activate.archived':'Archived project — reopen it before activating','msg.activate.fail':'Activation failed — ',
+  'msg.activate.demo':'Activated — <span class="mono">{name}</span> ✓ (no sessions — open via [＋ Activate session])',
+  'msg.activate.demo.a':'Activated project {name}.',
+  'msg.spawn.failAll':'Session link not confirmed — <span class="mono">{label}</span> ({failed}) — the [＋ Activate session] button stays; try again',
+  'msg.spawn.failAll.a':'Session link was not confirmed — try again.',
+  'msg.spawn.ok':'Session activated — <span class="mono">{label}</span>{focused} spawned {spawned}{reused}{failed} ✓ link confirmed',
+  'spawn.focused':' moved to workspace →','spawn.reused':' · reused {n}','spawn.failedTail':' · <b>link failed {failed} (button stays)</b>',
+  'msg.spawn.ok.a':'Opened {role} and confirmed the link.','spawn.session':'session',
+  'msg.spawn.archived':'Archived project — reopen first','msg.spawn.fail':'Session activation failed — ',
+  'msg.spawn.demo.none':'Already active — no missing sessions',
+  'msg.spawn.demo.ok':'Session activated — <span class="mono">{list}</span> ✓ verifying link…',
+  'msg.kill.ok':'Session deactivated — <span class="mono">{label}</span> killed ✓','msg.kill.ok.a':'Killed the {role} session.',
+  'msg.kill.changed':'The session state changed — cancelled the kill and refreshed. Re-check and try again',
+  'msg.kill.fail':'Session deactivation failed — {err}','msg.kill.demo':'Session deactivated — <span class="mono">{role}</span> killed ✓',
+  'dlg.kill.title':'Kill session',
+  'dlg.kill.sub':'<span class="who">{name} / {role}</span> — <b>claude is running</b> in this session. Killing it interrupts the work and cannot be undone.',
+  'dlg.kill.ok':'Kill session',
+  'dlg.deact.title':'Deactivate project',
+  'dlg.deact.sub':'<span class="who">{name}</span> — all {n} sessions below are killed and the project moves to idle.{ports}<br><b>Killed sessions cannot be undone (no undo).</b>',
+  'dlg.deact.ports':'<br>Its <b>{n}</b> bound server listener(s) (<span class="mono">{ports}</span>) are stopped too.',
+  'dlg.deact.warn':'{n} session(s) have claude running — work may be in progress.',
+  'dlg.deact.ok':'Kill sessions and deactivate','pin.fixed':'pinned',
+  'msg.deact.ok':'Deactivated — <span class="mono">{name}</span> killed {n} session(s){ports} ✓','msg.deact.ports':' · stopped {n} server(s)',
+  'msg.deact.a':'{name} deactivated — sessions killed.','msg.deact.fail':'Deactivation failed — {err}',
+  'msg.deact.demo':'Deactivated — <span class="mono">{name}</span> killed {n} session(s){ports} · idle ✓','msg.deact.demo.a':'Deactivated project {name}.',
+  'dlg.shut.title':'Shut down Cockpit',
+  'dlg.shut.sub.has':'All <b>{n}</b> active projects will be deactivated — the {sn} sessions below are killed{ports} and moved to <b>idle</b>, then {fate}.<br><b>Killed sessions cannot be undone (no undo).</b>',
+  'dlg.shut.sub.none':'No active projects — {fate}. The dashboard will no longer respond.',
+  'dlg.shut.ports':' its <b>{n}</b> bound server listener(s) (<span class="mono">{ports}</span>) are stopped and',
+  'shut.fate.owns':'the <b>{mux} app and server go down together</b>','shut.fate.keep':'the <b>server</b> goes down ({mux} stays up)',
+  'dlg.shut.ok.has':'Deactivate all and shut down','dlg.shut.ok.owns':'Shut down {mux} & server','dlg.shut.ok.keep':'Shut down server',
+  'msg.shut.ok':'Shutting down — deactivated {n} project(s){ports} · stopping server…','msg.shut.fail':'Shutdown failed — {err}',
+  'bye.sub':'Deactivated {n} project(s) and moved them to <b>idle</b>.',
+  'bye.failed':'<br><span style="color:var(--warn)">⚠ Deactivation failed: {failed} — check directly in {mux}.</span>',
+  'bye.demo':'<br>(sim — refresh to return to the demo)',
+  'bye.owns':'<br>The {mux} app and server are down, so you can close this window. To start again, run boot (exe).',
+  'bye.keep':'<br>The server is down, so you can close this window ({mux} stays open). To start again, run boot.',
+  'bye.a':'Cockpit has shut down — all projects moved to idle.',
+  'msg.archive.needDeact':'Deactivate the active project first (409 — archiving does not hide a kill)',
+  'msg.archive.ok':'Archived — <span class="mono">{name}</span> ✓ (Archived section below)','msg.archive.fail':'Archive failed — {err}',
+  'msg.archive.demo':'Archived — <span class="mono">{name}</span> ✓ (can be reopened)',
+  'msg.reopen.ok':'Reopened — <span class="mono">{name}</span> ✓ back to idle','msg.reopen.fail':'Reopen failed — {err}',
+  'msg.reopen.demo':'Reopened — <span class="mono">{name}</span> back to idle (activation is a separate action) ✓','msg.reopen.demo.a':'Reopened project {name}.',
+  'claude.starting':'Starting…',
+  'msg.claude.already':'Already running — connected to claude in the <span class="mono">{role}</span> pane (resend skipped)',
+  'msg.claude.ok':'Claude started — <span class="mono">{role}</span> pane ✓ (status flips after live confirmation)','msg.claude.ok.a':'Started Claude in the {role} session.',
+  'msg.claude.fail':'Claude start failed — {err}','msg.claude.demo':'Claude started (sim) — <span class="mono">{role}</span> (awaiting live update)',
+  'msg.attach.ok':'wmux jump — <span class="mono">{label}</span> ✓','msg.attach.fail':'Jump failed — {err}','msg.attach.demo':'wmux jump (sim) — <span class="mono">{label}</span>',
+  'msg.open.ok':'Folder opened — <span class="mono">{path}</span>','msg.open.fail':'Open folder failed — {err}','msg.open.demo':'Open folder (sim) — <span class="mono">{path}</span>',
+  'msg.link.demo':'Open link (sim) — <span class="mono">{url}</span>',
+  'msg.feedback.unset':'The feedback form URL is not set yet — replace <span class="mono">FEEDBACK_URL</span> in <span class="mono">dashboard.html</span>',
+  'cf.ann':'{title} — confirmation required.','nm.err.empty':'Please enter a value.',
+  'lg.title.p':'Management log — {name}','lg.empty':'No records',
+  'dlg.create.title':'New project',
+  'dlg.create.sub':'Creates a <b>root/&lt;project&gt;/</b> folder with an isolated scaffold (project CLAUDE.md) and registers it as <b>idle</b>. A <b>git repo is created in ops/ only</b> (git init · .gitignore) — the project root is not a repo. The ops folder is included automatically.',
+  'dlg.create.a':'Project name','dlg.create.aph':'e.g. MyApp','dlg.create.b':'Roles (comma-separated — ops included automatically)','dlg.create.bph':'e.g. dev, art',
+  'msg.create.ok':'Project created — <span class="mono">{name}</span> ✓ registered as idle','msg.create.fail':'Create failed — {err}',
+  'msg.create.demo':'Project created (sim) — <span class="mono">{name}</span> registered as idle ✓',
+  'dlg.import.title':'Link existing project',
+  'dlg.import.sub':'Pick a folder with <b>📁 Browse</b> and the path below fills in (you can also type it). That folder is <b>moved</b> to <b>root/&lt;project&gt;/ops/</b> (the base project = the ops codebase, <b>the git repo lives in ops/ too</b>). The project root gets only an isolated CLAUDE.md (not a repo) and it is registered as <b>idle</b>. If the path is already under root/, it is <b>registered in place without moving</b> (re-registering an old team — B7).',
+  'dlg.import.warn':'The folder is actually moved into ops/ — same-drive only; on failure the original is left unchanged. After the move, absolute-path references inside the project (.env · IDE settings · scripts) may break.',
+  'dlg.import.a':'Existing project path','dlg.import.aph':'📁 Pick a folder via Browse (or type the path)','dlg.import.aph2':'e.g. D:\\work\\my-old-project',
+  'dlg.import.b':'Project name (blank = folder name)','dlg.import.bph':'my-old-project','dlg.import.ok':'Link into ops/',
+  'msg.import.ok':'Linked — <span class="mono">root/{name}/ops/</span> ✓{backup} registered as idle','msg.import.backup':' · previous ops backed up: <span class="mono">{backup}</span>',
+  'msg.import.fail':'Link failed — {err} (original unchanged)','msg.import.demo':'Moved (sim) — <span class="mono">root/{name}/</span> registered as idle ✓',
+  'browse.opening':'Opening dialog…','browse.pickTitle':'Select an existing project folder to link',
+  'browse.unsupported':'This environment cannot open a folder dialog — type the path directly.','browse.fail':'Folder dialog failed — {err}',
+  'dlg.role.title':'Add role',
+  'dlg.role.sub':'<span class="who">{name}</span> — adds a role to the declaration (project.json) and prepares the <b>root/{name}/&lt;role&gt;/</b> folder. Not free spawning but <b>via declaration</b> — spawning is done by activation / [Recover session].',
+  'dlg.role.a':'Role name','dlg.role.aph':'e.g. dev · art · qa','dlg.role.ok':'Add',
+  'msg.role.opsReserved':'ops is a reserved role — always included','msg.role.needName':'Enter a role name',
+  'msg.role.ok':'Role added — <span class="mono">{role}</span> ✓{spawnHint}','msg.role.spawnHint':' · spawn via [Recover session]',
+  'msg.role.fail':'Add role failed — {err}','msg.role.demo':'Role added (sim) — <span class="mono">{role}</span>{spawnHint2} ✓','msg.role.spawnHint2':' · spawn via [Recover session]',
+  'dlg.rmrole.title':'Remove role',
+  'dlg.rmrole.sub':'<span class="who">{name}</span> / <span class="mono">{role}</span> — <b>removed from the declaration only</b>. The role folder & files are preserved (nothing destroyed). Refused (409) if a live session exists.',
+  'dlg.rmrole.ok':'Remove from declaration',
+  'msg.rmrole.ok':'Role removed — <span class="mono">{role}</span> ✓ (folder preserved)','msg.rmrole.live':'Role has a live session — deactivate before removing (409)',
+  'msg.rmrole.fail':'Remove role failed — {err}','msg.rmrole.demo':'Role removed (sim) — <span class="mono">{role}</span> ✓',
+  'dlg.link.title':'Register service link',
+  'dlg.link.sub':'<span class="who">{name}</span> — adds a shortcut to a linked service (deploy URL, DB console, etc.) to the card (display only · http/https only).',
+  'dlg.link.a':'Label','dlg.link.aph':'e.g. Deploy · DB console','dlg.link.b':'URL (http/https)','dlg.link.bph':'https://…','dlg.link.ok':'Register',
+  'msg.link.badUrl':'Only http(s):// URLs can be registered','msg.link.ok':'Link registered — <span class="mono">{label}</span> ✓',
+  'msg.link.fail':'Register link failed — {err}','msg.link.regdemo':'Link registered (sim) — <span class="mono">{label}</span> ✓',
+  'dlg.serve.title':'Declare server start command',
+  'dlg.serve.sub':'<span class="who">{name}</span> — [▶ Start server] types this command into the role pane shell as-is (same as typing in the terminal · refused if claude is on in the pane). <b>Confirm with an empty command to clear it.</b>{cur}',
+  'dlg.serve.cur':'<br>Current: <span class="mono">[{role}] {cmd}</span>','dlg.serve.a':'Start command','dlg.serve.aph':'e.g. npm run dev','dlg.serve.b':'Role (pane) — blank = ops','dlg.serve.ok':'Save',
+  'msg.serve.noCmd':'No server command declared — enter a command',
+  'msg.serve.saved':'Server command saved — <span class="mono">[{role}] {cmd}</span> ✓','msg.serve.cleared':'Server command cleared ✓',
+  'msg.serve.unknownRole':'Role not in the declaration — only ops or a declared role on the card','msg.serve.saveFail':'Save failed — {err}',
+  'msg.serve.saved.demo':'Server command saved (sim) — <span class="mono">[{role}] {cmd}</span> ✓','msg.serve.cleared.demo':'Server command cleared (sim) ✓',
+  'msg.serve.start':'Start command sent — <span class="mono">[{role}] {cmd}</span> ✓ once the listener is up it shows in Active ports on the right',
+  'msg.serve.claudeOn':'Blocked because claude is running in that pane (the command would enter the claude input) — switch roles or stop claude',
+  'msg.serve.unknownState':'Cannot check pane state — try again shortly','msg.serve.roleMissing':'No session for that role — open it first via [＋ Activate session]',
+  'msg.serve.inactive':'The project is inactive — activate it first','msg.serve.noConfig':'No server command declared — declare one first via [＋ Server]',
+  'msg.serve.startFail':'Start server failed — {err}','msg.serve.start.demo':'Start server (sim) — no real listener is created in the demo',
+  'dlg.pkill.title':'Stop listener',
+  'dlg.pkill.sub':'<span class="who">{project}</span> — the <span class="mono">:{port} {proc}</span> process tree is killed (the session pane stays).<br><b>Unsaved server state is lost (no undo).</b>',
+  'dlg.pkill.ok':'Stop listener',
+  'msg.pkill.ok':'Listener stopped — <span class="mono">:{port} {proc}</span> ✓','msg.pkill.gone':'Listener already down — refreshed the list',
+  'msg.pkill.notProject':'Only listeners from project sessions can be stopped','msg.pkill.fail':'Stop failed — {err}','msg.pkill.demo':'Listener stopped (sim) — <span class="mono">{p}</span> ✓',
+  'dlg.gitremote.title':'Connect git remote → clone into ops',
+  'dlg.gitremote.sub':'<span class="who">{name}</span> — clones the given repo into <b>root/{name}/ops/</b> (ops = codebase). If ops already has content it is <b>backed up first</b>; if it is already a repo, only the remote is updated. Private repos may require authentication (SSH key · credentials).{cur}',
+  'dlg.gitremote.cur':'<br>Current ops remote: <span class="mono">{remote}</span>','dlg.gitremote.a':'git remote URL','dlg.gitremote.aph':'e.g. https://github.com/you/repo.git · git@github.com:you/repo.git','dlg.gitremote.ok':'Connect & clone into ops',
+  'msg.git.badUrl':'Not a git URL (https:// · git@ · ssh://)',
+  'msg.gitremote.cloning':'Connecting & cloning into ops… (may take a while depending on repo size & network)',
+  'msg.gitremote.ok':'git {action} into ops — <span class="mono">{url}</span> ✓{backup}','git.action.cloned':'clone complete','git.action.updated':'remote updated',
+  'msg.gitremote.backup':' · previous ops backed up: <span class="mono">{backup}</span>','msg.gitremote.fail':'Connect failed — {err}','msg.gitremote.demo':'git connected to ops (sim) — <span class="mono">{url}</span> ✓',
+  'dlg.creategit.title':'Add project from git URL',
+  'dlg.creategit.sub':'Clones the given git repo into <b>root/&lt;name&gt;/ops/</b> and registers it as <b>idle</b> with an isolated scaffold (project CLAUDE.md · git · .gitignore). If the name is blank, the <b>repo name</b> is used. Private repos may require authentication (SSH key · credentials).',
+  'dlg.creategit.b':'Project name (blank = repo name)','dlg.creategit.bph':'e.g. MyApp','dlg.creategit.ok':'Clone & create',
+  'msg.creategit.cloning':'Cloning repo… (may take a while depending on size & network)',
+  'msg.creategit.ok':'Project created — <span class="mono">{name}</span> ✓ git {action}{backup} · registered as idle','msg.creategit.fail':'Create failed — {err}',
+  'msg.creategit.demo':'Project created (sim) — <span class="mono">{name}</span> registered as idle ✓',
+  'msg.adopt.noEmpty':'No empty declared roles — nothing to adopt (all linked)','msg.adopt.onlyEmpty':'Only empty roles can be adopted: {roles}',
+  'msg.adopt.ok':'Session adopted — <span class="mono">{agent}</span> → role <span class="mono">{role}</span> ✓','msg.adopt.taken':'That role is already taken by another session — adopt into an empty role',
+  'msg.adopt.fail':'Adopt failed — {err}','msg.adopt.demo':'Session adopted (sim) — <span class="mono">{agent}</span> → <span class="mono">{role}</span> ✓',
+  'dlg.adopt.title':'Sync session to role (adopt)',
+  'dlg.adopt.sub':'<span class="who">{name}</span> — binds the unlinked session <span class="mono">{agent}</span> to an empty declared role. cockpit then recognizes it as the session for that role and prevents duplicate spawns. <b>Empty roles:</b> {roles}',
+  'dlg.adopt.a':'Role (empty roles only)','dlg.adopt.ok':'Adopt',
+  'me.tip':'Measured via Claude Code hook — {full} (local files · zero token cost)','me.model':'model {m}','me.effort':'effort {e}','me.cwd':' · cwd {cwd}'
+});
+/* ── 관리 로그 메시지(백엔드 logEvent · 데모 logEv) — detail={k,p} 렌더 카탈로그 ── */
+Object.assign(I18N.ko,{
+  'log.follow.tracking':'workspace 추적 — {target} → {url} ({mux} 브라우저 패널)',
+  'log.follow.error':'추적 실패 — {err}',
+  'log.reconcile.reconnect':'wmux 재연결 감지(epoch {epoch}) — 매핑 재검증 시작',
+  'log.reconcile.rebind':'workspace 재바인딩({via} 매칭) — wsId {oldWs} → {newWs}',
+  'log.reconcile.rebind-fresh':'workspace 재바인딩({via} 매칭) — wsId 없음 → {newWs}',
+  'log.reconcile.stale-ws':'stale wsId 해제 — {wsId} (실측 {grace}회 연속 부재)',
+  'log.reconcile.stale-adopt':'stale 채택 해제 — {agentId} → {role} (실측 {grace}회 연속 부재)',
+  'log.reconcile.rewrite-failed':'되쓰기 실패 — {err}',
+  'log.clean-slate.kill-failed':'복원 세션 {sess} 종료 실패 — {err}',
+  'log.clean-slate.done':'wmux 초기화 — 복원 세션 {killed}개 종료 · 워크스페이스 {closed}개 닫음 (선언 기준 재구성)',
+  'log.activate.created':'workspace 생성 · 세션 스폰 없음(개별 활성화 대기)',
+  'log.activate.reused':'workspace 재사용 · 세션 스폰 없음(개별 활성화 대기)',
+  'log.spawn.env-unsupported':'env 주입 미지원 wmux — env 없이 재시도 ({role})',
+  'log.spawn.misplaced':'{role} 오배치 감지 — {wsId}에 스폰됨 · 정리 후 실패 처리',
+  'log.spawn.failed':'{role} 스폰 실패 — {err}',
+  'log.spawn.verify-failed':'{role} 연결 확인 실패 — 대상 워크스페이스에서 실측되지 않음(활성화 버튼 유지)',
+  'log.spawn.summary':'세션 스폰 {spawned} ({ids}) · 재사용 {reused} · 연결 실패 {failed}',
+  'log.kill.session':'세션 종료 — {role} (개별 비활성화)',
+  'log.port.stopped-deactivate':':{port} {proc}(pid {pid}) 중지 — 비활성화에 따른 귀속 서버 정리',
+  'log.port.stop-failed-deactivate':':{port} {proc}(pid {pid}) 중지 실패 — {err} (비활성화는 계속)',
+  'log.kill.session-failed':'{sess} 종료 실패 — {err}',
+  'log.deactivate.done':'세션 {killed}개 종료 · 귀속 서버 {portsKilled}개 중지 · 대기중 전환',
+  'log.archive.done':'아카이브 처리',
+  'log.reopen.done':'재개 — 대기중 복귀',
+  'log.scan.parse-failed':'project.json 파싱 실패 — {err}',
+  'log.shutdown.deactivate-failed':'비활성화 실패 — {err}',
+  'log.shutdown.summary-app-closed':'전체 종료 — 프로젝트 {deactivated}개 비활성화(대기중) · 귀속 서버 {portsKilled}개 중지 · 실패 {failed} · {mux} 종료 · 서버 종료',
+  'log.shutdown.summary-app-kept':'전체 종료 — 프로젝트 {deactivated}개 비활성화(대기중) · 귀속 서버 {portsKilled}개 중지 · 실패 {failed} · {mux} 유지 · 서버 종료',
+  'log.create.scaffold':'격리 스캐폴드 생성 · 역할 {count}개 · 대기중 등록',
+  'log.create.merged':'역할 병합 — 추가 {added}',
+  'log.create.merged-none':'역할 병합 — 추가 없음(멱등)',
+  'log.import.already':'이미 등록됨(멱등)',
+  'log.import.in-place':'제자리 등록 — 이동 없이 스캐폴드·선언 적용',
+  'log.import.moved':'{path} → root/{name}/ops/ 이동 · 기존 ops 백업 {backup} · 대기중 등록',
+  'log.create-git.cloned-new':'git clone → root/{name}/ops/ · 기존 ops 백업 {backup} · 대기중 등록 — {url}',
+  'log.create-git.cloned-reused':'git clone → root/{name}/ops/ · 기존 ops 백업 {backup} · 기존 프로젝트 재사용 — {url}',
+  'log.create-git.updated-new':'git 원격 갱신 → root/{name}/ops/ · 기존 ops 백업 {backup} · 대기중 등록 — {url}',
+  'log.create-git.updated-reused':'git 원격 갱신 → root/{name}/ops/ · 기존 ops 백업 {backup} · 기존 프로젝트 재사용 — {url}',
+  'log.roles.removed':'역할 제거 — {role} (선언만, 폴더 보존)',
+  'log.claude.sent':'{sess} 세션에 claude 기동 전송',
+  'log.open-web.failed':'{mux} 브라우저 패널 열기 실패 — {err}',
+  'log.follow.toggle-on':'workspace git 추적 켜짐 — {mux} 브라우저 패널 자동 이동',
+  'log.follow.toggle-off':'workspace git 추적 꺼짐 — {mux} 브라우저 패널 자동 이동',
+  'log.hook.install-failed':'활동 배지 훅 설치 실패 — {err}',
+  'log.hook.installed':'활동 배지 훅 설치 — ~/.claude/settings.json 병합(백업 settings.json.cockpit-bak)',
+  'log.adopt.done':'세션 {agentId} → 역할 {role} 채택 (동기화)',
+  'log.git.remote-cloned':'ops 원격 clone · 기존 ops 백업 {backup} — {url}',
+  'log.git.remote-updated':'ops 원격 갱신 · 기존 ops 백업 {backup} — {url}',
+  'log.port.stop-failed':':{port} {proc}(pid {pid}) 중지 실패 — {err}',
+  'log.port.stopped':':{port} {proc}(pid {pid}) 중지 — 프로세스 트리 종료',
+  'log.serve.declared':'서버 명령 선언 — [{role}] {cmd}',
+  'log.serve.cleared':'서버 명령 해제',
+  'log.serve.start-sent':'[{role}] pane에 서버 시작 전송 — {cmd}',
+  'log.hook.autoinstall-failed':'활동 훅 자동 설치 실패 — {err} (배너의 [훅 설치]로 수동 설치 가능)',
+  'log.hook.autoinstalled':'활동 훅 자동 설치/수리 — ~/.claude/settings.json을 현재 리포 경로로 재등록(백업 settings.json.cockpit-bak)',
+  'log.server.error':'{method} {path} — {err}',
+  'log.import.demo':'{path} → root/{name}/ 이동 · 스캐폴드 적용 · 대기중 등록',
+  'log.creategit.demo':'git clone → root/{name}/ops/ · 대기중 등록',
+  'log.shutdown.demo':'전체 종료 — 프로젝트 {n}개 비활성화(대기중) · 서버 종료',
+  'log.seed.claude':'dev 세션 claude 기동',
+  'log.seed.activate':'workspace 생성 · 세션 3개 스폰 (ops 1번)',
+  'log.seed.spawnfail':'design 세션 스폰 실패 — 폴더 잠금 (재시도: 세션 복구)',
+  'log.seed.activate2':'workspace 생성 · 세션 3개 스폰',
+  'log.seed.deactivate':'세션 2개 종료 · 대기중 전환'
+});
+Object.assign(I18N.en,{
+  'log.follow.tracking':'workspace tracking — {target} to {url} ({mux} browser panel)',
+  'log.follow.error':'Tracking failed — {err}',
+  'log.reconcile.reconnect':'wmux reconnect detected (epoch {epoch}) — mapping re-validation started',
+  'log.reconcile.rebind':'workspace rebind ({via} match) — wsId {oldWs} to {newWs}',
+  'log.reconcile.rebind-fresh':'workspace rebind ({via} match) — wsId none to {newWs}',
+  'log.reconcile.stale-ws':'stale wsId released — {wsId} (absent for {grace} consecutive observations)',
+  'log.reconcile.stale-adopt':'stale adoption released — {agentId} to {role} (absent for {grace} consecutive observations)',
+  'log.reconcile.rewrite-failed':'Write-back failed — {err}',
+  'log.clean-slate.kill-failed':'Restored session {sess} termination failed — {err}',
+  'log.clean-slate.done':'wmux reset — {killed} restored session(s) terminated · {closed} workspace(s) closed (rebuilt from declarations)',
+  'log.activate.created':'workspace created · no session spawn (awaiting individual activation)',
+  'log.activate.reused':'workspace reused · no session spawn (awaiting individual activation)',
+  'log.spawn.env-unsupported':'wmux without env injection support — retrying without env ({role})',
+  'log.spawn.misplaced':'{role} misplacement detected — spawned into {wsId} · cleaned up and marked failed',
+  'log.spawn.failed':'{role} spawn failed — {err}',
+  'log.spawn.verify-failed':'{role} connection check failed — not observed in the target workspace (activation button retained)',
+  'log.spawn.summary':'Spawned {spawned} session(s) ({ids}) · reused {reused} · connection failed {failed}',
+  'log.kill.session':'Session terminated — {role} (individual deactivation)',
+  'log.port.stopped-deactivate':':{port} {proc} (pid {pid}) stopped — attributed server cleanup on deactivation',
+  'log.port.stop-failed-deactivate':':{port} {proc} (pid {pid}) stop failed — {err} (deactivation continues)',
+  'log.kill.session-failed':'{sess} termination failed — {err}',
+  'log.deactivate.done':'{killed} session(s) terminated · {portsKilled} attributed server(s) stopped · transitioning to idle',
+  'log.archive.done':'Archived',
+  'log.reopen.done':'Reopened — returned to idle',
+  'log.scan.parse-failed':'project.json parse failed — {err}',
+  'log.shutdown.deactivate-failed':'Deactivation failed — {err}',
+  'log.shutdown.summary-app-closed':'Full shutdown — {deactivated} project(s) deactivated (idle) · {portsKilled} attributed server(s) stopped · failed {failed} · {mux} closed · server shutdown',
+  'log.shutdown.summary-app-kept':'Full shutdown — {deactivated} project(s) deactivated (idle) · {portsKilled} attributed server(s) stopped · failed {failed} · {mux} kept · server shutdown',
+  'log.create.scaffold':'Isolated scaffold created · {count} role(s) · registered as idle',
+  'log.create.merged':'Roles merged — added {added}',
+  'log.create.merged-none':'Roles merged — none added (idempotent)',
+  'log.import.already':'Already registered (idempotent)',
+  'log.import.in-place':'Registered in place — scaffold and declarations applied without moving',
+  'log.import.moved':'{path} to root/{name}/ops/ moved · existing ops backed up {backup} · registered as idle',
+  'log.create-git.cloned-new':'git clone to root/{name}/ops/ · existing ops backed up {backup} · registered as idle — {url}',
+  'log.create-git.cloned-reused':'git clone to root/{name}/ops/ · existing ops backed up {backup} · reused existing project — {url}',
+  'log.create-git.updated-new':'git remote updated to root/{name}/ops/ · existing ops backed up {backup} · registered as idle — {url}',
+  'log.create-git.updated-reused':'git remote updated to root/{name}/ops/ · existing ops backed up {backup} · reused existing project — {url}',
+  'log.roles.removed':'Role removed — {role} (declaration only, folder preserved)',
+  'log.claude.sent':'Sent claude start to the {sess} session',
+  'log.open-web.failed':'{mux} browser panel open failed — {err}',
+  'log.follow.toggle-on':'workspace git tracking on — {mux} browser panel auto-navigation',
+  'log.follow.toggle-off':'workspace git tracking off — {mux} browser panel auto-navigation',
+  'log.hook.install-failed':'Activity badge hook install failed — {err}',
+  'log.hook.installed':'Activity badge hook installed — ~/.claude/settings.json merged (backup settings.json.cockpit-bak)',
+  'log.adopt.done':'Session {agentId} to role {role} adopted (synced)',
+  'log.git.remote-cloned':'ops remote clone · existing ops backed up {backup} — {url}',
+  'log.git.remote-updated':'ops remote updated · existing ops backed up {backup} — {url}',
+  'log.port.stop-failed':':{port} {proc} (pid {pid}) stop failed — {err}',
+  'log.port.stopped':':{port} {proc} (pid {pid}) stopped — process tree terminated',
+  'log.serve.declared':'Server command declared — [{role}] {cmd}',
+  'log.serve.cleared':'Server command cleared',
+  'log.serve.start-sent':'Sent server start to the [{role}] pane — {cmd}',
+  'log.hook.autoinstall-failed':'Activity hook auto-install failed — {err} (manual install available via the [Install hook] banner)',
+  'log.hook.autoinstalled':'Activity hook auto-install/repair — re-registered ~/.claude/settings.json to the current repo path (backup settings.json.cockpit-bak)',
+  'log.server.error':'{method} {path} — {err}',
+  'log.import.demo':'{path} to root/{name}/ moved · scaffold applied · registered as idle',
+  'log.creategit.demo':'git clone to root/{name}/ops/ · registered as idle',
+  'log.shutdown.demo':'Full shutdown — {n} project(s) deactivated (idle) · server shutdown',
+  'log.seed.claude':'Started claude in the dev session',
+  'log.seed.activate':'workspace created · 3 sessions spawned (ops #1)',
+  'log.seed.spawnfail':'design session spawn failed — folder lock (retry: recover session)',
+  'log.seed.activate2':'workspace created · 3 sessions spawned',
+  'log.seed.deactivate':'2 sessions terminated · transitioned to idle'
+});
+function t(key,p){
+  let s=(I18N[LANG]&&I18N[LANG][key]);
+  if(s==null)s=(I18N.ko&&I18N.ko[key]);
+  if(s==null)return key;
+  if(p)for(const k in p)s=s.split('{'+k+'}').join(p[k]);
+  return s;
+}
+function applyStaticI18n(){
+  document.title=t('doc.title');
+  document.documentElement.lang=LANG;
+  document.querySelectorAll('[data-i18n]').forEach(el=>el.textContent=t(el.getAttribute('data-i18n')));
+  document.querySelectorAll('[data-i18n-html]').forEach(el=>el.innerHTML=t(el.getAttribute('data-i18n-html')));
+  document.querySelectorAll('[data-i18n-title]').forEach(el=>el.title=t(el.getAttribute('data-i18n-title')));
+  document.querySelectorAll('[data-i18n-ph]').forEach(el=>el.placeholder=t(el.getAttribute('data-i18n-ph')));
+  document.querySelectorAll('[data-i18n-aria]').forEach(el=>el.setAttribute('aria-label',t(el.getAttribute('data-i18n-aria'))));
+  const lb=document.getElementById('lang-btn'); if(lb){lb.textContent=LANG==='ko'?'🌐 EN':'🌐 한국어'; lb.title=t('lang.toggle.t');}
+}
+function setLang(l){ LANG=(l==='en')?'en':'ko'; try{localStorage.setItem('ck-lang',LANG);}catch(e){} applyStaticI18n(); if(typeof renderAll==='function')renderAll(); }
+function toggleLang(){ setLang(LANG==='ko'?'en':'ko'); }
+</script>
 
 <script>
 'use strict';
@@ -491,13 +1139,13 @@ const SCAPS={ // '<프로젝트>/<역할>' → 그 세션 전용(project/session
   'CharCollector/ops':{project:[{nm:'release-checklist',k:'skill'}],session:[]},
   'ClientA-Web/dev':{project:[],session:[{nm:'supabase',k:'mcp'}]},
 };
-let EVENTS=[ // GET /api/log 시뮬레이션 — {ts, level, project, event, detail}
-  {ts:Date.now()-2*3600000, level:'info',  project:'CharCollector', event:'claude',     detail:'dev 세션 claude 기동'},
-  {ts:Date.now()-5*3600000, level:'info',  project:'CharCollector', event:'activate',   detail:'workspace 생성 · 세션 3개 스폰 (ops 1번)'},
-  {ts:Date.now()-8*3600000, level:'error', project:'ClientA-Web',  event:'spawn',      detail:'design 세션 스폰 실패 — 폴더 잠금 (재시도: 세션 복구)'},
-  {ts:Date.now()-1*DAY,     level:'info',  project:'ClientA-Web',  event:'activate',   detail:'workspace 생성 · 세션 3개 스폰'},
-  {ts:Date.now()-2*DAY,     level:'info',  project:'PortfolioSite',event:'deactivate', detail:'세션 2개 종료 · 대기중 전환'},
-  {ts:Date.now()-20*DAY,    level:'info',  project:'PoC-Chatbot',  event:'archive',    detail:'아카이브 처리'},
+let EVENTS=[ // GET /api/log 시뮬레이션 — {ts, level, project, event, detail:{k,p}}
+  {ts:Date.now()-2*3600000, level:'info',  project:'CharCollector', event:'claude',     detail:{k:'log.seed.claude'}},
+  {ts:Date.now()-5*3600000, level:'info',  project:'CharCollector', event:'activate',   detail:{k:'log.seed.activate'}},
+  {ts:Date.now()-8*3600000, level:'error', project:'ClientA-Web',  event:'spawn',      detail:{k:'log.seed.spawnfail'}},
+  {ts:Date.now()-1*DAY,     level:'info',  project:'ClientA-Web',  event:'activate',   detail:{k:'log.seed.activate2'}},
+  {ts:Date.now()-2*DAY,     level:'info',  project:'PortfolioSite',event:'deactivate', detail:{k:'log.seed.deactivate'}},
+  {ts:Date.now()-20*DAY,    level:'info',  project:'PoC-Chatbot',  event:'archive',    detail:{k:'log.archive.done'}},
 ];
 function logEv(level,project,event,detail){EVENTS.unshift({ts:Date.now(),level,project,event,detail});}
 
@@ -543,8 +1191,8 @@ const mdlShort=m=>String(m).replace(/^claude-/,'').replace(/-\d{8}$/,'');
 function meChip(model,effort,sm){
   if(!model&&!effort)return '';
   const txt=[model?mdlShort(model):null,effort||null].filter(Boolean).join(' · ');
-  const full=[model?'모델 '+model:null,effort?'effort '+effort:null].filter(Boolean).join(' · ');
-  return `<span class="pill ${sm?'sm ':''}model" title="Claude Code 훅 실측 — ${esc(full)} (로컬 파일 · 토큰 소비 0)"><span class="g">◆</span>${esc(txt)}</span>`;
+  const full=[model?t('me.model',{m:model}):null,effort?t('me.effort',{e:effort}):null].filter(Boolean).join(' · ');
+  return `<span class="pill ${sm?'sm ':''}model" title="${esc(t('me.tip',{full}))}"><span class="g">◆</span>${esc(txt)}</span>`;
 }
 const mePill=(s,sm)=>s.claude==='on'?meChip(s.model,s.effort,sm):'';
 /* 세션 행 .now 슬롯 — 실측(claude on + model/effort) 있으면 경로 대신 모델·effort 표시(경로는 title로 이동),
@@ -552,18 +1200,20 @@ const mePill=(s,sm)=>s.claude==='on'?meChip(s.model,s.effort,sm):'';
 function meNow(s,fallback,cwd){
   if(s.claude!=='on'||(!s.model&&!s.effort))return `<span class="now">${fallback}</span>`;
   const txt=[s.model?mdlShort(s.model):null,s.effort||null].filter(Boolean).join(' · ');
-  const full=[s.model?'모델 '+s.model:null,s.effort?'effort '+s.effort:null].filter(Boolean).join(' · ');
-  return `<span class="now me" title="Claude Code 훅 실측 — ${esc(full)} (로컬 파일 · 토큰 소비 0)${cwd?' · cwd '+esc(cwd):''}">◆ ${esc(txt)}</span>`;
+  const full=[s.model?t('me.model',{m:s.model}):null,s.effort?t('me.effort',{e:s.effort}):null].filter(Boolean).join(' · ');
+  return `<span class="now me" title="${esc(t('me.tip',{full}))}${cwd?esc(t('me.cwd',{cwd})):''}">◆ ${esc(txt)}</span>`;
 }
 function relTime(x){const d=Date.now()-new Date(x).getTime();if(!(d>=0))return '';
   const h=3600000;
-  if(d<h)return Math.max(1,Math.round(d/60000))+'분 전';
-  if(d<DAY)return Math.round(d/h)+'시간 전';
-  if(d<DAY*30)return Math.round(d/DAY)+'일 전';
-  if(d<DAY*365)return Math.round(d/(DAY*30))+'개월 전';
-  return (d/(DAY*365)).toFixed(1)+'년 전';}
-const shortDate=x=>x?new Date(x).toLocaleDateString('ko-KR',{year:'2-digit',month:'numeric',day:'numeric'}):'?';
-const evTime=ts=>new Date(ts).toLocaleString('ko-KR',{month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit',hour12:false});
+  if(d<h)return t('rel.min',{n:Math.max(1,Math.round(d/60000))});
+  if(d<DAY)return t('rel.hour',{n:Math.round(d/h)});
+  if(d<DAY*30)return t('rel.day',{n:Math.round(d/DAY)});
+  if(d<DAY*365)return t('rel.month',{n:Math.round(d/(DAY*30))});
+  return t('rel.year',{n:(d/(DAY*365)).toFixed(1)});}
+const shortDate=x=>x?new Date(x).toLocaleDateString(LANG==='en'?'en-US':'ko-KR',{year:'2-digit',month:'numeric',day:'numeric'}):'?';
+const evTime=ts=>new Date(ts).toLocaleString(LANG==='en'?'en-US':'ko-KR',{month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit',hour12:false});
+/* 로그 detail 렌더 — 신규 형식 {k,p}는 카탈로그로 언어별 렌더 · 구형식(문자열)은 그대로 표시(레거시 events.jsonl 호환) */
+const evDetail=e=>{const d=e&&e.detail; return (d&&typeof d==='object'&&d.k)?t(d.k,d.p||{}):String(d==null?'':d);};
 function announce(msg,assertive){const el=document.getElementById(assertive?'sr-assertive':'sr-polite');el.textContent='';requestAnimationFrame(()=>{el.textContent=msg;});}
 const byStatus=st=>PROJECTS.filter(p=>(p.status||'idle')===st);
 const lastEvOf=name=>EVENTS.find(e=>e.project===name);
@@ -587,28 +1237,24 @@ function renderFollow(){
   b.hidden=!(HAS_API&&MUX.canOpenWeb);
   if(b.hidden)return;
   const on=!!MUX.follow;
-  b.innerHTML=`↺ git 추적 <span style="color:var(--${on?'ok':'idle'})">${on?'●':'○'}</span>`;
-  b.title=on
-    ? `켜짐 — wmux에서 workspace를 전환하면 그 저장소 페이지가 ${esc(MUX.name)} 브라우저 패널에 자동으로 뜹니다. 클릭하면 끕니다 — POST /follow`
-    : `꺼짐 — 패널을 자동으로 바꾸지 않습니다(git 칩 클릭 시에만 이동). 클릭하면 켭니다 — POST /follow`;
+  b.innerHTML=`${t('follow.label')} <span style="color:var(--${on?'ok':'idle'})">${on?'●':'○'}</span>`;
+  b.title=on?t('follow.on.t',{mux:MUX.name}):t('follow.off.t',{mux:MUX.name});
 }
 async function toggleFollow(){
   const next=!MUX.follow;
   try{
     const r=await api('/follow',{method:'POST',body:{enabled:next}});
     MUX={...MUX,follow:r.follow};renderFollow();
-    ping(r.follow
-      ?`git 추적 켜짐 — workspace 전환 시 저장소가 ${esc(MUX.name)} 패널에 자동 표시 ✓`
-      :'git 추적 꺼짐 — 패널은 그대로 둡니다 ✓');
-  }catch(e){ping('git 추적 전환 실패 — '+esc(e.message));}
+    ping(r.follow?t('msg.follow.on',{mux:esc(MUX.name)}):t('msg.follow.off'));
+  }catch(e){ping(t('msg.follow.fail',{err:esc(e.message)}));}
 }
 function setSourceBadge(){
   const el=document.getElementById('src-badge');
   const live=SOURCE==='live'||SOURCE==='live-empty';
   if(SOURCE==='offline'){ // A6 — 서버 콘솔 창이 닫힌 경우 등: demo 폴백과 구분해 복구 유도
-    el.innerHTML=`<span style="color:var(--crit)">▲</span> <span style="color:var(--crit)">offline</span> — 서버 확인 · exe 재실행`;
+    el.innerHTML=t('src.offline');
     return;}
-  el.innerHTML=`<span style="color:var(--${live?'ok':'idle'})">${live?'●':'○'}</span> ${live?'live · wmux':SOURCE}`;
+  el.innerHTML=`<span style="color:var(--${live?'ok':'idle'})">${live?'●':'○'}</span> ${live?t('src.live'):SOURCE}`;
 }
 /* 활동 배지 훅 안내 배너(FS-7) — live && 미설치 && 숨김 아님일 때만. 데모/offline은 침묵(실측 아님). */
 function renderHookBanner(){
@@ -619,31 +1265,31 @@ function renderHookBanner(){
 }
 function hideHookBanner(){try{localStorage.setItem('ck-hook-hide','1');}catch(e){}renderHookBanner();}
 async function doHookInstall(btn){
-  btn.disabled=true;btn.textContent='설치 중…';
+  btn.disabled=true;btn.textContent=t('hook.installing');
   try{await api('/hook-install',{method:'POST'});
     HOOK_OK=true;renderHookBanner();
-    ping('활동 배지 훅 설치 ✓ — <span class="mono">~/.claude/settings.json</span> 병합(백업 생성·기존 훅 보존) · <b>새로 시작하는 Claude 세션부터</b> 배지가 표시됩니다');
-    announce('활동 배지 훅을 설치했습니다. 새로 시작하는 Claude 세션부터 배지가 표시됩니다.');
+    ping(t('msg.hook.ok'));
+    announce(t('msg.hook.ok.a'));
   }catch(e){
-    btn.disabled=false;btn.textContent='🪝 훅 설치';
-    ping('훅 설치 실패 — '+esc(e.message)+' · 수동 설치: <span class="mono">node cockpit/bin/activity-hook.mjs install</span>');
+    btn.disabled=false;btn.textContent=t('hook.install');
+    ping(t('msg.hook.fail',{err:esc(e.message)}));
   }
 }
 function lastEvHtml(p){
   const e=lastEvOf(p.name); if(!e)return '';
   const pi=PROJECTS.indexOf(p);
-  return `<button class="lastev ${e.level==='error'?'err':''}" onclick="openLog(${pi})" title="관리 로그 — 프로젝트별 최근 20건 (GET /api/log)">
-    <span class="t">${evTime(e.ts)}</span><span class="ev-k">${esc(e.event)}</span><span class="d">${esc(e.detail)}</span><span class="chev">≡ 로그</span></button>`;
+  return `<button class="lastev ${e.level==='error'?'err':''}" onclick="openLog(${pi})" title="${esc(t('ev.log.t'))}">
+    <span class="t">${evTime(e.ts)}</span><span class="ev-k">${esc(e.event)}</span><span class="d">${esc(evDetail(e))}</span><span class="chev">${t('ev.log')}</span></button>`;
 }
 /* git 링크 칩 — 원격이 있으면 웹 저장소로 이동(↗), 없으면 [＋ 원격 연결](브랜치 있으면 함께 표시). */
 function gitHtml(p){
   const pi=PROJECTS.indexOf(p);
   const g=p.git;
-  if(g&&g.web) return `<button class="conn git" onclick="openGit(${pi})" title="${esc(g.remote||g.web)} — 원격 저장소 열기(${MUX.canOpenWeb?esc(MUX.name)+' 브라우저 패널':'기본 브라우저 새 탭'})">
+  if(g&&g.web) return `<button class="conn git" onclick="openGit(${pi})" title="${esc(t('git.open.t',{remote:g.remote||g.web,panel:MUX.canOpenWeb?t('git.panel.embedded',{mux:MUX.name}):t('git.panel.browser')}))}">
     <span class="g" style="color:var(--blue);font-size:10px">⎇</span><span class="k">git${g.branch?' · '+esc(g.branch):''}</span><span style="color:var(--faint);font-size:10px">↗</span></button>`;
   const br=g&&g.branch?' · '+esc(g.branch):'';
-  return `<button class="conn add" onclick="gitRemotePrompt(${pi})" title="git 원격(origin) 연결 — URL 입력 시 git remote set-url origin 실행, 다음 실측에 칩 자동 표시">
-    <span class="g" style="font-size:10px">⎇</span><span class="k">＋ 원격 연결${br}</span></button>`;
+  return `<button class="conn add" onclick="gitRemotePrompt(${pi})" title="${esc(t('git.connect.t'))}">
+    <span class="g" style="font-size:10px">⎇</span><span class="k">${t('git.connect')}${br}</span></button>`;
 }
 /* git 칩 클릭 — 원격 저장소 페이지를 wmux 내장 브라우저 패널(오른쪽)에 연다. POST /open-web
    미지원 멀티플렉서(MUX.canOpenWeb=false — cmux)·데모·서버 실패는 기본 브라우저 새 탭으로 폴백.
@@ -653,24 +1299,24 @@ function openGit(pi){
   if(!g||!g.web)return;
   if(!(HAS_API&&MUX.canOpenWeb)){window.open(g.web,'_blank','noopener');return;} // 동기 경로 — 차단 없음
   api('/open-web',{method:'POST',body:{url:g.web}})
-    .then(()=>ping(`${esc(MUX.name)} 브라우저 패널 — <span class="mono">${esc(g.web)}</span> ✓`))
-    .catch(e=>{ping('패널 열기 실패 — '+esc(e.message)+' · 기본 브라우저로 폴백');window.open(g.web,'_blank','noopener');});
+    .then(()=>ping(t('msg.git.panel',{mux:esc(MUX.name),web:esc(g.web)})))
+    .catch(e=>{ping(t('msg.git.panel.fail',{err:esc(e.message)}));window.open(g.web,'_blank','noopener');});
 }
 function linksHtml(p){
   const pi=PROJECTS.indexOf(p);
   const chips=(p.links||[]).map((l,li)=>
-    `<button class="conn" onclick="openLink(${pi},${li})" title="${esc(l.url)} — 기본 브라우저로 열기">
+    `<button class="conn" onclick="openLink(${pi},${li})" title="${esc(t('link.open.t',{url:l.url}))}">
       <span class="g" style="color:var(--quiet);font-size:9px">●</span><span class="k">${esc(l.label)}</span><span style="color:var(--faint);font-size:10px">↗</span></button>`).join('');
-  const add=`<button class="conn add" onclick="linkPrompt(${pi})" title="서비스 링크 등록(배포·DB 콘솔 등) — POST /links">＋ 링크</button>`;
+  const add=`<button class="conn add" onclick="linkPrompt(${pi})" title="${esc(t('link.add.t'))}">${t('link.add')}</button>`;
   return `<div class="conns">${gitHtml(p)}${serveHtml(p)}${chips}${add}</div>`;
 }
 /* 서버 ON(FS-14 확장) — 선언된 시작 명령을 역할 pane 셸에 전송. OFF(중지)는 우측 활성 포트의 [✕]. */
 function serveHtml(p){
   const pi=PROJECTS.indexOf(p);
-  if(p.serve&&p.serve.cmd)return `<button class="conn" onclick="doServeStart(${pi})" title="[${esc(p.serve.role)}] pane에 '${esc(p.serve.cmd)}' 전송(터미널에 치는 것과 동일) — pane에 claude가 켜져 있으면 거부 · POST /serve-start">
-      <span class="g" style="color:var(--ok);font-size:9px">▶</span><span class="k">서버 시작</span></button>
-    <button class="conn add" onclick="servePrompt(${pi})" title="서버 시작 명령 변경 — 명령을 비우고 확인하면 해제 · 현재: [${esc(p.serve.role)}] ${esc(p.serve.cmd)}">✎</button>`;
-  return `<button class="conn add" onclick="servePrompt(${pi})" title="세션 pane에서 실행할 서버 시작 명령 선언(예: npm run dev) — 실행은 [▶ 서버 시작] · 중지는 우측 활성 포트 [✕] · POST /serve">＋ 서버</button>`;
+  if(p.serve&&p.serve.cmd)return `<button class="conn" onclick="doServeStart(${pi})" title="${esc(t('serve.start.t',{role:p.serve.role,cmd:p.serve.cmd}))}">
+      <span class="g" style="color:var(--ok);font-size:9px">▶</span><span class="k">${t('serve.start')}</span></button>
+    <button class="conn add" onclick="servePrompt(${pi})" title="${esc(t('serve.edit.t',{role:p.serve.role,cmd:p.serve.cmd}))}">✎</button>`;
+  return `<button class="conn add" onclick="servePrompt(${pi})" title="${esc(t('serve.add.t'))}">${t('serve.add')}</button>`;
 }
 /* 진행중 카드 — 세션 행 3단계: ①세션 없음=[＋ 세션 활성화](스폰) ②연결 확인됨=[↗ 열기][세션 비활성화][▶ Claude 실행] ③orphan=역할 동기화 */
 function renderActive(list){
@@ -684,81 +1330,82 @@ function renderActive(list){
     const missing=declared.filter(r=>!bound[r]).length;
     const stPill=s=>s.claude==='on'
       ?'<span class="pill sm claude"><span class="g">✦</span>claude</span>'
-      :'<span class="pill sm idle"><span class="g">❯</span>터미널</span>';
+      :`<span class="pill sm idle"><span class="g">❯</span>${t('pill.terminal')}</span>`;
     // 활동 배지 — claude 실행 중일 때만. Claude Code 훅(activity-hook)이 쓴 상태 실측.
     const actPill=s=>{ if(s.claude!=='on'||!s.activity)return '';
-      const m={working:['work','⏳','진행중'],waiting:['wait','⌛','대기중'],attention:['attn','⚠','입력 대기']}[s.activity];
-      return m?`<span class="pill sm ${m[0]}" title="Claude Code 훅 실측 — ${m[2]}"><span class="g">${m[1]}</span>${m[2]}</span>`:''; };
-    const opsTag='<span class="pin" title="1번 고정 세션 — git/DB/배포 확인 거처">ops 고정</span>';
-    const openBtn=si=>`<button class="claude-go open" onclick="doAttach(${pi},${si})" title="wmux 해당 pane으로 바로 점프(포커스 이동) — POST /attach">↗ 세션 열기</button>`;
+      const m={working:['work','⏳','act.working'],waiting:['wait','⌛','act.waiting'],attention:['attn','⚠','act.attention']}[s.activity];
+      if(!m)return ''; const lbl=t(m[2]);
+      return `<span class="pill sm ${m[0]}" title="${esc(t('act.tip',{label:lbl}))}"><span class="g">${m[1]}</span>${lbl}</span>`; };
+    const opsTag=`<span class="pin" title="${esc(t('ops.pin.t'))}">${t('ops.pin')}</span>`;
+    const openBtn=si=>`<button class="claude-go open" onclick="doAttach(${pi},${si})" title="${esc(t('btn.openSession.t'))}">${t('btn.openSession')}</button>`;
     // ② 연결됨 — 열기(바로가기) · 세션 비활성화 · (연결 확인 후) Claude 실행
     const liveRow=(role,s)=>{
       const si=sessions.indexOf(s);
-      const main=`<button class="rrow" onclick="openSession(${pi},${si})" title="세션 상세 — 기능 인벤토리(skill/agent/MCP)·wmux 점프·폴더">
+      const main=`<button class="rrow" onclick="openSession(${pi},${si})" title="${esc(t('row.detail.t'))}">
         ${stPill(s)}${actPill(s)}<span class="rn">${esc(role)}${role==='ops'?opsTag:''}</span>
         ${meNow(s,`root/${esc(p.name)}/${esc(role)}/`,`root/${p.name}/${role}/`)}<span class="chev">↗</span></button>`;
       const trail=[openBtn(si)];
-      if(s.claude==='off')trail.push(`<button class="claude-go" onclick="doClaude(${pi},${si},this)" title="이 pane에서 claude 실행 — POST /claude (이미 실행 중이면 재전송 생략)">▶ Claude 실행</button>`);
-      else if(s.claude==='unknown')trail.push(`<span class="cbadge" title="연결 확인 중 — 확인되면 Claude 실행 버튼 노출">? 연결 확인 중</span>`);
+      if(s.claude==='off')trail.push(`<button class="claude-go" onclick="doClaude(${pi},${si},this)" title="${esc(t('btn.claude.t'))}">${t('btn.claude')}</button>`);
+      else if(s.claude==='unknown')trail.push(`<span class="cbadge" title="${esc(t('conn.checking.t'))}">${t('conn.checking')}</span>`);
       return `<div class="rrow-wrap">${main}${trail.join('')}</div>`;
     };
     // ① 세션 없음(초기 미연결) — 선언만 있고 실측 세션 없음 → [＋ 세션 활성화]로 스폰
     const deadRow=role=>{
-      const main=`<div class="rrow dead" title="이 역할의 세션이 아직 열리지 않았습니다 — [＋ 세션 활성화]로 wmux에 스폰">
-        <span class="pill sm idle"><span class="g">○</span>미연결</span>
+      const main=`<div class="rrow dead" title="${esc(t('dead.t'))}">
+        <span class="pill sm idle"><span class="g">○</span>${t('pill.unlinked')}</span>
         <span class="rn">${esc(role)}${role==='ops'?opsTag:''}</span>
-        <span class="now">세션 없음 — 활성화 필요</span></div>`;
-      const trail=`<button class="claude-go spawn" onclick="doSpawn(${pi},'${esc(role)}')" title="워크스페이스로 이동 → 그 자리에서 세션(pane) 스폰 → 연결 검증 — POST /spawn {role} (확인 실패 시 이 버튼 유지)">＋ 세션 활성화</button>`;
+        <span class="now">${t('dead.none')}</span></div>`;
+      const trail=`<button class="claude-go spawn" onclick="doSpawn(${pi},'${esc(role)}')" title="${esc(t('btn.spawn1.t'))}">${t('btn.spawn1')}</button>`;
       return `<div class="rrow-wrap">${main}${trail}</div>`;
     };
     // ③ orphan — 살아있으나 역할 미바인딩(wmux 자동 첫 pane 등): 열기 · 비활성화 · 역할로 동기화
     const orphanRow=s=>{
       const si=sessions.indexOf(s);
-      const main=`<button class="rrow orphan" onclick="openSession(${pi},${si})" title="세션 상세 — 기능 인벤토리·wmux 점프·폴더">
-        ${stPill(s)}${actPill(s)}<span class="rn">${esc(s.role)}<span class="pin" style="border-color:#e2a83e66;color:var(--warn)" title="cockpit 역할에 연결 안 됨 — [⎇ 역할로 동기화]로 빈 역할에 채택">○ 미연결</span></span>
-        <span class="now">미연결 세션 · <span class="mono">${esc(s.agentId)}</span></span><span class="chev">↗</span></button>`;
-      const trail=openBtn(si)+`<button class="claude-go sync" onclick="adoptPrompt(${pi},${si})" title="이 세션을 빈 선언 역할에 바인딩 — POST /adopt (중복 스폰 방지·연결)">⎇ 역할로 동기화</button>`;
+      const main=`<button class="rrow orphan" onclick="openSession(${pi},${si})" title="${esc(t('row.detail.t'))}">
+        ${stPill(s)}${actPill(s)}<span class="rn">${esc(s.role)}<span class="pin" style="border-color:#e2a83e66;color:var(--warn)" title="${esc(t('orphan.pin.t'))}">${t('orphan.pin')}</span></span>
+        <span class="now">${t('orphan.now')}<span class="mono">${esc(s.agentId)}</span></span><span class="chev">↗</span></button>`;
+      const trail=openBtn(si)+`<button class="claude-go sync" onclick="adoptPrompt(${pi},${si})" title="${esc(t('btn.adopt.t'))}">${t('btn.adopt')}</button>`;
       return `<div class="rrow-wrap">${main}${trail}</div>`;
     };
     const rows=[...declared.map(r=>bound[r]?liveRow(r,bound[r]):deadRow(r)),...orphans.map(orphanRow)].join('');
     const health=missing
-      ?`<span class="pill sm warn"><span class="g">⏸</span>세션 ${missing}개 누락</span>`
-      :`<span class="pill sm ok"><span class="g">●</span>세션 ${sessions.length}/${(p.roles||[]).length+1}</span>`;
+      ?`<span class="pill sm warn"><span class="g">⏸</span>${t('health.missing',{n:missing})}</span>`
+      :`<span class="pill sm ok"><span class="g">●</span>${t('health.ok',{a:sessions.length,b:(p.roles||[]).length+1})}</span>`;
     return `<section class="tcard ${missing?'attn-w':''}">
       <div class="tc-head"><span class="nm">${esc(p.name)}</span>
-        ${p.createdAt?`<span class="tg" title="시작 ${esc(p.createdAt)}">${relTime(p.createdAt)} 시작</span>`:''}
-        <button class="ptbtn" onclick="doOpen(${pi})" title="탐색기에서 폴더 열기 — POST /open">root/${esc(p.name)}/</button>
+        ${p.createdAt?`<span class="tg" title="${esc(t('card.started.t',{date:p.createdAt}))}">${t('card.started',{rel:relTime(p.createdAt)})}</span>`:''}
+        <button class="ptbtn" onclick="doOpen(${pi})" title="${esc(t('btn.folder.t'))}">root/${esc(p.name)}/</button>
         <span class="h">${health}</span></div>
-      <div class="rrows">${rows||'<div style="color:var(--faint);font-size:12px;padding:4px 2px">세션 없음 — [＋ 세션 활성화]로 여세요</div>'}</div>
+      <div class="rrows">${rows||`<div style="color:var(--faint);font-size:12px;padding:4px 2px">${t('active.nosess')}</div>`}</div>
       ${linksHtml(p)}${lastEvHtml(p)}
       <div class="cact">
-        <button class="btn" onclick="doSpawn(${pi})" title="워크스페이스로 이동 → 빠진 선언 세션 전부 스폰 → 연결 검증 — POST /spawn (역할 생략=전체 수렴·중복 0·확인 실패분은 버튼 유지)">＋ 모든 세션 활성화</button>
-        <button class="btn" onclick="rolePrompt(${pi})" title="선언 경유 역할 추가(FS-8 — 자유 스폰 아님) · 스폰은 [＋ 세션 활성화]로">＋ 역할</button>
+        <button class="btn" onclick="doSpawn(${pi})" title="${esc(t('btn.spawnAll.t'))}">${t('btn.spawnAll')}</button>
+        <button class="btn" onclick="rolePrompt(${pi})" title="${esc(t('btn.addRole.t'))}">${t('btn.addRole')}</button>
         <span class="sp"></span>
-        <button class="btn danger" onclick="deactivatePrompt(${pi})" title="세션 전체 종료(확인 필수) 후 대기중으로 — POST /deactivate">비활성화</button>
+        <button class="btn danger" onclick="deactivatePrompt(${pi})" title="${esc(t('btn.deactivate.t'))}">${t('btn.deactivate')}</button>
       </div></section>`;
-  }).join('')||'<div class="empty">진행중인 프로젝트 없음 — 대기중 프로젝트를 활성화하세요</div>';
+  }).join('')||`<div class="empty">${t('active.empty')}</div>`;
 }
 /* 대기중 카드 — calm(침묵) · 역할 칩 · 활성화가 주 액션 */
 function renderIdle(list){
   document.getElementById('g-idle').innerHTML=list.map(p=>{
     const pi=PROJECTS.indexOf(p);
-    const chips=`<span class="rchip ops" title="1번 고정 세션 — git/DB/배포 확인 거처 (세션은 활성화 후 [＋ 세션 활성화]로 개별 열기)"><span class="g">📌</span>ops</span>`
-      +(p.roles||[]).map(r=>`<button class="rchip" onclick="removeRolePrompt(${pi},'${esc(r.id)}')" title="클릭 — 역할 제거(선언에서만, 폴더 보존 · FS-8)"><span class="g">❯</span>${esc(r.id)} ✕</button>`).join('');
+    const chips=`<span class="rchip ops" title="${esc(t('idle.ops.t'))}"><span class="g">📌</span>ops</span>`
+      +(p.roles||[]).map(r=>`<button class="rchip" onclick="removeRolePrompt(${pi},'${esc(r.id)}')" title="${esc(t('idle.role.t'))}"><span class="g">❯</span>${esc(r.id)} ✕</button>`).join('');
     return `<section class="tcard idlecard calm">
       <div class="tc-head"><span class="nm">${esc(p.name)}</span>
-        <span class="tg"><span class="pill sm idle"><span class="g">⏸</span>대기중</span></span>
-        ${p.createdAt?`<span class="tg" title="시작 ${esc(p.createdAt)}">${relTime(p.createdAt)} 시작</span>`:''}
-        <button class="ptbtn" onclick="doOpen(${pi})" title="탐색기에서 폴더 열기 — POST /open">root/${esc(p.name)}/</button></div>
+        <span class="tg"><span class="pill sm idle"><span class="g">⏸</span>${t('legend.idle')}</span></span>
+        ${p.createdAt?`<span class="tg" title="${esc(t('card.started.t',{date:p.createdAt}))}">${t('card.started',{rel:relTime(p.createdAt)})}</span>`:''}
+        <button class="ptbtn" onclick="doOpen(${pi})" title="${esc(t('btn.folder.t'))}">root/${esc(p.name)}/</button></div>
       <div class="roleschips">${chips}</div>
       ${linksHtml(p)}${lastEvHtml(p)}
       <div class="cact">
-        <button class="btn primary" onclick="doActivate(${pi})" title="workspace만 생성(세션 스폰 없음) — POST /activate · 세션은 진행중 카드에서 [＋ 세션 활성화]로 개별 열기">▶ 활성화</button>
-        <button class="btn" onclick="rolePrompt(${pi})" title="선언 경유 역할 추가(FS-8 — 자유 스폰 아님)">＋ 역할</button>
+        <button class="btn primary" onclick="doActivate(${pi})" title="${esc(t('btn.activate.t'))}">${t('btn.activate')}</button>
+        <button class="btn" onclick="rolePrompt(${pi})" title="${esc(t('idle.addRole.t'))}">${t('btn.addRole')}</button>
         <span class="sp"></span>
-        <button class="btn" onclick="doArchive(${pi})" title="보관 — 폴더·선언 유지, 하단 종료됨 섹션으로 (재개 가능)">▪ 아카이브</button>
+        <button class="btn" onclick="doArchive(${pi})" title="${esc(t('btn.archive.t'))}">${t('btn.archive')}</button>
       </div></section>`;
-  }).join('')||'<div class="empty">대기중인 프로젝트 없음 — 새 프로젝트를 만들거나 기존 프로젝트를 연동하세요</div>';
+  }).join('')||`<div class="empty">${t('idle.empty')}</div>`;
   applyIdleFold();
 }
 /* 대기중 접기/펼치기 — 진행중에 집중, 대기 목록은 온디맨드(종료됨과 동일 조작) */
@@ -786,21 +1433,21 @@ function renderUnlinked(){
   if(!list.length){wrap.hidden=true;wrap.innerHTML='';return;}
   wrap.innerHTML=list.map(w=>{
     const rows=(w.sessions||[]).map(s=>{
-      const stPill=s.claude==='on'?'<span class="pill sm claude"><span class="g">✦</span>claude</span>':'<span class="pill sm idle"><span class="g">❯</span>터미널</span>';
-      return `<div class="rrow-wrap"><button class="rrow" onclick="attachUnlinked('${esc(s.agentId)}')" title="wmux 해당 pane으로 포커스 이동 — POST /attach">
-        ${stPill}<span class="rn">${esc(s.role)}</span><span class="now">외부 · 프로젝트 미연결</span><span class="chev">↗</span></button></div>`;
-    }).join('')||'<div style="color:var(--faint);font-size:12px;padding:4px 2px">세션 없음(빈 workspace)</div>';
+      const stPill=s.claude==='on'?'<span class="pill sm claude"><span class="g">✦</span>claude</span>':`<span class="pill sm idle"><span class="g">❯</span>${t('pill.terminal')}</span>`;
+      return `<div class="rrow-wrap"><button class="rrow" onclick="attachUnlinked('${esc(s.agentId)}')" title="${esc(t('unlinked.attach.t'))}">
+        ${stPill}<span class="rn">${esc(s.role)}</span><span class="now">${t('unlinked.now')}</span><span class="chev">↗</span></button></div>`;
+    }).join('')||`<div style="color:var(--faint);font-size:12px;padding:4px 2px">${t('unlinked.empty')}</div>`;
     return `<section class="tcard" style="border-style:dashed;opacity:.92">
       <div class="tc-head"><span class="nm">${esc(w.title)}</span>
-        <span class="tg"><span class="pill sm idle"><span class="g">○</span>미연결</span></span>
-        <span class="h" style="margin-left:auto;color:var(--faint);font-size:11px">cockpit 관리 대상 아님</span></div>
+        <span class="tg"><span class="pill sm idle"><span class="g">○</span>${t('pill.unlinked')}</span></span>
+        <span class="h" style="margin-left:auto;color:var(--faint);font-size:11px">${t('unlinked.unmanaged')}</span></div>
       <div class="rrows">${rows}</div></section>`;
   }).join('');
   applyUnlinkedFold();
 }
 async function attachUnlinked(agentId){
-  if(HAS_API){try{await api('/attach',{method:'POST',body:{agentId}});ping('wmux 점프 ✓ — 외부 세션');}catch(e){ping('점프 실패 — '+esc(e.message));}return;}
-  ping('데모 — 실제 wmux 점프는 서버 연결 시 동작');
+  if(HAS_API){try{await api('/attach',{method:'POST',body:{agentId}});ping(t('msg.jump.ext'));}catch(e){ping(t('msg.jump.fail',{err:esc(e.message)}));}return;}
+  ping(t('msg.jump.demo'));
 }
 /* 종료(보관) — 기본 접힘 */
 let CLOSED_OPEN=false;
@@ -812,13 +1459,13 @@ function renderClosed(list){
     const pi=PROJECTS.indexOf(p);
     return `<div class="closed-card">
       <span style="color:var(--idle)">▪</span><span class="nm">${esc(p.name)}</span>
-      <span class="period" title="생성 ${esc(p.createdAt||'?')} · 종료 ${esc(p.archivedAt||'?')}">${shortDate(p.createdAt)} ~ ${shortDate(p.archivedAt)}</span>
-      <button class="ptbtn" onclick="doOpen(${pi})" title="탐색기에서 폴더 열기">root/${esc(p.name)}/</button>
-      <button class="tbtn" style="margin-left:auto" onclick="doReopen(${pi})" title="재개 — 대기중으로 복귀(즉시 활성화 없음) — POST /reopen">재개</button>
+      <span class="period" title="${esc(t('closed.period.t',{created:p.createdAt||'?',archived:p.archivedAt||'?'}))}">${shortDate(p.createdAt)} ~ ${shortDate(p.archivedAt)}</span>
+      <button class="ptbtn" onclick="doOpen(${pi})" title="${esc(t('btn.folder2.t'))}">root/${esc(p.name)}/</button>
+      <button class="tbtn" style="margin-left:auto" onclick="doReopen(${pi})" title="${esc(t('btn.reopen.t'))}">${t('btn.reopen')}</button>
     </div>`;}).join('');
   el.innerHTML=`<button class="closed-toggle" aria-expanded="${CLOSED_OPEN}" onclick="toggleClosed()">
-      <span>${CLOSED_OPEN?'▾':'▸'}</span><span>종료됨 <b class="mono">${list.length}</b></span>
-      <span style="margin-left:auto;font-size:10.5px">보관된 프로젝트 — 활성화 차단 · 재개로 대기중 복귀</span></button>
+      <span>${CLOSED_OPEN?'▾':'▸'}</span><span>${t('closed.label')} <b class="mono">${list.length}</b></span>
+      <span style="margin-left:auto;font-size:10.5px">${t('closed.hint')}</span></button>
     <div class="closed-list" ${CLOSED_OPEN?'':'hidden'}>${items}</div>`;
 }
 /* 우측 레일 — 활성 포트(FS-14) + Global 기능 인벤토리(FS-15) */
@@ -830,27 +1477,27 @@ function togglePortsSys(){PORTS_SYS_OPEN=!PORTS_SYS_OPEN;renderRail();}
 function renderRail(){
   const portRow=pt=>{
     // 중지 [✕] — 프로젝트 귀속 리스너만(시스템·wmux 오격추 방지 — 서버도 동일 규칙 재검증)
-    const kill=pt.project&&pt.pid?`<button class="pkill" onclick="portKillPrompt(${PORTS.indexOf(pt)})" title=":${pt.port} ${esc(pt.proc)} 리스너 중지 — 프로세스 트리 종료(확인 필수) · POST /port-kill">✕</button>`:'';
+    const kill=pt.project&&pt.pid?`<button class="pkill" onclick="portKillPrompt(${PORTS.indexOf(pt)})" title="${esc(t('port.kill.t',{port:pt.port,proc:pt.proc}))}">✕</button>`:'';
     return `<div class="r">
     <span style="color:var(--${pt.project?'ok':'idle'});font-size:9px">${pt.project?'●':'○'}</span>
     <span class="num">${esc(pt.p)}</span><span class="proc">${esc(pt.proc)}</span>
-    <span class="to ${pt.project?'team':'none'}">→ ${esc(pt.project||'기타')}</span>${kill}</div>`;};
+    <span class="to ${pt.project?'team':'none'}">→ ${esc(pt.project||t('port.other'))}</span>${kill}</div>`;};
   const owned=PORTS.filter(pt=>pt.project), system=PORTS.filter(pt=>!pt.project);
   let ports;
-  if(!PORTS.length){ports='<div class="pempty">감지된 dev/db 리스너 없음</div>';}
+  if(!PORTS.length){ports=`<div class="pempty">${t('port.none')}</div>`;}
   else{
-    ports=owned.length?owned.map(portRow).join(''):'<div class="pempty">프로젝트에 귀속된 리스너 없음</div>';
-    if(system.length)ports+=`<button class="ports-toggle" aria-expanded="${PORTS_SYS_OPEN}" aria-controls="ports-sys" onclick="togglePortsSys()" title="프로젝트와 무관한 시스템·기타 리스너 — 접어서 가림">
-        <span>${PORTS_SYS_OPEN?'▾':'▸'}</span><span>시스템·기타 <b class="mono">${system.length}</b></span>
-        <span style="margin-left:auto;font-size:10px">프로젝트 무관</span></button>
+    ports=owned.length?owned.map(portRow).join(''):`<div class="pempty">${t('port.noneOwned')}</div>`;
+    if(system.length)ports+=`<button class="ports-toggle" aria-expanded="${PORTS_SYS_OPEN}" aria-controls="ports-sys" onclick="togglePortsSys()" title="${esc(t('port.sys.t'))}">
+        <span>${PORTS_SYS_OPEN?'▾':'▸'}</span><span>${t('port.sys')} <b class="mono">${system.length}</b></span>
+        <span style="margin-left:auto;font-size:10px">${t('port.sysHint')}</span></button>
       <div class="pmap ports-sys" id="ports-sys" ${PORTS_SYS_OPEN?'':'hidden'}>${system.map(portRow).join('')}</div>`;
   }
   document.getElementById('portmap').innerHTML=ports;
-  document.getElementById('port-count').textContent=owned.length+' 귀속 · '+system.length+' 기타';
+  document.getElementById('port-count').textContent=t('port.count',{owned:owned.length,system:system.length});
   document.getElementById('gcaps').innerHTML=
-    `<div class="capgrp"><div class="h"><span class="scope s-global">global</span> 모든 세션 상속 — <span class="mono" style="font-size:10.5px">~/.claude</span></div>
-      ${capItems(GCAPS)||'<div class="pempty">항목 없음</div>'}</div>
-     <div style="font-size:10.5px;color:var(--faint);border-top:1px solid #ffffff08;padding-top:8px">세션 전용(skill/agent/MCP)은 <b style="color:var(--muted)">세션 행 클릭 → 상세</b>에서 — 이름·종류만 표시(값 비노출)</div>`;
+    `<div class="capgrp"><div class="h"><span class="scope s-global">global</span> ${t('caps.global.desc')}<span class="mono" style="font-size:10.5px">~/.claude</span></div>
+      ${capItems(GCAPS)||`<div class="pempty">${t('caps.empty')}</div>`}</div>
+     <div style="font-size:10.5px;color:var(--faint);border-top:1px solid #ffffff08;padding-top:8px">${t('caps.hint')}</div>`;
 }
 
 /* ═══ 세션 상세 드로어 (FS-15) — 기능 인벤토리·점프·폴더 ═══ */
@@ -860,29 +1507,29 @@ async function openSession(pi,si){
   DR={pi,si};
   document.getElementById('dr-team').textContent=p.name+' /';
   document.getElementById('dr-role').textContent=s.role;
-  const claudePill=s.claude==='on'?'<span class="pill claude"><span class="g">✦</span>claude 실행중</span>'
-    :s.claude==='off'?'<span class="pill idle"><span class="g">❯</span>터미널 (claude off)</span>'
-    :'<span class="pill idle"><span class="g">?</span>claude 확인 중</span>';
+  const claudePill=s.claude==='on'?`<span class="pill claude"><span class="g">✦</span>${t('drawer.claude.on')}</span>`
+    :s.claude==='off'?`<span class="pill idle"><span class="g">❯</span>${t('drawer.claude.off')}</span>`
+    :`<span class="pill idle"><span class="g">?</span>${t('drawer.claude.unknown')}</span>`;
   const orphan=s.connected===false;
-  const actM=s.claude==='on'&&{working:['work','⏳','명령 진행중'],waiting:['wait','⌛','응답 대기중'],attention:['attn','⚠','입력/권한 대기']}[s.activity];
+  const actM=s.claude==='on'&&{working:['work','⏳','drawer.act.working'],waiting:['wait','⌛','drawer.act.waiting'],attention:['attn','⚠','drawer.act.attention']}[s.activity];
   document.getElementById('dr-meta').innerHTML=claudePill
-    +(actM?`<span class="pill ${actM[0]}" title="Claude Code 훅 실측">${`<span class="g">${actM[1]}</span>`}${actM[2]}</span>`:'')
+    +(actM?`<span class="pill ${actM[0]}" title="${esc(t('act.tip2'))}">${`<span class="g">${actM[1]}</span>`}${t(actM[2])}</span>`:'')
     +mePill(s)
-    +(orphan?'<span class="tag" style="color:var(--warn)" title="cockpit 역할에 연결 안 됨 — [⎇ 역할로 동기화]로 빈 역할에 채택">○ cockpit 미연결</span>':'')
-    +(s.role==='ops'?'<span class="tag" title="1번 고정 세션 — 비활성화 시에만 함께 종료 · git/DB/배포 확인 거처">📌 ops 고정</span>':'')
+    +(orphan?`<span class="tag" style="color:var(--warn)" title="${esc(t('drawer.orphan.t'))}">${t('drawer.orphan')}</span>`:'')
+    +(s.role==='ops'?`<span class="tag" title="${esc(t('drawer.ops.t'))}">${t('drawer.ops')}</span>`:'')
     +(orphan?'':`<span class="tag">cwd <span class="mono">root/${esc(p.name)}/${esc(s.role)}/</span></span>`)
     +`<span class="tag">agent <span class="mono">${esc(s.agentId||'?')}</span></span>`
-    +(!orphan&&s.via?`<span class="tag" title="cockpit이 이 세션을 역할로 인식한 근거 — adopted=채택 매핑 · label-ns=네임스페이스 label(스폰 시 각인) · label=구형식 label 일치">🧭 매칭 <span class="mono">${esc(s.via)}</span></span>`:'');
-  const ctrl=[`<button class="btn primary" onclick="doAttach(${pi},${si})" title="wmux 해당 pane으로 포커스 이동 — POST /attach">열기 ↗ (wmux 점프)</button>`];
-  if(!orphan)ctrl.push(`<button class="btn" onclick="doOpen(${pi},'${esc(s.role)}')" title="탐색기에서 역할 폴더 열기 — POST /open {name, role}">📁 폴더</button>`);
-  if(s.claude==='off')ctrl.push(`<button class="btn bluish" onclick="doClaude(${pi},${si},this)" title="이 pane에서 claude 실행 — POST /claude">▶ Claude 실행</button>`);
-  if(orphan)ctrl.push(`<button class="btn bluish" onclick="adoptPrompt(${pi},${si})" title="이 세션을 빈 선언 역할에 바인딩 — POST /adopt (연결·중복 스폰 방지)">⎇ 역할로 동기화</button>`);
-  ctrl.push(`<button class="btn danger" onclick="doKillSession(${pi},${si})" title="이 세션 종료(개별 비활성화) — POST /kill-session · claude 실행 중이면 확인">세션 비활성화</button>`);
+    +(!orphan&&s.via?`<span class="tag" title="${esc(t('drawer.match.t'))}">${t('drawer.match')} <span class="mono">${esc(s.via)}</span></span>`:'');
+  const ctrl=[`<button class="btn primary" onclick="doAttach(${pi},${si})" title="${esc(t('drawer.open.t'))}">${t('drawer.open')}</button>`];
+  if(!orphan)ctrl.push(`<button class="btn" onclick="doOpen(${pi},'${esc(s.role)}')" title="${esc(t('drawer.folder.t'))}">${t('drawer.folder')}</button>`);
+  if(s.claude==='off')ctrl.push(`<button class="btn bluish" onclick="doClaude(${pi},${si},this)" title="${esc(t('drawer.claude.t'))}">${t('btn.claude')}</button>`);
+  if(orphan)ctrl.push(`<button class="btn bluish" onclick="adoptPrompt(${pi},${si})" title="${esc(t('drawer.adopt.t'))}">${t('btn.adopt')}</button>`);
+  ctrl.push(`<button class="btn danger" onclick="doKillSession(${pi},${si})" title="${esc(t('drawer.kill.t'))}">${t('drawer.kill')}</button>`);
   document.getElementById('dr-ctrl').innerHTML=ctrl.join('');
   renderDrawerCaps(p,s,null); // 즉시: 데모/캐시 → 라이브 도착 시 교체
   document.getElementById('drawer-scrim').classList.add('on');
   const d=document.getElementById('drawer'); d.classList.add('on'); d.setAttribute('aria-hidden','false'); d.removeAttribute('inert');
-  announce(`${p.name} ${s.role} 세션 상세를 열었습니다.`);
+  announce(t('msg.drawer.open',{name:p.name,role:s.role}));
   if(HAS_API){ // 세션 스코프 기능 인벤토리 온디맨드 — GET /api/caps?project=&role=
     try{const caps=await api('/api/caps?project='+encodeURIComponent(p.name)+'&role='+encodeURIComponent(s.role));
       if(DR&&DR.pi===pi&&DR.si===si)renderDrawerCaps(p,s,caps);}catch(e){}
@@ -892,15 +1539,14 @@ function renderDrawerCaps(p,s,live){
   const local=live||SCAPS[p.name+'/'+s.role]||{project:[],session:[]};
   const scoped=capItems(local.project,{sc:'project',tag:'proj'})+capItems(local.session,{sc:'session',tag:'sess'});
   document.getElementById('dr-body').innerHTML=`
-    <div class="dcard"><h4>🧩 기능 인벤토리 <span class="src">${live?'GET /api/caps':'demo'} · 이름·종류만</span></h4><div class="cb">
-      <div class="capgrp"><div class="h"><span class="scope s-project">project</span><span class="scope s-session">session</span> 이 세션 전용</div>
-        ${scoped||'<div class="pempty">세션 전용 기능 없음 — global 상속만 사용</div>'}</div>
-      <div class="capgrp"><div class="h"><span class="scope s-global">global</span> 모든 세션 상속</div>
-        ${capItems(GCAPS)||'<div class="pempty">항목 없음</div>'}</div>
+    <div class="dcard"><h4>${t('drawer.caps.title')} <span class="src">${live?'GET /api/caps':'demo'} · ${t('drawer.caps.src')}</span></h4><div class="cb">
+      <div class="capgrp"><div class="h"><span class="scope s-project">project</span><span class="scope s-session">session</span> ${t('drawer.caps.scoped')}</div>
+        ${scoped||`<div class="pempty">${t('drawer.caps.noscope')}</div>`}</div>
+      <div class="capgrp"><div class="h"><span class="scope s-global">global</span> ${t('drawer.caps.global')}</div>
+        ${capItems(GCAPS)||`<div class="pempty">${t('caps.empty')}</div>`}</div>
     </div></div>
-    <div class="dcard"><h4>ℹ 범위 안내</h4><div class="cb" style="font-size:12px;color:var(--muted);line-height:1.6">
-      트랜스크립트·활동 피드·git diff는 v1 범위 밖(§13) — 작업 내용은 <b style="color:var(--text)">열기 ↗</b>로 wmux에서 직접 확인.
-      기능 목록은 <span class="mono">~/.claude</span>(global)와 역할 폴더의 <span class="mono">.claude/·.mcp.json</span>(전용) 실측 — 설정 값·키는 표시하지 않음.</div></div>`;
+    <div class="dcard"><h4>${t('drawer.info.title')}</h4><div class="cb" style="font-size:12px;color:var(--muted);line-height:1.6">
+      ${t('drawer.info.body')}</div></div>`;
 }
 function closeDrawer(){
   DR=null;
@@ -912,36 +1558,41 @@ function closeDrawer(){
 async function doActivate(pi){
   const p=PROJECTS[pi]; if(!p)return;
   if(HAS_API){try{await api('/activate',{method:'POST',body:{name:p.name}});
-    ping(`활성화 — <span class="mono">${p.name}</span> ✓ 세션은 <b>[＋ 세션 활성화]</b>로 개별 열기`);
-    announce(`${p.name} 활성화 — 세션을 개별로 열 수 있습니다.`,true);loadState();return;}
-  catch(e){ping((String(e.message).includes('409')?'보관된 프로젝트 — 재개 후 활성화하세요':'활성화 실패 — ')+e.message);return;}}
+    ping(t('msg.activate.ok',{name:esc(p.name)}));
+    announce(t('msg.activate.a',{name:p.name}),true);loadState();return;}
+  catch(e){ping((String(e.message).includes('409')?t('msg.activate.archived'):t('msg.activate.fail'))+esc(e.message));return;}}
   // demo — 워크스페이스만, 세션 스폰 없음(초기 미연결)
   p.status='active';p.wsLive=true;p.sessions=[];
-  logEv('info',p.name,'activate','workspace 생성 · 세션 스폰 없음(개별 활성화 대기)');
-  ping(`활성화 — <span class="mono">${p.name}</span> ✓ (세션 없음 — [＋ 세션 활성화]로 열기)`);
-  announce(`${p.name} 프로젝트를 활성화했습니다.`,true);renderAll();
+  logEv('info',p.name,'activate',{k:'log.activate.created'});
+  ping(t('msg.activate.demo',{name:esc(p.name)}));
+  announce(t('msg.activate.demo.a',{name:p.name}),true);renderAll();
 }
 /* [＋ 세션 활성화] — 3단계: 워크스페이스 초점 이동 → 그 자리에서 스폰 → 연결 검증. role 생략=빠진 전체. POST /spawn
    서버가 연결을 실측 검증하므로 failed에 든 역할은 스폰 안 된 것 — 상태 기반 렌더라 버튼이 그대로 유지된다. */
 async function doSpawn(pi,role){
   const p=PROJECTS[pi]; if(!p)return;
+  const lbl=esc(p.name)+(role?'/'+esc(role):'');
   if(HAS_API){try{const r=await api('/spawn',{method:'POST',body:{name:p.name,...(role?{role}:{})}});
     const failed=r.failed||[];
     if(failed.length&&!(r.spawned||r.reused)){ // 전부 연결 실패 — 버튼 유지, 재시도 유도
-      ping(`세션 연결 확인 실패 — <span class="mono">${esc(p.name)}${role?'/'+esc(role):''}</span> (${esc(failed.join('·'))}) — [＋ 세션 활성화] 버튼 유지, 다시 시도하세요`);
-      announce('세션 연결이 확인되지 않았습니다 — 다시 시도하세요.',true);loadState();return;}
-    ping(`세션 활성화 — <span class="mono">${esc(p.name)}${role?'/'+esc(role):''}</span>${r.focused?' 워크스페이스 이동 →':''} 스폰 ${r.spawned??'?'}${r.reused?` · 재사용 ${r.reused}`:''}${failed.length?` · <b>연결 실패 ${esc(failed.join('·'))} (버튼 유지)</b>`:''} ✓ 연결 확인됨`);
-    announce(`${role||'세션'}을 열고 연결을 확인했습니다.`,true);loadState();return;}
-  catch(e){ping((String(e.message).includes('409')?'보관된 프로젝트 — 재개 후':'세션 활성화 실패 — ')+esc(e.message));return;}}
+      ping(t('msg.spawn.failAll',{label:lbl,failed:esc(failed.join('·'))}));
+      announce(t('msg.spawn.failAll.a'),true);loadState();return;}
+    ping(t('msg.spawn.ok',{label:lbl,
+      focused:r.focused?t('spawn.focused'):'',
+      spawned:r.spawned??'?',
+      reused:r.reused?t('spawn.reused',{n:r.reused}):'',
+      failed:failed.length?t('spawn.failedTail',{failed:esc(failed.join('·'))}):''}));
+    announce(t('msg.spawn.ok.a',{role:role||t('spawn.session')}),true);loadState();return;}
+  catch(e){ping((String(e.message).includes('409')?t('msg.spawn.archived'):t('msg.spawn.fail'))+esc(e.message));return;}}
   // demo — unknown(연결 확인 중)으로 추가 후 잠시 뒤 off로 전환(연결 확인 시뮬)
   const declared=['ops',...(p.roles||[]).map(r=>r.id)];
   const add=(role?[role]:declared).filter(r=>!(p.sessions||[]).some(s=>s.role===r&&s.alive));
-  if(!add.length){ping('이미 활성화됨 — 빠진 세션 없음');return;}
+  if(!add.length){ping(t('msg.spawn.demo.none'));return;}
   p.status='active';p.wsLive=true;
   add.forEach(r=>p.sessions.push({role:r,agentId:'ag-'+Math.floor(Math.random()*899+100),alive:true,claude:'unknown'}));
   p.sessions.sort((a,b)=>(a.role==='ops'?-1:b.role==='ops'?1:0));
-  logEv('info',p.name,'spawn',`세션 스폰 ${add.length} (${add.join('·')})`);
-  ping(`세션 활성화 — <span class="mono">${add.join(' · ')}</span> ✓ 연결 확인 중…`);renderAll();
+  logEv('info',p.name,'spawn',{k:'log.spawn.summary',p:{spawned:add.length,ids:add.join('·'),reused:0,failed:0}});
+  ping(t('msg.spawn.demo.ok',{list:add.join(' · ')}));renderAll();
   setTimeout(()=>{add.forEach(r=>{const s=(p.sessions||[]).find(x=>x.role===r);if(s&&s.claude==='unknown')s.claude='off';});renderAll();},800);
 }
 /* [세션 비활성화] — 세션 하나 종료. claude 실행 중이면 확인 다이얼로그. POST /kill-session */
@@ -949,19 +1600,19 @@ async function doKillSession(pi,si){
   const p=PROJECTS[pi]; const s=p&&(p.sessions||[])[si]; if(!s)return;
   const go=async()=>{
     if(HAS_API){try{await api('/kill-session',{method:'POST',body:{name:p.name,agentId:s.agentId,role:s.role}}); // role = 낙관적 재검증(⑤)
-      ping(`세션 비활성화 — <span class="mono">${esc(p.name)}/${esc(s.role)}</span> 종료 ✓`);
-      announce(`${s.role} 세션을 종료했습니다.`,true);closeDrawer();loadState();return;}
+      ping(t('msg.kill.ok',{label:esc(p.name)+'/'+esc(s.role)}));
+      announce(t('msg.kill.ok.a',{role:s.role}),true);closeDrawer();loadState();return;}
     catch(e){
-      if(String(e.message).includes('session-changed')){ping('세션 상태가 바뀌었어요 — 종료를 중단하고 화면을 갱신했습니다. 다시 확인 후 시도하세요');closeDrawer();loadState();return;}
-      ping('세션 비활성화 실패 — '+esc(e.message));return;}}
+      if(String(e.message).includes('session-changed')){ping(t('msg.kill.changed'));closeDrawer();loadState();return;}
+      ping(t('msg.kill.fail',{err:esc(e.message)}));return;}}
     p.sessions=(p.sessions||[]).filter(x=>x!==s); // demo
-    logEv('info',p.name,'kill',`세션 종료 — ${s.role} (개별 비활성화)`);
-    ping(`세션 비활성화 — <span class="mono">${esc(s.role)}</span> 종료 ✓`);closeDrawer();renderAll();
+    logEv('info',p.name,'kill',{k:'log.kill.session',p:{role:s.role}});
+    ping(t('msg.kill.demo',{role:esc(s.role)}));closeDrawer();renderAll();
   };
   if(s.claude==='on'){
-    openConfirmDialog({title:'세션을 종료합니다',
-      sub:`<span class="who">${esc(p.name)} / ${esc(s.role)}</span> — 이 세션에서 <b>claude가 실행 중</b>입니다. 종료하면 작업이 중단되고 되돌릴 수 없습니다.`,
-      okText:'세션 종료',onConfirm:go});
+    openConfirmDialog({title:t('dlg.kill.title'),
+      sub:t('dlg.kill.sub',{name:esc(p.name),role:esc(s.role)}),
+      okText:t('dlg.kill.ok'),onConfirm:go});
   } else go();
 }
 function deactivatePrompt(pi){
@@ -970,132 +1621,129 @@ function deactivatePrompt(pi){
   const claudeOn=sess.filter(s=>s.claude==='on').length;
   const prts=PORTS.filter(pt=>pt.project===p.name); // 귀속 서버 리스너 — 비활성화가 함께 중지(FS-14 확장)
   openConfirmDialog({
-    title:'프로젝트를 비활성화합니다',
-    sub:`<span class="who">${esc(p.name)}</span> — 아래 세션 ${sess.length}개가 모두 종료(kill)되고 대기중으로 전환됩니다.${
-      prts.length?`<br>귀속 서버 리스너 <b>${prts.length}개</b>(<span class="mono">${prts.map(pt=>esc(pt.p)).join(' · ')}</span>)도 함께 중지됩니다.`:''
-    }<br><b>종료된 세션은 되돌릴 수 없습니다(undo 없음).</b>`,
-    warn:claudeOn?`claude가 실행 중인 세션 ${claudeOn}개가 있습니다 — 작업 중일 수 있습니다.`:null,
-    sess:sess.map(s=>`<div class="row"><span class="rn">${esc(s.role)}</span>${s.role==='ops'?'<span class="pin" style="font-size:9.5px;color:var(--warn)">고정</span>':''}<span class="sp"></span>${
-      s.claude==='on'?'<span class="pill sm claude"><span class="g">✦</span>claude</span>':'<span class="pill sm idle"><span class="g">❯</span>터미널</span>'}</div>`).join(''),
-    okText:'세션 종료 후 비활성화',
+    title:t('dlg.deact.title'),
+    sub:t('dlg.deact.sub',{name:esc(p.name),n:sess.length,
+      ports:prts.length?t('dlg.deact.ports',{n:prts.length,ports:prts.map(pt=>esc(pt.p)).join(' · ')}):''}),
+    warn:claudeOn?t('dlg.deact.warn',{n:claudeOn}):null,
+    sess:sess.map(s=>`<div class="row"><span class="rn">${esc(s.role)}</span>${s.role==='ops'?`<span class="pin" style="font-size:9.5px;color:var(--warn)">${t('pin.fixed')}</span>`:''}<span class="sp"></span>${
+      s.claude==='on'?'<span class="pill sm claude"><span class="g">✦</span>claude</span>':`<span class="pill sm idle"><span class="g">❯</span>${t('pill.terminal')}</span>`}</div>`).join(''),
+    okText:t('dlg.deact.ok'),
     onConfirm:()=>doDeactivate(pi)});
 }
 async function doDeactivate(pi){
   const p=PROJECTS[pi]; const n=(p.sessions||[]).length;
   if(HAS_API){try{const r=await api('/deactivate',{method:'POST',body:{name:p.name,confirm:true}});
-    ping(`비활성화 — <span class="mono">${p.name}</span> 세션 ${n}개 종료${r.portsKilled?` · 서버 ${r.portsKilled}개 중지`:''} ✓`);
-    announce(`${p.name} 비활성화 — 세션을 종료했습니다.`,true);loadState();return;}
-  catch(e){ping('비활성화 실패 — '+e.message);return;}}
+    ping(t('msg.deact.ok',{name:esc(p.name),n,ports:r.portsKilled?t('msg.deact.ports',{n:r.portsKilled}):''}));
+    announce(t('msg.deact.a',{name:p.name}),true);loadState();return;}
+  catch(e){ping(t('msg.deact.fail',{err:esc(e.message)}));return;}}
   const pk=PORTS.filter(pt=>pt.project===p.name).length;
   PORTS=PORTS.filter(pt=>pt.project!==p.name); // demo — 귀속 리스너도 함께 정리(실서버 경로와 동형)
   p.status='idle';p.wsLive=false;p.sessions=[];
-  logEv('info',p.name,'deactivate',`세션 ${n}개 종료${pk?` · 귀속 서버 ${pk}개 중지`:''} · 대기중 전환`);
-  ping(`비활성화 — <span class="mono">${p.name}</span> 세션 ${n}개 종료${pk?` · 서버 ${pk}개 중지`:''} · 대기중 ✓`);
-  announce(`${p.name} 프로젝트를 비활성화했습니다.`,true);renderAll();
+  logEv('info',p.name,'deactivate',{k:'log.deactivate.done',p:{killed:n,portsKilled:pk}});
+  ping(t('msg.deact.demo',{name:esc(p.name),n,ports:pk?t('msg.deact.ports',{n:pk}):''}));
+  announce(t('msg.deact.demo.a',{name:p.name}),true);renderAll();
 }
 /* [⏻ 종료] — 전체 종료: 모든 진행중 프로젝트 비활성화(세션 kill → 대기중 전환) 후 서버 종료.
    멀티플렉서 앱을 함께 내릴지는 MUX.ownsApp — wmux(cockpit 전용)는 함께, cmux(일상 터미널)는 유지. POST /shutdown */
 let SHUT=false;
-const muxAppFate=()=>MUX.ownsApp?`<b>${esc(MUX.name)} 앱과 서버가 함께</b> 내려갑니다`
-                              :`<b>서버가</b> 내려갑니다 (${esc(MUX.name)}는 그대로 유지)`;
+const muxAppFate=()=>MUX.ownsApp?t('shut.fate.owns',{mux:esc(MUX.name)}):t('shut.fate.keep',{mux:esc(MUX.name)});
 function shutdownPrompt(){
   const act=byStatus('active');
   const sess=act.flatMap(p=>((p.sessions||[]).filter(s=>s.alive!==false)).map(s=>({pn:p.name,role:s.role,claude:s.claude})));
   const claudeOn=sess.filter(s=>s.claude==='on').length;
   const prts=PORTS.filter(pt=>pt.project); // 프로젝트 귀속 서버 리스너 — 비활성화가 함께 중지(FS-14 확장)
   openConfirmDialog({
-    title:'Cockpit을 종료합니다',
+    title:t('dlg.shut.title'),
     sub:act.length
-      ?`진행중 프로젝트 <b>${act.length}개</b>가 모두 비활성화됩니다 — 아래 세션 ${sess.length}개가 종료(kill)되고${
-        prts.length?` 귀속 서버 리스너 <b>${prts.length}개</b>(<span class="mono">${prts.map(pt=>esc(pt.p)).join(' · ')}</span>)가 중지되고`:''
-      } <b>대기중</b>으로 전환된 뒤 ${muxAppFate()}.<br><b>종료된 세션은 되돌릴 수 없습니다(undo 없음).</b>`
-      :`진행중 프로젝트가 없습니다 — ${muxAppFate()}. 대시보드는 더 이상 응답하지 않아요.`,
-    warn:claudeOn?`claude가 실행 중인 세션 ${claudeOn}개가 있습니다 — 작업 중일 수 있습니다.`:null,
+      ?t('dlg.shut.sub.has',{n:act.length,sn:sess.length,fate:muxAppFate(),
+        ports:prts.length?t('dlg.shut.ports',{n:prts.length,ports:prts.map(pt=>esc(pt.p)).join(' · ')}):''})
+      :t('dlg.shut.sub.none',{fate:muxAppFate()}),
+    warn:claudeOn?t('dlg.deact.warn',{n:claudeOn}):null,
     sess:sess.length?sess.map(s=>`<div class="row"><span class="rn">${esc(s.pn)} / ${esc(s.role)}</span><span class="sp"></span>${
-      s.claude==='on'?'<span class="pill sm claude"><span class="g">✦</span>claude</span>':'<span class="pill sm idle"><span class="g">❯</span>터미널</span>'}</div>`).join(''):null,
-    okText:act.length?'모두 비활성화 후 종료':(MUX.ownsApp?`${esc(MUX.name)}·서버 종료`:'서버 종료'),
+      s.claude==='on'?'<span class="pill sm claude"><span class="g">✦</span>claude</span>':`<span class="pill sm idle"><span class="g">❯</span>${t('pill.terminal')}</span>`}</div>`).join(''):null,
+    okText:act.length?t('dlg.shut.ok.has'):(MUX.ownsApp?t('dlg.shut.ok.owns',{mux:esc(MUX.name)}):t('dlg.shut.ok.keep')),
     onConfirm:doShutdown});
 }
 async function doShutdown(){
   if(HAS_API){
     try{const r=await api('/shutdown',{method:'POST',body:{confirm:true}});
-      ping(`전체 종료 — 프로젝트 ${(r.deactivated||[]).length}개 비활성화${r.portsKilled?` · 서버 ${r.portsKilled}개 중지`:''} · 서버 종료 중…`);
+      ping(t('msg.shut.ok',{n:(r.deactivated||[]).length,ports:r.portsKilled?t('msg.deact.ports',{n:r.portsKilled}):''}));
       showBye((r.deactivated||[]).length,r.failed||[]);return;}
-    catch(e){ping('전체 종료 실패 — '+esc(e.message));return;}}
+    catch(e){ping(t('msg.shut.fail',{err:esc(e.message)}));return;}}
   // demo — 모든 active를 대기중으로 전환 후 종료 화면(시뮬)
   const act=byStatus('active');
-  act.forEach(p=>{logEv('info',p.name,'deactivate',`세션 ${(p.sessions||[]).length}개 종료 · 대기중 전환`);
+  act.forEach(p=>{logEv('info',p.name,'deactivate',{k:'log.deactivate.done',p:{killed:(p.sessions||[]).length,portsKilled:0}});
     p.status='idle';p.wsLive=false;p.sessions=[];});
-  logEv('info',null,'shutdown',`전체 종료 — 프로젝트 ${act.length}개 비활성화(대기중) · 서버 종료`);
+  logEv('info',null,'shutdown',{k:'log.shutdown.demo',p:{n:act.length}});
   renderAll();showBye(act.length,[],true);
 }
 function showBye(n,failed,demo){
   SHUT=true; if(POLL_STATE)clearInterval(POLL_STATE); if(POLL_CAPS)clearInterval(POLL_CAPS); // 서버가 내려가므로 폴링 중단(offline 오탐 방지)
   document.getElementById('bye-sub').innerHTML=
-    `프로젝트 ${n}개를 비활성화하고 <b>대기중</b>으로 전환했습니다.`
-    +(failed&&failed.length?`<br><span style="color:var(--warn)">⚠ 비활성화 실패: ${esc(failed.join(' · '))} — ${esc(MUX.name)}에서 직접 확인하세요.</span>`:'')
-    +(demo?'<br>(시뮬 — 새로고침하면 데모로 복귀합니다)'
-      :MUX.ownsApp?`<br>${esc(MUX.name)} 앱과 서버가 내려갔으니 이 창은 닫아도 됩니다. 다시 시작하려면 boot(exe)를 실행하세요.`
-                  :`<br>서버가 내려갔으니 이 창은 닫아도 됩니다(${esc(MUX.name)}는 그대로 열려 있습니다). 다시 시작하려면 boot을 실행하세요.`);
+    t('bye.sub',{n})
+    +(failed&&failed.length?t('bye.failed',{failed:esc(failed.join(' · ')),mux:esc(MUX.name)}):'')
+    +(demo?t('bye.demo')
+      :MUX.ownsApp?t('bye.owns',{mux:esc(MUX.name)})
+                  :t('bye.keep',{mux:esc(MUX.name)}));
   document.getElementById('bye').hidden=false;
-  announce('Cockpit이 종료되었습니다 — 모든 프로젝트가 대기중으로 전환되었습니다.',true);
+  announce(t('bye.a'),true);
 }
 async function doArchive(pi){
   const p=PROJECTS[pi]; if(!p)return;
-  if((p.status||'idle')==='active'){ping('진행중 프로젝트는 먼저 비활성화하세요 (409 — kill을 아카이브에 숨기지 않음)');return;}
+  if((p.status||'idle')==='active'){ping(t('msg.archive.needDeact'));return;}
   if(HAS_API){try{await api('/archive',{method:'POST',body:{name:p.name}});
-    ping(`아카이브 — <span class="mono">${p.name}</span> ✓ (하단 종료됨 섹션)`);loadState();return;}
-  catch(e){ping('아카이브 실패 — '+e.message);return;}}
+    ping(t('msg.archive.ok',{name:esc(p.name)}));loadState();return;}
+  catch(e){ping(t('msg.archive.fail',{err:esc(e.message)}));return;}}
   p.status='archived';p.archivedAt=new Date().toISOString();
-  logEv('info',p.name,'archive','아카이브 처리');
-  ping(`아카이브 — <span class="mono">${p.name}</span> ✓ (재개로 복귀 가능)`);renderAll();
+  logEv('info',p.name,'archive',{k:'log.archive.done'});
+  ping(t('msg.archive.demo',{name:esc(p.name)}));renderAll();
 }
 async function doReopen(pi){
   const p=PROJECTS[pi]; if(!p)return;
   if(HAS_API){try{await api('/reopen',{method:'POST',body:{name:p.name}});
-    ping(`재개 — <span class="mono">${p.name}</span> ✓ 대기중 복귀`);loadState();return;}
-  catch(e){ping('재개 실패 — '+e.message);return;}}
+    ping(t('msg.reopen.ok',{name:esc(p.name)}));loadState();return;}
+  catch(e){ping(t('msg.reopen.fail',{err:esc(e.message)}));return;}}
   p.status='idle';p.archivedAt=null;
-  logEv('info',p.name,'reopen','재개 — 대기중 복귀');
-  ping(`재개 — <span class="mono">${p.name}</span> 대기중 복귀 (활성화는 별도 액션) ✓`);
-  announce(`${p.name} 프로젝트를 재개했습니다.`);renderAll();
+  logEv('info',p.name,'reopen',{k:'log.reopen.done'});
+  ping(t('msg.reopen.demo',{name:esc(p.name)}));
+  announce(t('msg.reopen.demo.a',{name:p.name}));renderAll();
 }
 async function doClaude(pi,si,btn){
   const p=PROJECTS[pi]; const s=p&&p.sessions[si]; if(!s)return;
-  if(btn){btn.disabled=true;btn.textContent='시작 중…';}
+  if(btn){btn.disabled=true;btn.textContent=t('claude.starting');}
   if(HAS_API){try{const r=await api('/claude',{method:'POST',body:{agentId:s.agentId}});
-    if(r&&r.already){ping(`이미 실행 중 — <span class="mono">${s.role}</span> pane의 claude에 연결 (재전송 생략)`);}
-    else ping(`Claude 시작 — <span class="mono">${s.role}</span> pane ✓ (상태는 실측 확인 후 전환)`);
-    announce(`${s.role} 세션에서 Claude를 시작했습니다.`,true);setTimeout(loadState,1500);return;}
-  catch(e){ping('Claude 시작 실패 — '+e.message);if(btn){btn.disabled=false;btn.textContent='▶ Claude 실행';}return;}}
-  logEv('info',p.name,'claude',`${s.role} 세션에 claude 기동 전송`);
-  ping(`Claude 시작(시뮬) — <span class="mono">${s.role}</span> (실측 갱신 대기)`);
+    if(r&&r.already){ping(t('msg.claude.already',{role:esc(s.role)}));}
+    else ping(t('msg.claude.ok',{role:esc(s.role)}));
+    announce(t('msg.claude.ok.a',{role:s.role}),true);setTimeout(loadState,1500);return;}
+  catch(e){ping(t('msg.claude.fail',{err:esc(e.message)}));if(btn){btn.disabled=false;btn.textContent=t('btn.claude');}return;}}
+  logEv('info',p.name,'claude',{k:'log.claude.sent',p:{sess:s.role}});
+  ping(t('msg.claude.demo',{role:esc(s.role)}));
   setTimeout(()=>{s.claude='on';renderAll();if(DR&&DR.pi===pi&&DR.si===si)openSession(pi,si);},900);
 }
 async function doAttach(pi,si){
   const p=PROJECTS[pi]; const s=p&&p.sessions[si]; if(!s)return;
   if(HAS_API){try{await api('/attach',{method:'POST',body:{agentId:s.agentId}});
-    ping('wmux 점프 — <span class="mono">'+esc(p.name)+'/'+esc(s.role)+'</span> ✓');return;}
-  catch(e){ping('점프 실패 — '+e.message);return;}}
-  ping(`wmux 점프(시뮬) — <span class="mono">${esc(p.name)}/${esc(s.role)}</span>`);
+    ping(t('msg.attach.ok',{label:esc(p.name)+'/'+esc(s.role)}));return;}
+  catch(e){ping(t('msg.attach.fail',{err:esc(e.message)}));return;}}
+  ping(t('msg.attach.demo',{label:esc(p.name)+'/'+esc(s.role)}));
 }
 async function doOpen(pi,role){
   const p=PROJECTS[pi]; if(!p)return;
   const path=`root/${p.name}/${role?role+'/':''}`;
   if(HAS_API){try{await api('/open',{method:'POST',body:{name:p.name,...(role?{role}:{})}});
-    ping(`폴더 열림 — <span class="mono">${esc(path)}</span>`);return;}
-  catch(e){ping('폴더 열기 실패 — '+e.message);return;}}
-  ping(`폴더 열기(시뮬) — <span class="mono">${esc(path)}</span>`);
+    ping(t('msg.open.ok',{path:esc(path)}));return;}
+  catch(e){ping(t('msg.open.fail',{err:esc(e.message)}));return;}}
+  ping(t('msg.open.demo',{path:esc(path)}));
 }
 async function openLink(pi,li){
   const l=PROJECTS[pi]&&PROJECTS[pi].links[li]; if(!l)return;
   if(HAS_API){window.open(l.url,'_blank','noopener');return;}
-  ping(`링크 열기(시뮬) — <span class="mono">${esc(l.url)}</span>`);
+  ping(t('msg.link.demo',{url:esc(l.url)}));
 }
 /* 문의 폼 — 배포 시 아래 URL 한 줄만 본인 Google Form 단축 링크로 교체(README의 [form]과 동일 값 권장). */
 const FEEDBACK_URL='https://docs.google.com/forms/d/e/1FAIpQLSfdAAODOXSfYg8bQp-WLewENrP_otXglztMzfR7bL678wqdHg/viewform';
 function openFeedback(){
-  if(/여기에-폼-링크/.test(FEEDBACK_URL)){ping('문의 폼 URL이 아직 설정되지 않았어요 — <span class="mono">dashboard.html</span>의 <span class="mono">FEEDBACK_URL</span>을 교체하세요');return;}
+  if(/여기에-폼-링크/.test(FEEDBACK_URL)){ping(t('msg.feedback.unset'));return;}
   window.open(FEEDBACK_URL,'_blank','noopener');
 }
 
@@ -1103,15 +1751,15 @@ function openFeedback(){
 let confirmAction=null,cfTrigger=null;
 function openConfirmDialog({title,sub,warn,sess,okText,onConfirm}){
   cfTrigger=document.activeElement; confirmAction=onConfirm;
-  document.getElementById('cf-title').textContent=title||'확인';
+  document.getElementById('cf-title').textContent=title||t('cf.title');
   document.getElementById('cf-sub').innerHTML=sub||'';
   const w=document.getElementById('cf-warn');
   if(warn){w.hidden=false;w.innerHTML='<span>⚠</span><span>'+warn+'</span>';}else w.hidden=true;
   const sl=document.getElementById('cf-sess');
   if(sess){sl.hidden=false;sl.innerHTML=sess;}else sl.hidden=true;
-  document.getElementById('cf-confirm').textContent=okText||'확인';
+  document.getElementById('cf-confirm').textContent=okText||t('cf.ok');
   openModal('confirm');document.getElementById('cf-cancel').focus();
-  announce(`${title} — 확인이 필요합니다.`,true);
+  announce(t('cf.ann',{title}),true);
 }
 function closeConfirm(){closeModal('confirm');if(cfTrigger&&cfTrigger.focus)cfTrigger.focus();cfTrigger=null;confirmAction=null;}
 document.getElementById('cf-confirm').onclick=()=>{const fn=confirmAction;closeConfirm();if(fn)fn();};
@@ -1123,20 +1771,20 @@ function openNamer({title,sub,warn,aLabel,aPh,aMono,browse,b,okText,onSubmit}){
   document.getElementById('nm-sub').innerHTML=sub||'';
   const w=document.getElementById('nm-warn');
   if(warn){w.hidden=false;w.innerHTML='<span>⚠</span><span>'+warn+'</span>';}else w.hidden=true;
-  document.getElementById('nm-a-label').textContent=aLabel||'이름';
+  document.getElementById('nm-a-label').textContent=aLabel||t('nm.a');
   nmBrowseFn=browse||null;document.getElementById('nm-browse').hidden=!browse; /* 폴더 찾아보기 버튼 — browse 콜백 있을 때만 */
   const a=document.getElementById('nm-a');a.value='';a.placeholder=aPh||'';a.className=aMono?'mono':'';
   document.getElementById('nm-b-row').hidden=!b;
   if(b){document.getElementById('nm-b-label').textContent=b.label;
     const bi=document.getElementById('nm-b');bi.value='';bi.placeholder=b.ph||'';}
   document.getElementById('nm-err').textContent='';
-  document.getElementById('nm-ok').textContent=okText||'생성';
+  document.getElementById('nm-ok').textContent=okText||t('nm.ok');
   openModal('namer');a.focus();
 }
 function closeNamer(){closeModal('namer');if(nmTrigger&&nmTrigger.focus)nmTrigger.focus();nmTrigger=null;namerSubmit=null;}
 async function submitNamer(){
   const a=document.getElementById('nm-a').value.trim();
-  if(!a){document.getElementById('nm-err').textContent='값을 입력하세요.';document.getElementById('nm-a').focus();return;}
+  if(!a){document.getElementById('nm-err').textContent=t('nm.err.empty');document.getElementById('nm-a').focus();return;}
   const b=document.getElementById('nm-b-row').hidden?'':document.getElementById('nm-b').value.trim();
   const fn=namerSubmit;closeNamer();if(fn)await fn(a,b);
 }
@@ -1147,12 +1795,12 @@ async function nmBrowse(auto){if(nmBrowseFn)await nmBrowseFn(!!auto);}
 let lgTrigger=null;
 async function openLog(pi){
   const p=PROJECTS[pi]; if(!p)return; lgTrigger=document.activeElement;
-  document.getElementById('lg-title').textContent='관리 로그 — '+p.name;
+  document.getElementById('lg-title').textContent=t('lg.title.p',{name:p.name});
   let rows=EVENTS.filter(e=>e.project===p.name);
   if(HAS_API){try{const d=await api('/api/log?project='+encodeURIComponent(p.name)+'&limit=20');rows=d.events||rows;}catch(e){}}
   document.getElementById('lg-feed').innerHTML=rows.slice(0,20).map(e=>
-    `<div class="ev ${e.level==='error'?'err':''}"><span class="t">${evTime(e.ts)}</span><span class="tool">${esc(e.event)}</span><span class="d">${esc(e.detail)}</span></div>`).join('')
-    ||'<div style="color:var(--faint);font-size:12px;padding:6px 0">기록 없음</div>';
+    `<div class="ev ${e.level==='error'?'err':''}"><span class="t">${evTime(e.ts)}</span><span class="tool">${esc(e.event)}</span><span class="d">${esc(evDetail(e))}</span></div>`).join('')
+    ||`<div style="color:var(--faint);font-size:12px;padding:6px 0">${t('lg.empty')}</div>`;
   openModal('logbox');
 }
 function closeLog(){closeModal('logbox');if(lgTrigger&&lgTrigger.focus)lgTrigger.focus();lgTrigger=null;}
@@ -1173,185 +1821,185 @@ function closeModal(id){
 
 /* 새 프로젝트(FS-8) · 기존 연동(FS-9) · 링크 추가(FS-11) 프롬프트 */
 function createPrompt(){
-  openNamer({title:'새 프로젝트',
-    sub:'<b>root/&lt;프로젝트&gt;/</b> 폴더와 격리 스캐폴드(프로젝트 CLAUDE.md)를 만들고 <b>대기중</b>으로 등록합니다. <b>git 저장소는 ops/에만</b> 생성(git init · .gitignore) — 프로젝트 루트는 저장소 아님. ops 폴더는 자동 포함.',
-    aLabel:'프로젝트 이름',aPh:'예: MyApp',
-    b:{label:'역할 (쉼표 구분 — ops는 자동 포함)',ph:'예: dev, art'},okText:'생성',
+  openNamer({title:t('dlg.create.title'),
+    sub:t('dlg.create.sub'),
+    aLabel:t('dlg.create.a'),aPh:t('dlg.create.aph'),
+    b:{label:t('dlg.create.b'),ph:t('dlg.create.bph')},okText:t('nm.ok'),
     onSubmit:async(name,rolesRaw)=>{
       const roles=rolesRaw.split(',').map(s=>s.trim()).filter(s=>s&&s!=='ops');
       if(HAS_API){try{await api('/create',{method:'POST',body:{name,roles}});
-        ping(`프로젝트 생성 — <span class="mono">${esc(name)}</span> ✓ 대기중 등록`);loadState();return;}
-      catch(e){ping('생성 실패 — '+e.message);return;}}
+        ping(t('msg.create.ok',{name:esc(name)}));loadState();return;}
+      catch(e){ping(t('msg.create.fail',{err:esc(e.message)}));return;}}
       PROJECTS.push({name,status:'idle',createdAt:new Date().toISOString(),archivedAt:null,wsLive:false,
         links:[],roles:roles.map(id=>({id})),sessions:[]});
-      logEv('info',name,'create',`격리 스캐폴드 생성 · 역할 ${roles.length}개 · 대기중 등록`);
-      ping(`프로젝트 생성(시뮬) — <span class="mono">${esc(name)}</span> 대기중 등록 ✓`);renderAll();}});
+      logEv('info',name,'create',{k:'log.create.scaffold',p:{count:roles.length}});
+      ping(t('msg.create.demo',{name:esc(name)}));renderAll();}});
 }
 function importPrompt(){
-  openNamer({title:'기존 프로젝트 연동',
-    sub:'<b>📁 찾아보기</b>로 연동할 폴더를 고르면 아래 경로가 채워집니다(경로를 직접 입력해도 됩니다). 그 폴더를 <b>root/&lt;프로젝트&gt;/ops/</b>로 <b>이동(move)</b>합니다 (기본 프로젝트 = ops 코드베이스, <b>git 저장소도 ops/</b>). 프로젝트 루트엔 격리 CLAUDE.md만 생기고(저장소 아님) <b>대기중</b>으로 등록됩니다. 경로가 이미 root/ 아래면 <b>이동 없이 제자리 등록</b>(구 팀 재등록 — B7).',
-    warn:'폴더가 실제로 ops/로 이동됩니다 — 같은 드라이브만 지원, 실패 시 원본은 변경되지 않습니다. 이동 후 프로젝트 내부의 절대경로 참조(.env·IDE 설정·스크립트)는 깨질 수 있습니다.',
-    aLabel:'기존 프로젝트 경로',aPh:HAS_API?'📁 찾아보기로 폴더 선택 (또는 경로 직접 입력)':'예: D:\\work\\my-old-project',aMono:true,
+  openNamer({title:t('dlg.import.title'),
+    sub:t('dlg.import.sub'),
+    warn:t('dlg.import.warn'),
+    aLabel:t('dlg.import.a'),aPh:HAS_API?t('dlg.import.aph'):t('dlg.import.aph2'),aMono:true,
     browse:HAS_API?importBrowse:null,
-    b:{label:'프로젝트 이름 (비우면 폴더명)',ph:'my-old-project'},okText:'ops/로 연동',
+    b:{label:t('dlg.import.b'),ph:t('dlg.import.bph')},okText:t('dlg.import.ok'),
     onSubmit:async(path,name)=>{
       name=name||path.split(/[\\/]/).filter(Boolean).pop()||'project';
       if(HAS_API){try{const r=await api('/import',{method:'POST',body:{path,name}});
-        ping(`연동 완료 — <span class="mono">root/${esc(r.name||name)}/ops/</span> ✓${r.backup?` · 기존 ops 백업: <span class="mono">${esc(r.backup)}</span>`:''} 대기중 등록`);loadState();return;}
-      catch(e){ping('연동 실패 — '+esc(e.message)+' (원본 무변경)');return;}}
+        ping(t('msg.import.ok',{name:esc(r.name||name),backup:r.backup?t('msg.import.backup',{backup:esc(r.backup)}):''}));loadState();return;}
+      catch(e){ping(t('msg.import.fail',{err:esc(e.message)}));return;}}
       PROJECTS.push({name,status:'idle',createdAt:new Date().toISOString(),archivedAt:null,wsLive:false,
         links:[],roles:[{id:'dev'}],sessions:[]});
-      logEv('info',name,'import',`${path} → root/${name}/ 이동 · 스캐폴드 적용 · 대기중 등록`);
-      ping(`이사(시뮬) — <span class="mono">root/${esc(name)}/</span> 대기중 등록 ✓`);renderAll();}});
+      logEv('info',name,'import',{k:'log.import.demo',p:{path,name}});
+      ping(t('msg.import.demo',{name:esc(name)}));renderAll();}});
   if(HAS_API)setTimeout(()=>nmBrowse(true),120); /* 다이얼로그가 뜬 직후 네이티브 탐색창 자동 오픈 */
 }
 /* 네이티브 폴더 선택창(POST /pick-folder) → 선택된 절대경로를 nm-a에 채우고 이름 자동 유추. auto=자동 오픈(취소는 조용히) */
 async function importBrowse(auto){
   const btn=document.getElementById('nm-browse'),errEl=document.getElementById('nm-err');
-  const label=btn.textContent;btn.disabled=true;btn.textContent='탐색창 여는 중…';errEl.textContent='';
+  const label=btn.textContent;btn.disabled=true;btn.textContent=t('browse.opening');errEl.textContent='';
   try{
-    const r=await api('/pick-folder',{method:'POST',body:{title:'연동할 기존 프로젝트 폴더를 선택하세요'}});
+    const r=await api('/pick-folder',{method:'POST',body:{title:t('browse.pickTitle')}});
     if(r&&r.path){
       document.getElementById('nm-a').value=r.path;
       const bi=document.getElementById('nm-b');
       if(bi&&!bi.value.trim())bi.value=r.path.split(/[\\/]/).filter(Boolean).pop()||'';
-    }else if(r&&r.unsupported){errEl.textContent='이 환경에서는 탐색창을 열 수 없어요 — 경로를 직접 입력하세요.';}
+    }else if(r&&r.unsupported){errEl.textContent=t('browse.unsupported');}
     /* 취소(path:null)는 조용히 — 사용자가 버튼으로 재시도하거나 경로를 직접 입력 */
-  }catch(e){errEl.textContent='탐색창 열기 실패 — '+esc(e.message);}
+  }catch(e){errEl.textContent=t('browse.fail',{err:esc(e.message)});}
   finally{btn.disabled=false;btn.textContent=label;}
 }
 /* 역할 추가/제거 (FS-8 — 선언 경유, user_context §4-2·C8) */
 function rolePrompt(pi){
   const p=PROJECTS[pi]; if(!p)return;
-  openNamer({title:'역할 추가',
-    sub:`<span class="who">${esc(p.name)}</span> — 선언(project.json)에 역할을 추가하고 <b>root/${esc(p.name)}/&lt;역할&gt;/</b> 폴더를 준비합니다. 자유 스폰이 아니라 <b>선언 경유</b> — 스폰은 활성화/[세션 복구]가 수행합니다.`,
-    aLabel:'역할 이름',aPh:'예: dev · art · qa',okText:'추가',
+  openNamer({title:t('dlg.role.title'),
+    sub:t('dlg.role.sub',{name:esc(p.name)}),
+    aLabel:t('dlg.role.a'),aPh:t('dlg.role.aph'),okText:t('dlg.role.ok'),
     onSubmit:async(role)=>{
-      role=role.trim(); if(!role||role==='ops'){ping(role==='ops'?'ops는 예약 역할 — 항상 포함됩니다':'역할 이름을 입력하세요');return;}
+      role=role.trim(); if(!role||role==='ops'){ping(role==='ops'?t('msg.role.opsReserved'):t('msg.role.needName'));return;}
       if(HAS_API){try{await api('/create',{method:'POST',body:{name:p.name,roles:[role]}});
-        ping(`역할 추가 — <span class="mono">${esc(role)}</span> ✓${(p.status==='active')?' · [세션 복구]로 스폰하세요':''}`);loadState();return;}
-      catch(e){ping('역할 추가 실패 — '+e.message);return;}}
+        ping(t('msg.role.ok',{role:esc(role),spawnHint:(p.status==='active')?t('msg.role.spawnHint'):''}));loadState();return;}
+      catch(e){ping(t('msg.role.fail',{err:esc(e.message)}));return;}}
       if(!(p.roles||[]).some(r=>r.id===role)){(p.roles=p.roles||[]).push({id:role});}
-      logEv('info',p.name,'create',`역할 병합 — 추가 ${role}`);
-      ping(`역할 추가(시뮬) — <span class="mono">${esc(role)}</span>${p.status==='active'?' · [세션 복구]로 스폰':''} ✓`);renderAll();}});
+      logEv('info',p.name,'create',{k:'log.create.merged',p:{added:role}});
+      ping(t('msg.role.demo',{role:esc(role),spawnHint2:p.status==='active'?t('msg.role.spawnHint2'):''}));renderAll();}});
 }
 function removeRolePrompt(pi,role){
   const p=PROJECTS[pi]; if(!p)return;
   openConfirmDialog({
-    title:'역할을 제거합니다',
-    sub:`<span class="who">${esc(p.name)}</span> / <span class="mono">${esc(role)}</span> — <b>선언에서만 제거</b>합니다. 역할 폴더·파일은 보존됩니다(파괴 없음). 살아있는 세션이 있으면 거부(409)됩니다.`,
-    okText:'선언에서 제거',
+    title:t('dlg.rmrole.title'),
+    sub:t('dlg.rmrole.sub',{name:esc(p.name),role:esc(role)}),
+    okText:t('dlg.rmrole.ok'),
     onConfirm:async()=>{
       if(HAS_API){try{await api('/roles',{method:'POST',body:{name:p.name,action:'remove',role}});
-        ping(`역할 제거 — <span class="mono">${esc(role)}</span> ✓ (폴더 보존)`);loadState();return;}
-      catch(e){ping(String(e.message).includes('409')?'살아있는 세션이 있는 역할 — 비활성화 후 제거하세요 (409)':'역할 제거 실패 — '+e.message);return;}}
+        ping(t('msg.rmrole.ok',{role:esc(role)}));loadState();return;}
+      catch(e){ping(String(e.message).includes('409')?t('msg.rmrole.live'):t('msg.rmrole.fail',{err:esc(e.message)}));return;}}
       p.roles=(p.roles||[]).filter(r=>r.id!==role);
-      logEv('info',p.name,'roles',`역할 제거 — ${role} (선언만, 폴더 보존)`);
-      ping(`역할 제거(시뮬) — <span class="mono">${esc(role)}</span> ✓`);renderAll();}});
+      logEv('info',p.name,'roles',{k:'log.roles.removed',p:{role}});
+      ping(t('msg.rmrole.demo',{role:esc(role)}));renderAll();}});
 }
 function linkPrompt(pi){
   const p=PROJECTS[pi]; if(!p)return;
-  openNamer({title:'서비스 링크 등록',
-    sub:`<span class="who">${esc(p.name)}</span> — 배포 URL·DB 콘솔 등 연동 서비스 바로가기를 카드에 추가합니다 (표시 전용 · http/https만).`,
-    aLabel:'라벨',aPh:'예: 배포 · DB 콘솔',
-    b:{label:'URL (http/https)',ph:'https://…'},okText:'등록',
+  openNamer({title:t('dlg.link.title'),
+    sub:t('dlg.link.sub',{name:esc(p.name)}),
+    aLabel:t('dlg.link.a'),aPh:t('dlg.link.aph'),
+    b:{label:t('dlg.link.b'),ph:t('dlg.link.bph')},okText:t('dlg.link.ok'),
     onSubmit:async(label,url)=>{
-      if(!/^https?:\/\//.test(url)){ping('http(s):// URL만 등록할 수 있습니다');return;}
+      if(!/^https?:\/\//.test(url)){ping(t('msg.link.badUrl'));return;}
       if(HAS_API){try{await api('/links',{method:'POST',body:{name:p.name,action:'add',label,url}});
-        ping(`링크 등록 — <span class="mono">${esc(label)}</span> ✓`);loadState();return;}
-      catch(e){ping('링크 등록 실패 — '+e.message);return;}}
+        ping(t('msg.link.ok',{label:esc(label)}));loadState();return;}
+      catch(e){ping(t('msg.link.fail',{err:esc(e.message)}));return;}}
       (p.links=p.links||[]).push({label,url});
-      ping(`링크 등록(시뮬) — <span class="mono">${esc(label)}</span> ✓`);renderAll();}});
+      ping(t('msg.link.regdemo',{label:esc(label)}));renderAll();}});
 }
 /* ═══ 서버 ON/OFF (FS-14 확장) — ON: 선언 명령을 pane에 전송 · OFF: 리스너 프로세스 트리 종료 ═══ */
 function servePrompt(pi){
   const p=PROJECTS[pi]; if(!p)return;
   const cur=p.serve||{};
-  openNamer({title:'서버 시작 명령 선언',
-    sub:`<span class="who">${esc(p.name)}</span> — [▶ 서버 시작]이 이 명령을 역할 pane의 셸에 그대로 입력합니다(터미널에서 치는 것과 동일 · pane에 claude가 켜져 있으면 거부). <b>명령을 비우고 확인하면 해제</b>됩니다.${cur.cmd?`<br>현재: <span class="mono">[${esc(cur.role)}] ${esc(cur.cmd)}</span>`:''}`,
-    aLabel:'시작 명령',aPh:'예: npm run dev',aMono:true,
-    b:{label:'역할(pane) — 비우면 ops',ph:cur.role||'ops'},okText:'저장',
+  openNamer({title:t('dlg.serve.title'),
+    sub:t('dlg.serve.sub',{name:esc(p.name),cur:cur.cmd?t('dlg.serve.cur',{role:esc(cur.role),cmd:esc(cur.cmd)}):''}),
+    aLabel:t('dlg.serve.a'),aPh:t('dlg.serve.aph'),aMono:true,
+    b:{label:t('dlg.serve.b'),ph:cur.role||'ops'},okText:t('dlg.serve.ok'),
     onSubmit:async(cmd,role)=>{
       cmd=(cmd||'').trim();role=(role||'').trim()||cur.role||'ops';
       const action=cmd?'set':'clear';
-      if(action==='clear'&&!cur.cmd){ping('선언된 서버 명령이 없습니다 — 명령을 입력하세요');return;}
+      if(action==='clear'&&!cur.cmd){ping(t('msg.serve.noCmd'));return;}
       if(HAS_API){try{await api('/serve',{method:'POST',body:{name:p.name,action,role,cmd}});
-        ping(action==='set'?`서버 명령 저장 — <span class="mono">[${esc(role)}] ${esc(cmd)}</span> ✓`:'서버 명령 해제 ✓');loadState();return;}
-      catch(e){ping(String(e.message).includes('unknown-role')?'선언에 없는 역할입니다 — ops 또는 카드의 선언 역할만 가능':'저장 실패 — '+esc(e.message));return;}}
+        ping(action==='set'?t('msg.serve.saved',{role:esc(role),cmd:esc(cmd)}):t('msg.serve.cleared'));loadState();return;}
+      catch(e){ping(String(e.message).includes('unknown-role')?t('msg.serve.unknownRole'):t('msg.serve.saveFail',{err:esc(e.message)}));return;}}
       if(action==='set')p.serve={role,cmd};else delete p.serve; // demo
-      ping(action==='set'?`서버 명령 저장(시뮬) — <span class="mono">[${esc(role)}] ${esc(cmd)}</span> ✓`:'서버 명령 해제(시뮬) ✓');renderAll();}});
+      ping(action==='set'?t('msg.serve.saved.demo',{role:esc(role),cmd:esc(cmd)}):t('msg.serve.cleared.demo'));renderAll();}});
 }
 async function doServeStart(pi){
   const p=PROJECTS[pi]; if(!p||!p.serve||!p.serve.cmd)return;
   if(HAS_API){try{await api('/serve-start',{method:'POST',body:{name:p.name}});
-    ping(`서버 시작 전송 — <span class="mono">[${esc(p.serve.role)}] ${esc(p.serve.cmd)}</span> ✓ 리스너가 뜨면 우측 활성 포트에 표시됩니다`);
+    ping(t('msg.serve.start',{role:esc(p.serve.role),cmd:esc(p.serve.cmd)}));
     setTimeout(loadState,1500);return;}
   catch(e){const m=String(e.message);
-    ping(m.includes('pane-claude-on')?'그 pane엔 claude가 실행 중이라 차단했습니다(명령이 claude 입력창으로 들어감) — 다른 역할로 바꾸거나 claude를 종료하세요'
-      :m.includes('pane-state-unknown')?'pane 상태 확인 불가 — 잠시 후 다시 시도하세요'
-      :m.includes('role-session-missing')?'그 역할 세션이 없습니다 — [＋ 세션 활성화]로 먼저 여세요'
-      :m.includes('project-inactive')?'프로젝트가 비활성입니다 — 먼저 활성화하세요'
-      :m.includes('no-serve-config')?'서버 명령 미선언 — [＋ 서버]로 먼저 선언하세요'
-      :'서버 시작 실패 — '+esc(m));return;}}
-  ping('서버 시작(시뮬) — 데모에서는 실제 리스너가 생기지 않습니다');
+    ping(m.includes('pane-claude-on')?t('msg.serve.claudeOn')
+      :m.includes('pane-state-unknown')?t('msg.serve.unknownState')
+      :m.includes('role-session-missing')?t('msg.serve.roleMissing')
+      :m.includes('project-inactive')?t('msg.serve.inactive')
+      :m.includes('no-serve-config')?t('msg.serve.noConfig')
+      :t('msg.serve.startFail',{err:esc(m)}));return;}}
+  ping(t('msg.serve.start.demo'));
 }
 function portKillPrompt(idx){
   const pt=PORTS[idx]; if(!pt||!pt.project)return;
   openConfirmDialog({
-    title:'리스너를 중지합니다',
-    sub:`<span class="who">${esc(pt.project)}</span> — <span class="mono">:${pt.port} ${esc(pt.proc)}</span> 프로세스 트리가 종료됩니다(세션 pane은 유지).<br><b>저장 안 된 서버 상태는 사라집니다(undo 없음).</b>`,
-    okText:'리스너 중지',
+    title:t('dlg.pkill.title'),
+    sub:t('dlg.pkill.sub',{project:esc(pt.project),port:pt.port,proc:esc(pt.proc)}),
+    okText:t('dlg.pkill.ok'),
     onConfirm:()=>doPortKill(idx)});
 }
 async function doPortKill(idx){
   const pt=PORTS[idx]; if(!pt)return;
   if(HAS_API){try{await api('/port-kill',{method:'POST',body:{port:pt.port,pid:pt.pid,confirm:true}});
-    ping(`리스너 중지 — <span class="mono">:${pt.port} ${esc(pt.proc)}</span> ✓`);loadState();return;}
+    ping(t('msg.pkill.ok',{port:pt.port,proc:esc(pt.proc)}));loadState();return;}
   catch(e){const m=String(e.message);
-    ping(m.includes('listener-gone')?'이미 내려간 리스너입니다 — 목록을 새로고침했어요'
-      :m.includes('not-project-listener')?'프로젝트 세션발 리스너만 중지할 수 있습니다'
-      :'중지 실패 — '+esc(m));loadState();return;}}
-  PORTS.splice(idx,1);ping(`리스너 중지(시뮬) — <span class="mono">${esc(pt.p)}</span> ✓`);renderAll(); // demo
+    ping(m.includes('listener-gone')?t('msg.pkill.gone')
+      :m.includes('not-project-listener')?t('msg.pkill.notProject')
+      :t('msg.pkill.fail',{err:esc(m)}));loadState();return;}}
+  PORTS.splice(idx,1);ping(t('msg.pkill.demo',{p:esc(pt.p)}));renderAll(); // demo
 }
 /* git 원격 연결 (POST /git-remote) — 입력 URL을 리포 origin으로 설정(실제 remote — push/pull 진짜 연결). */
 function gitRemotePrompt(pi){
   const p=PROJECTS[pi]; if(!p)return;
   const cur=p.git&&p.git.remote;
-  openNamer({title:'git 원격 연결 → ops에 clone',
-    sub:`<span class="who">${esc(p.name)}</span> — 입력한 저장소를 <b>root/${esc(p.name)}/ops/</b>에 clone합니다 (ops = 코드베이스). 기존 ops 내용이 있으면 <b>백업 후</b> 진행하고, 이미 저장소면 원격만 갱신합니다. 비공개 repo는 인증(SSH 키·자격증명)이 필요할 수 있어요.${cur?`<br>현재 ops 원격: <span class="mono">${esc(cur)}</span>`:''}`,
-    aLabel:'git 원격 URL',aPh:'예: https://github.com/you/repo.git · git@github.com:you/repo.git',aMono:true,okText:'ops에 연결·clone',
+  openNamer({title:t('dlg.gitremote.title'),
+    sub:t('dlg.gitremote.sub',{name:esc(p.name),cur:cur?t('dlg.gitremote.cur',{remote:esc(cur)}):''}),
+    aLabel:t('dlg.gitremote.a'),aPh:t('dlg.gitremote.aph'),aMono:true,okText:t('dlg.gitremote.ok'),
     onSubmit:async(url)=>{
       url=(url||'').trim().replace(/^["']|["']$/g,'');
-      if(!/^(https?:\/\/|git@|ssh:\/\/|git:\/\/)/.test(url)){ping('git URL 형식이 아닙니다 (https:// · git@ · ssh://)');return;}
-      if(HAS_API){ping('ops로 연결·clone 중… (저장소 크기·네트워크에 따라 시간이 걸릴 수 있어요)');
+      if(!/^(https?:\/\/|git@|ssh:\/\/|git:\/\/)/.test(url)){ping(t('msg.git.badUrl'));return;}
+      if(HAS_API){ping(t('msg.gitremote.cloning'));
         try{const r=await api('/git-remote',{method:'POST',body:{name:p.name,url}});
-        ping(`ops에 git ${r.action==='cloned'?'clone 완료':'원격 갱신'} — <span class="mono">${esc(url)}</span> ✓${r.backup?` · 기존 ops 백업: <span class="mono">${esc(r.backup)}</span>`:''}`);loadState();return;}
-      catch(e){ping('연결 실패 — '+esc(e.message));return;}}
+        ping(t('msg.gitremote.ok',{action:r.action==='cloned'?t('git.action.cloned'):t('git.action.updated'),url:esc(url),backup:r.backup?t('msg.gitremote.backup',{backup:esc(r.backup)}):''}));loadState();return;}
+      catch(e){ping(t('msg.gitremote.fail',{err:esc(e.message)}));return;}}
       // demo — 실제 clone 없이 칩만 시뮬(웹 URL 정규화 근사)
       const web=url.replace(/^git@([^:]+):/,'https://$1/').replace(/^ssh:\/\/(?:[^@]+@)?([^/:]+)(?::\d+)?\//,'https://$1/').replace(/\.git$/,'');
       p.git={branch:(p.git&&p.git.branch)||'main',remote:url,web:/^https?:\/\//.test(web)?web:null};
-      ping(`ops에 git 연결(시뮬) — <span class="mono">${esc(url)}</span> ✓`);renderAll();}});
+      ping(t('msg.gitremote.demo',{url:esc(url)}));renderAll();}});
 }
 /* git 주소로 프로젝트 추가 (POST /create-git) — 저장소를 root/<이름>/ops/에 clone해 새 프로젝트 생성. */
 function createFromGitPrompt(){
-  openNamer({title:'git 주소로 프로젝트 추가',
-    sub:'입력한 git 저장소를 <b>root/&lt;이름&gt;/ops/</b>에 clone하고, 격리 스캐폴드(프로젝트 CLAUDE.md · git · .gitignore)와 함께 <b>대기중</b>으로 등록합니다. 이름을 비우면 <b>저장소 이름</b>을 씁니다. 비공개 repo는 인증(SSH 키·자격증명)이 필요할 수 있어요.',
-    aLabel:'git 원격 URL',aPh:'예: https://github.com/you/repo.git · git@github.com:you/repo.git',aMono:true,
-    b:{label:'프로젝트 이름 (비우면 저장소 이름)',ph:'예: MyApp'},okText:'clone·생성',
+  openNamer({title:t('dlg.creategit.title'),
+    sub:t('dlg.creategit.sub'),
+    aLabel:t('dlg.gitremote.a'),aPh:t('dlg.gitremote.aph'),aMono:true,
+    b:{label:t('dlg.creategit.b'),ph:t('dlg.creategit.bph')},okText:t('dlg.creategit.ok'),
     onSubmit:async(url,name)=>{
       url=(url||'').trim().replace(/^["']|["']$/g,'');
-      if(!/^(https?:\/\/|git@|ssh:\/\/|git:\/\/)/.test(url)){ping('git URL 형식이 아닙니다 (https:// · git@ · ssh://)');return;}
-      if(HAS_API){ping('저장소 clone 중… (크기·네트워크에 따라 시간이 걸릴 수 있어요)');
+      if(!/^(https?:\/\/|git@|ssh:\/\/|git:\/\/)/.test(url)){ping(t('msg.git.badUrl'));return;}
+      if(HAS_API){ping(t('msg.creategit.cloning'));
         try{const r=await api('/create-git',{method:'POST',body:{url,name}});
-        ping(`프로젝트 생성 — <span class="mono">${esc(r.name)}</span> ✓ git ${r.action==='cloned'?'clone 완료':'원격 갱신'}${r.backup?` · 기존 ops 백업: <span class="mono">${esc(r.backup)}</span>`:''} · 대기중 등록`);loadState();return;}
-      catch(e){ping('생성 실패 — '+esc(e.message));return;}}
+        ping(t('msg.creategit.ok',{name:esc(r.name),action:r.action==='cloned'?t('git.action.cloned'):t('git.action.updated'),backup:r.backup?t('msg.gitremote.backup',{backup:esc(r.backup)}):''}));loadState();return;}
+      catch(e){ping(t('msg.creategit.fail',{err:esc(e.message)}));return;}}
       // demo — 실제 clone 없이 카드만 시뮬(이름·웹 URL 근사)
       const nm=name||url.replace(/\.git$/,'').replace(/[/\\:]+$/,'').split(/[/\\:]/).filter(Boolean).pop()||'project';
       const web=url.replace(/^git@([^:]+):/,'https://$1/').replace(/^ssh:\/\/(?:[^@]+@)?([^/:]+)(?::\d+)?\//,'https://$1/').replace(/\.git$/,'');
       PROJECTS.push({name:nm,status:'idle',createdAt:new Date().toISOString(),archivedAt:null,wsLive:false,
         links:[],roles:[],sessions:[],git:{branch:'main',remote:url,web:/^https?:\/\//.test(web)?web:null}});
-      logEv('info',nm,'create-git',`git clone → root/${nm}/ops/ · 대기중 등록`);
-      ping(`프로젝트 생성(시뮬) — <span class="mono">${esc(nm)}</span> 대기중 등록 ✓`);renderAll();}});
+      logEv('info',nm,'create-git',{k:'log.creategit.demo',p:{name:nm}});
+      ping(t('msg.creategit.demo',{name:esc(nm)}));renderAll();}});
 }
 /* 세션 채택(동기화) — 미연결 세션을 빈 선언 역할에 바인딩(POST /adopt). 빈 역할이 여럿이면 골라 입력. */
 function adoptPrompt(pi,si){
@@ -1359,21 +2007,21 @@ function adoptPrompt(pi,si){
   const declared=['ops',...(p.roles||[]).map(r=>r.id)];
   const filled=new Set((p.sessions||[]).filter(x=>x.connected!==false).map(x=>x.role)); // 이미 연결된 역할
   const open=declared.filter(r=>!filled.has(r));
-  if(!open.length){ping('빈 선언 역할이 없습니다 — 채택할 역할이 없어요(모두 연결됨)');return;}
+  if(!open.length){ping(t('msg.adopt.noEmpty'));return;}
   const doAdopt=async(role)=>{
     role=(role||'').trim();
-    if(!open.includes(role)){ping('비어있는 역할만 채택할 수 있습니다: '+open.join(' · '));return;}
+    if(!open.includes(role)){ping(t('msg.adopt.onlyEmpty',{roles:open.join(' · ')}));return;}
     if(HAS_API){try{await api('/adopt',{method:'POST',body:{name:p.name,agentId:s.agentId,role}});
-      ping(`세션 채택 — <span class="mono">${esc(s.agentId)}</span> → 역할 <span class="mono">${esc(role)}</span> ✓`);loadState();return;}
-    catch(e){ping(String(e.message).includes('409')?'그 역할은 이미 다른 세션이 차지함 — 비어있는 역할로 채택하세요':'채택 실패 — '+esc(e.message));return;}}
+      ping(t('msg.adopt.ok',{agent:esc(s.agentId),role:esc(role)}));loadState();return;}
+    catch(e){ping(String(e.message).includes('409')?t('msg.adopt.taken'):t('msg.adopt.fail',{err:esc(e.message)}));return;}}
     // demo
     s.role=role;s.connected=true;s.adopted=true;
-    logEv('info',p.name,'adopt',`세션 ${s.agentId} → 역할 ${role} 채택`);
-    ping(`세션 채택(시뮬) — <span class="mono">${esc(s.agentId)}</span> → <span class="mono">${esc(role)}</span> ✓`);renderAll();
+    logEv('info',p.name,'adopt',{k:'log.adopt.done',p:{agentId:s.agentId,role}});
+    ping(t('msg.adopt.demo',{agent:esc(s.agentId),role:esc(role)}));renderAll();
   };
-  openNamer({title:'세션을 역할로 동기화(채택)',
-    sub:`<span class="who">${esc(p.name)}</span> — 연결 안 된 세션 <span class="mono">${esc(s.agentId)}</span>을(를) 빈 선언 역할에 바인딩합니다. cockpit이 그 역할 세션으로 인식하고 중복 스폰을 막습니다. <b>빈 역할:</b> ${open.map(r=>`<span class="mono">${esc(r)}</span>`).join(' · ')}`,
-    aLabel:'역할 (빈 역할만)',aPh:open.join(' · '),okText:'채택',
+  openNamer({title:t('dlg.adopt.title'),
+    sub:t('dlg.adopt.sub',{name:esc(p.name),agent:esc(s.agentId),roles:open.map(r=>`<span class="mono">${esc(r)}</span>`).join(' · ')}),
+    aLabel:t('dlg.adopt.a'),aPh:open.join(' · '),okText:t('dlg.adopt.ok'),
     onSubmit:doAdopt});
 }
 
@@ -1396,8 +2044,8 @@ function mirrorToConsole(html){
   }catch(e){/* 미러링 실패는 무시 — 토스트 표시엔 영향 없음 */}
 }
 let rc=0;
-function doRefresh(){rc=0;document.getElementById('refresh').textContent='⟳ 방금';loadState();loadGlobalCaps();ping('상태 갱신 — <span class="mono">GET /api/state</span>');}
-setInterval(()=>{rc++;document.getElementById('refresh').textContent=`⟳ ${rc}초 전`;},1000);
+function doRefresh(){rc=0;document.getElementById('refresh').textContent=t('refresh.just');loadState();loadGlobalCaps();ping(t('msg.refresh'));}
+setInterval(()=>{rc++;document.getElementById('refresh').textContent=t('refresh.ago',{n:rc});},1000);
 document.addEventListener('keydown',e=>{
   if(e.key!=='Escape')return;
   if(document.getElementById('namer').classList.contains('on'))closeNamer();
@@ -1408,6 +2056,7 @@ document.addEventListener('keydown',e=>{
 
 /* ═══ init ═══ */
 let POLL_STATE=null,POLL_CAPS=null; // 전체 종료(showBye) 시 clearInterval로 폴링 중단
+applyStaticI18n();
 loadState();
 loadGlobalCaps();
 if(HAS_API){POLL_STATE=setInterval(loadState,2500);POLL_CAPS=setInterval(loadGlobalCaps,60000);}

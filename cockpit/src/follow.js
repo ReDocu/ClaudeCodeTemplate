@@ -114,9 +114,9 @@ export async function tick() {
     if (g.web === _lastUrl) return; // 패널이 이미 그 저장소(규칙 ⑦) — 재이동은 스크롤·로그인만 날린다
     await openWeb(g.web);
     _lastUrl = g.web;
-    logEvent('info', null, 'follow', `workspace 추적 — ${active.title || active.id} → ${g.web} (${MUX} 브라우저 패널)`);
+    logEvent('info', null, 'follow', { k: 'log.follow.tracking', p: { target: active.title || active.id, url: g.web, mux: MUX } });
   } catch (e) {
-    logEvent('error', null, 'follow', `추적 실패 — ${e.message}`); // 규칙 ③ — 삼키고 계속
+    logEvent('error', null, 'follow', { k: 'log.follow.error', p: { err: e.message } }); // 규칙 ③ — 삼키고 계속
   } finally { _busy = false; }
 }
 

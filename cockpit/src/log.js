@@ -8,12 +8,13 @@ import { join, dirname } from 'node:path';
 const LOG_FILE = fileURLToPath(new URL('../workspace/logs/events.jsonl', import.meta.url));
 
 export function logEvent(level, project, event, detail) {
-  const entry = { ts: Date.now(), level: level === 'error' ? 'error' : 'info', project: project || null, event, detail: String(detail || '') };
+  const entry = { ts: Date.now(), level: level === 'error' ? 'error' : 'info', project: project || null, event, detail: (detail && typeof detail === 'object') ? detail : String(detail || '') };
   try {
     mkdirSync(dirname(LOG_FILE), { recursive: true });
     appendFileSync(LOG_FILE, JSON.stringify(entry) + '\n');
   } catch { /* 로그 실패 무시 — 본 동작 비차단 */ }
-  if (entry.level === 'error') console.error(`[${entry.event}] ${entry.project || '-'} — ${entry.detail}`);
+  const d = entry.detail && typeof entry.detail === 'object' ? (entry.detail.k + ' ' + JSON.stringify(entry.detail.p || {})) : entry.detail;
+  if (entry.level === 'error') console.error(`[${entry.event}] ${entry.project || '-'} — ${d}`);
   return entry;
 }
 

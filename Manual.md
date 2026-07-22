@@ -1,3 +1,5 @@
+> **Language:** **한국어** · [English](Manual.en.md)
+
 # ClaudeCockpit 사용 설명서 (초보자용)
 
 여러 개의 Claude Code를 **하나의 화면에서 보고 켜고 끄는** 로컬 대시보드입니다.

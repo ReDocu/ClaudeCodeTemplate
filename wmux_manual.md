@@ -1,3 +1,4 @@
+> **Language:** **한국어** · [English](wmux_manual.en.md)
 # wmux 매뉴얼
 
 > 출처: https://wmux.org/docs

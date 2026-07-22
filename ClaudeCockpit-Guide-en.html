@@ -1,0 +1,235 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ClaudeCockpit — Visual Guide</title>
+<style>
+  :root{
+    --bg:#0b0e13; --bg-grid:#0e131a; --panel:#141a22; --panel-2:#171f29;
+    --border:#232c37; --border-2:#2c3744;
+    --text:#d8dee7; --muted:#8b97a6; --faint:#828d9c;
+    --accent:#4fd6c9; --accent-dim:#2c8f88;
+    --ok:#46c667; --warn:#e2a83e; --crit:#f4685c; --idle:#5a6472; --blue:#5aa9f0;
+    --quiet:#6f8a7e;
+    --mono:ui-monospace,"Cascadia Code",Consolas,monospace;
+    --ui:system-ui,-apple-system,"Segoe UI",Roboto,"Malgun Gothic",sans-serif;
+  }
+  *{box-sizing:border-box} html,body{margin:0}
+  body{font-family:var(--ui);color:var(--text);background:var(--bg);
+    background-image:radial-gradient(circle at 1px 1px,var(--bg-grid) 1px,transparent 0);background-size:22px 22px;
+    font-size:14px;line-height:1.5;padding:24px 18px}
+  .wrap{max-width:940px;margin:0 auto}
+  h1{font-size:24px;margin:0 0 4px;letter-spacing:.2px}
+  .lead{color:var(--muted);margin:0 0 26px;font-size:14px}
+  h2{font-size:17px;margin:34px 0 4px;padding-top:18px;border-top:1px solid var(--border)}
+  h2 .n{display:inline-flex;width:24px;height:24px;border-radius:7px;background:var(--accent);color:#06201d;
+    font-size:14px;font-weight:700;align-items:center;justify-content:center;margin-right:9px;vertical-align:2px}
+  .desc{color:var(--muted);margin:2px 0 16px}
+  .mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
+  code{font-family:var(--mono);background:var(--panel);border:1px solid var(--border);border-radius:5px;padding:1px 6px;font-size:12.5px;color:var(--accent)}
+
+  /* ── 대시보드 컴포넌트 재현(실제 dashboard.html 팔레트/스타일) ── */
+  .fig{border:1px solid var(--border);border-radius:12px;background:var(--bg);padding:16px;margin:6px 0 14px;
+    background-image:radial-gradient(circle at 1px 1px,var(--bg-grid) 1px,transparent 0);background-size:22px 22px}
+  .figcap{font-size:11px;color:var(--faint);text-transform:uppercase;letter-spacing:.8px;margin:0 0 10px}
+
+  .pill{display:inline-flex;align-items:center;gap:5px;font-size:10.5px;padding:1px 8px;border-radius:20px;
+    border:1px solid;font-weight:600;white-space:nowrap;line-height:1.6}
+  .pill.idle{color:var(--faint);border-color:var(--border-2);background:transparent}
+  .pill.claude{color:var(--blue);border-color:#5aa9f066;background:#5aa9f00d}
+  .pill.work{color:var(--accent);border-color:var(--accent-dim);background:#4fd6c912}
+  .pill.wait{color:var(--faint);border-color:var(--border-2);background:transparent}
+  .pill.attn{color:var(--warn);border-color:#e2a83e66;background:#e2a83e16}
+  .pill.ok{color:var(--quiet);border-color:#2f3d38}
+  .g{font-size:9.5px}
+  .pin{font-size:9.5px;color:var(--warn);border:1px solid #e2a83e44;background:#e2a83e10;border-radius:5px;padding:0 5px}
+
+  .rrow-wrap{display:flex;gap:6px;align-items:stretch;margin:6px 0}
+  .rrow{flex:1;display:flex;align-items:center;gap:10px;padding:7px 10px;border:1px solid var(--border-2);border-radius:8px;
+    background:var(--panel-2);font-size:13px}
+  .rrow.dead{border-style:dashed;opacity:.92}
+  .rrow.orphan{border-left:2px solid #e2a83e66}
+  .rn{font-weight:600;display:flex;align-items:center;gap:6px}
+  .now{flex:1;font-family:var(--mono);font-size:11px;color:var(--faint);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .chev{color:var(--faint)}
+  .cg{flex:0 0 auto;display:flex;align-items:center;gap:5px;padding:6px 11px;border-radius:8px;font-size:12px;font-weight:600;white-space:nowrap;
+    border:1px solid #5aa9f066;background:#5aa9f00d;color:var(--blue)}
+  .cg.open,.cg.spawn{border-color:var(--accent-dim);background:#4fd6c912;color:var(--accent)}
+  .cg.sync{border-color:#e2a83e66;background:#e2a83e0d;color:var(--warn)}
+
+  .tcard{border:1px solid var(--border);border-left:3px solid var(--accent-dim);border-radius:11px;background:var(--panel);padding:13px 15px;margin:0}
+  .tc-head{display:flex;align-items:center;gap:10px;margin-bottom:9px}
+  .nm{font-weight:650;font-size:15px}
+  .tg{font-size:11px;color:var(--faint)}
+  .ptbtn{font-family:var(--mono);font-size:11px;color:var(--faint);border:1px solid var(--border-2);background:transparent;border-radius:6px;padding:2px 7px}
+  .cact{display:flex;gap:7px;margin-top:11px;flex-wrap:wrap}
+  .btn{font-size:12.5px;border:1px solid var(--border-2);background:var(--panel-2);color:var(--text);border-radius:8px;padding:6px 12px}
+  .btn.primary{border-color:var(--accent-dim);color:var(--accent);background:#4fd6c910}
+  .btn.danger{border-color:#f4685c55;color:var(--crit);background:#f4685c0d}
+  .sp{flex:1}
+  .rchip{display:inline-flex;align-items:center;gap:5px;font-size:11.5px;border:1px solid var(--border-2);border-radius:20px;padding:2px 10px;color:var(--muted);margin-right:6px}
+  .rchip.ops{color:var(--warn);border-color:#e2a83e44}
+
+  /* topbar 재현 */
+  .tb{display:flex;align-items:center;gap:14px;flex-wrap:wrap;padding:11px 15px;border:1px solid var(--border);border-radius:12px;
+    background:linear-gradient(180deg,var(--panel-2),var(--panel))}
+  .tb h1{font-size:15px;margin:0}
+  .tb .sub{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.4px}
+  .tbtn{font-size:12px;border:1px solid var(--border-2);background:var(--panel-2);color:var(--text);border-radius:8px;padding:5px 11px}
+  .tbtn.primary{border-color:var(--accent-dim);color:var(--accent);background:#4fd6c910}
+  .badge-live{color:var(--ok);font-size:11px}
+
+  /* 번호 마커 & 설명 */
+  .mk{display:inline-flex;width:19px;height:19px;border-radius:50%;background:var(--accent);color:#06201d;font-size:11px;font-weight:700;
+    align-items:center;justify-content:center;vertical-align:1px}
+  ol.ann{list-style:none;padding:0;margin:8px 0 0;counter-reset:a}
+  ol.ann li{position:relative;padding:6px 0 6px 30px;border-top:1px solid var(--border);color:var(--text);font-size:13.5px}
+  ol.ann li:first-child{border-top:0}
+  ol.ann li::before{counter-increment:a;content:counter(a);position:absolute;left:0;top:6px;
+    width:19px;height:19px;border-radius:50%;background:var(--accent);color:#06201d;font-size:11px;font-weight:700;
+    display:flex;align-items:center;justify-content:center}
+  ol.ann b{color:var(--accent)}
+  .muted{color:var(--muted)}
+
+  table{width:100%;border-collapse:collapse;margin:10px 0;font-size:13px}
+  th,td{text-align:left;padding:7px 9px;border-bottom:1px solid var(--border);vertical-align:top}
+  th{color:var(--faint);font-size:11px;text-transform:uppercase;letter-spacing:.5px;font-weight:600}
+  .tip{border-left:3px solid var(--accent);background:#4fd6c90a;padding:9px 13px;border-radius:0 8px 8px 0;margin:12px 0;color:var(--muted);font-size:13px}
+  .foot{margin-top:34px;padding-top:14px;border-top:1px solid var(--border);color:var(--faint);font-size:12px}
+  @media print{ body{background:#fff;color:#111} .fig{background:#fafafa;background-image:none} }
+</style>
+</head>
+<body>
+<p style="text-align:center;font-size:12px"><a href="ClaudeCockpit-Guide.html">한국어</a> · <strong>English</strong></p>
+<div class="wrap">
+
+  <h1>ClaudeCockpit — Visual Guide</h1>
+  <p class="lead">The screen examples below faithfully reproduce the actual dashboard's colors and buttons. Follow the numbers <span class="mk">1</span> as you read.</p>
+
+  <!-- 1. 전체 화면 -->
+  <h2><span class="n">1</span>The Whole Screen at a Glance</h2>
+  <p class="desc">The dashboard is broadly divided into a <b>top bar</b> + <b>left side (project list)</b> + <b>right side (info rail)</b>.</p>
+  <div class="fig">
+    <div class="figcap">Top bar</div>
+    <div class="tb">
+      <div><h1>ClaudeCockpit</h1><div class="sub">Project control · Local</div></div>
+      <div class="ministat mono muted" style="font-size:12px">In progress <b style="color:var(--text)">2</b> · Waiting <b style="color:var(--text)">3</b> · <span class="badge-live">● live</span></div>
+      <div style="margin-left:auto;display:flex;gap:7px">
+        <span class="tbtn">Refresh</span><span class="tbtn">Link existing project</span>
+        <span class="tbtn">＋ git URL</span><span class="tbtn primary">＋ New project</span>
+      </div>
+    </div>
+  </div>
+  <ol class="ann">
+    <li><b>In-progress / waiting counts · source badge</b> — <span class="pill ok"><span class="g">●</span>live</span> means the server is healthy. If it shows <span class="muted mono">▲ offline</span>, launch the exe again.</li>
+    <li>Create a new one with <b>＋ New project</b>, and register code you already have with <b>Link existing project / ＋ git URL</b>. (Details in §5)</li>
+    <li>The left list stacks in the order <b>● in progress → ⏸ waiting → ○ not connected → ▪ ended</b>.</li>
+  </ol>
+
+  <!-- 2. 세션 3단계 -->
+  <h2><span class="n">2</span>Three Steps to Open a Session <span style="font-size:13px;color:var(--faint)">— most important</span></h2>
+  <p class="desc"><b>Activating (▶ Activate) just opens the room</b>; it does not create a session (terminal). You open sessions one at a time from each role row.</p>
+  <div class="fig">
+    <div class="figcap">Session rows inside an in-progress card — the buttons change with the state</div>
+
+    <div class="rrow-wrap">
+      <div class="rrow dead"><span class="pill idle"><span class="g">○</span>Not connected</span>
+        <span class="rn">ops <span class="pin">ops pinned</span></span><span class="now">No session — activation needed</span></div>
+      <span class="cg spawn">＋ Activate session</span>
+    </div>
+
+    <div class="rrow-wrap">
+      <div class="rrow"><span class="pill idle"><span class="g">❯</span>Terminal</span>
+        <span class="rn">dev</span><span class="now">Checking connection…</span></div>
+      <span class="cg" style="opacity:.55;border-style:dashed">? Checking connection</span>
+    </div>
+
+    <div class="rrow-wrap">
+      <div class="rrow"><span class="pill idle"><span class="g">❯</span>Terminal</span>
+        <span class="rn">art</span><span class="now">root/MyApp/art/</span><span class="chev">↗</span></div>
+      <span class="cg open">↗ Open session</span><span class="cg">▶ Run Claude</span>
+    </div>
+  </div>
+  <ol class="ann">
+    <li><b>① Not connected</b> — there is no terminal yet. Pressing <span class="cg spawn" style="padding:2px 7px;font-size:11px">＋ Activate session</span> creates that role's terminal in wmux.</li>
+    <li><b>② Checking connection</b> — wait a moment. During this time the Run Claude button does not appear yet (to prevent misfires).</li>
+    <li><b>③ Ready</b> — use <span class="cg open" style="padding:2px 7px;font-size:11px">↗ Open session</span> to jump to that terminal, and <span class="cg" style="padding:2px 7px;font-size:11px">▶ Run Claude</span> to turn Claude on.</li>
+  </ol>
+  <div class="tip">To open everything at once, use <b>[＋ Activate all sessions]</b> below the card. Sessions that are already open are reused rather than recreated (no duplicates).</div>
+
+  <!-- 3. 활동 배지 -->
+  <h2><span class="n">3</span>What Claude Is Doing Right Now — Activity Badges</h2>
+  <p class="desc">Badges attach to sessions where Claude is running, so you know what it's doing without going in.</p>
+  <div class="fig">
+    <div class="figcap">Activity badges on session rows</div>
+    <div class="rrow-wrap"><div class="rrow"><span class="pill claude"><span class="g">✦</span>claude</span><span class="pill work"><span class="g">⏳</span>In progress</span>
+      <span class="rn">dev</span><span class="now">root/MyApp/dev/</span></div><span class="cg open">↗ Open session</span></div>
+    <div class="rrow-wrap"><div class="rrow"><span class="pill claude"><span class="g">✦</span>claude</span><span class="pill wait"><span class="g">⌛</span>Waiting</span>
+      <span class="rn">ops <span class="pin">ops pinned</span></span><span class="now">root/MyApp/ops/</span></div><span class="cg open">↗ Open session</span></div>
+    <div class="rrow-wrap"><div class="rrow"><span class="pill claude"><span class="g">✦</span>claude</span><span class="pill attn"><span class="g">⚠</span>Awaiting input</span>
+      <span class="rn">art</span><span class="now">root/MyApp/art/</span></div><span class="cg open">↗ Open session</span></div>
+  </div>
+  <table>
+    <tr><th>Badge</th><th>Meaning</th><th>What you should do</th></tr>
+    <tr><td><span class="pill work"><span class="g">⏳</span>In progress</span></td><td>Claude is working</td><td>Leave it be</td></tr>
+    <tr><td><span class="pill wait"><span class="g">⌛</span>Waiting</span></td><td>Finished responding, waiting for the next instruction</td><td>Type what you want done</td></tr>
+    <tr><td><span class="pill attn"><span class="g">⚠</span>Awaiting input</span></td><td>Waiting for approval or permission input</td><td><b style="color:var(--warn)">Handle first</b></td></tr>
+  </table>
+  <div class="tip">If no badge shows: Claude isn't turned on yet (<span class="pill idle"><span class="g">❯</span>Terminal</span>), it's before the first prompt, or the activity hook isn't installed. Install the hook (once): <code>node cockpit/bin/activity-hook.mjs install</code></div>
+
+  <!-- 4. 드로어 -->
+  <h2><span class="n">4</span>Session Drawer — Click for Details</h2>
+  <p class="desc"><b>Click</b> a session row to open a detail drawer on the right.</p>
+  <div class="fig">
+    <div class="figcap">Session detail drawer</div>
+    <div style="border:1px solid var(--border);border-radius:11px;background:var(--panel);padding:14px;max-width:430px">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px"><b style="font-size:15px">MyApp / ops</b><span class="sp"></span><span class="muted">✕</span></div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px">
+        <span class="pill claude"><span class="g">✦</span>claude running</span><span class="pill wait"><span class="g">⌛</span>awaiting response</span>
+        <span class="pin" style="padding:2px 6px">📌 ops pinned</span></div>
+      <div class="cact" style="margin:0">
+        <span class="btn primary">Open ↗ (wmux jump)</span><span class="btn">📁 Folder</span>
+        <span class="btn" style="color:var(--blue);border-color:#5aa9f066">▶ Run Claude</span><span class="btn danger">Deactivate session</span></div>
+    </div>
+  </div>
+  <ol class="ann">
+    <li><b>Status · activity badges</b> — check claude on/off, in progress/waiting, whether ops is pinned, and the working folder (cwd).</li>
+    <li><b>Open ↗ (wmux jump)</b> — move to that terminal to approve or run commands directly. <b>📁 Folder</b> — open the folder in the file explorer.</li>
+    <li><b>Deactivate session</b> — end just this one session (red). If Claude is working, a confirmation dialog appears.</li>
+  </ol>
+
+  <!-- 5. 프로젝트 만들기/끝내기 -->
+  <h2><span class="n">5</span>Creating · Ending Projects</h2>
+  <div class="fig">
+    <div class="figcap">Waiting card (a project not yet opened)</div>
+    <div class="tcard" style="border-left-color:var(--idle)">
+      <div class="tc-head"><span class="nm">MyApp</span><span class="tg"><span class="pill idle"><span class="g">⏸</span>Waiting</span></span><span class="sp"></span><span class="ptbtn">root/MyApp/</span></div>
+      <div><span class="rchip ops">📌 ops</span><span class="rchip">❯ dev ✕</span><span class="rchip">❯ art ✕</span></div>
+      <div class="cact"><span class="btn primary">▶ Activate</span><span class="btn">＋ Role</span><span class="sp"></span><span class="btn">▪ Archive</span></div>
+    </div>
+  </div>
+  <table>
+    <tr><th>Button</th><th>Action</th></tr>
+    <tr><td><span class="btn primary" style="padding:3px 9px">▶ Activate</span></td><td>Opens the project (creates a wmux workspace · <b>does not create sessions</b> → open sessions via §2)</td></tr>
+    <tr><td><span class="btn" style="padding:3px 9px">＋ Role</span></td><td>Adds a new role (e.g. qa) to the declaration</td></tr>
+    <tr><td><span class="btn" style="padding:3px 9px">▪ Archive</span></td><td>Move to the archive (Ended section · [Resume] later)</td></tr>
+    <tr><td><span class="btn danger" style="padding:3px 9px">Deactivate</span></td><td>(In-progress card) End all sessions + close the window → goes through a confirmation dialog</td></tr>
+  </table>
+  <div class="tip">⚠️ <b>There is no undo.</b> That's why every turn-off button goes through a confirmation dialog. The only ways to turn things off are <b>[Deactivate session]</b> (one) and <b>[Deactivate]</b> (all) — cockpit never turns anything off on its own.</div>
+
+  <!-- 6. 버튼 색 규칙 -->
+  <h2><span class="n">6</span>Telling Buttons Apart by Color</h2>
+  <table>
+    <tr><th>Color</th><th>Example</th><th>Meaning</th></tr>
+    <tr><td>Teal (accent)</td><td><span class="cg spawn" style="padding:3px 9px">＋ Activate session</span> <span class="cg open" style="padding:3px 9px">↗ Open session</span></td><td>Open · activate (primary action)</td></tr>
+    <tr><td>Blue</td><td><span class="cg" style="padding:3px 9px">▶ Run Claude</span></td><td>Turn Claude on</td></tr>
+    <tr><td>Amber (warn)</td><td><span class="cg sync" style="padding:3px 9px">⎇ Sync to role</span></td><td>Caution · connection needed</td></tr>
+    <tr><td>Red (crit)</td><td><span class="btn danger" style="padding:3px 9px">Deactivate session</span></td><td>End (destructive)</td></tr>
+  </table>
+
+  <p class="foot">ClaudeCockpit rewrite v1 · This guide is an example that reproduces the actual UI · For detailed usage see <code>Manual.md</code>, for the full feature set see <code>Tech.md</code>.<br>
+  Print: press <b>Ctrl+P</b> in the browser (enable background graphics to print the colors too).</p>
+</div>
+</body>
+</html>

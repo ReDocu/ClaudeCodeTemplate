@@ -66,7 +66,7 @@ export function reconcile(state, projects) {
   if (state.at === _seenAt) return;           // 같은 스냅샷은 1회만 판정(다중 폴러가 그레이스를 깎지 않게)
   _seenAt = state.at;
   if (state.epoch !== _seenEpoch) {
-    if (_seenEpoch !== null) logEvent('info', null, 'reconcile', `wmux 재연결 감지(epoch ${state.epoch}) — 매핑 재검증 시작`);
+    if (_seenEpoch !== null) logEvent('info', null, 'reconcile', { k: 'log.reconcile.reconnect', p: { epoch: state.epoch } });
     _seenEpoch = state.epoch;
     _missWs.clear(); _missAdopt.clear();
   }
@@ -77,12 +77,14 @@ export function reconcile(state, projects) {
     // wsId — 실측 재발견(제목/label 매칭)은 즉시 되쓰기, 부재는 GRACE 후 해제
     const { ws, via } = matchWorkspaceInfo(state, p);
     if (ws && p.wsId !== ws.id) {
-      logEvent('info', p.name, 'reconcile', `workspace 재바인딩(${via} 매칭) — wsId ${p.wsId || '없음'} → ${ws.id}`);
+      logEvent('info', p.name, 'reconcile', p.wsId
+        ? { k: 'log.reconcile.rebind', p: { via, oldWs: p.wsId, newWs: ws.id } }
+        : { k: 'log.reconcile.rebind-fresh', p: { via, newWs: ws.id } });
       p.wsId = ws.id; dirty = true; _missWs.delete(p._folder);
     } else if (p.wsId && !wsIds.has(p.wsId)) {
       const n = (_missWs.get(p._folder) || 0) + 1;
       if (n >= GRACE) {
-        logEvent('info', p.name, 'reconcile', `stale wsId 해제 — ${p.wsId} (실측 ${GRACE}회 연속 부재)`);
+        logEvent('info', p.name, 'reconcile', { k: 'log.reconcile.stale-ws', p: { wsId: p.wsId, grace: GRACE } });
         p.wsId = null; dirty = true; _missWs.delete(p._folder);
       } else _missWs.set(p._folder, n);
     } else _missWs.delete(p._folder);
@@ -92,13 +94,13 @@ export function reconcile(state, projects) {
       if (agentIds.has(aid)) { _missAdopt.delete(key); continue; }
       const n = (_missAdopt.get(key) || 0) + 1;
       if (n >= GRACE) {
-        logEvent('info', p.name, 'reconcile', `stale 채택 해제 — ${aid} → ${p.adopted[aid]} (실측 ${GRACE}회 연속 부재)`);
+        logEvent('info', p.name, 'reconcile', { k: 'log.reconcile.stale-adopt', p: { agentId: aid, role: p.adopted[aid], grace: GRACE } });
         delete p.adopted[aid]; dirty = true; _missAdopt.delete(key);
       } else _missAdopt.set(key, n);
     }
     if (dirty) {
       try { writeProject(p); }
-      catch (e) { logEvent('error', p.name, 'reconcile', `되쓰기 실패 — ${e.message}`); }
+      catch (e) { logEvent('error', p.name, 'reconcile', { k: 'log.reconcile.rewrite-failed', p: { err: e.message } }); }
     }
   }
 }
@@ -122,7 +124,7 @@ export async function cleanSlate() {
   let killed = 0, closed = 0;
   for (const a of state.agents) {
     try { await killAgent(a.agentId); killed++; }
-    catch (e) { logEvent('error', null, 'clean-slate', `복원 세션 ${a.label || a.agentId} 종료 실패 — ${e.message}`); }
+    catch (e) { logEvent('error', null, 'clean-slate', { k: 'log.clean-slate.kill-failed', p: { sess: a.label || a.agentId, err: e.message } }); }
   }
   for (const w of state.workspaces) {
     try { await closeWorkspace(w.id); closed++; }
@@ -135,7 +137,7 @@ export async function cleanSlate() {
     try { writeProject(p); } catch { /* 되쓰기 실패 — reconcile 그레이스가 정리 */ }
   }
   await refreshState(); // read-your-writes(①) — 이후 재수렴·폴링이 정리된 실측을 보게
-  logEvent('info', null, 'clean-slate', `wmux 초기화 — 복원 세션 ${killed}개 종료 · 워크스페이스 ${closed}개 닫음 (선언 기준 재구성)`);
+  logEvent('info', null, 'clean-slate', { k: 'log.clean-slate.done', p: { killed, closed } });
   return { killed, closed };
 }
 
@@ -162,7 +164,7 @@ export async function activate(name) {
   const { ws, wsCreated } = await ensureWorkspace(p, state);
   p.status = 'active'; p.wsId = ws.id;
   writeProject(p);
-  logEvent('info', p.name, 'activate', `workspace ${wsCreated ? '생성' : '재사용'} · 세션 스폰 없음(개별 활성화 대기)`);
+  logEvent('info', p.name, 'activate', wsCreated ? { k: 'log.activate.created' } : { k: 'log.activate.reused' });
   return { ok: true, wsId: ws.id, spawned: 0, reused: 0 };
 }
 
@@ -180,7 +182,7 @@ async function spawnWithIdentity(p, role, { workspaceId, cwd, cmd }) {
   } catch (e) {
     if (/응답 없음/.test(e.message || '')) throw e; // 타임아웃 — 재시도 금지
     _envSpawnOk = false;
-    logEvent('info', p.name, 'spawn', `env 주입 미지원 wmux — env 없이 재시도 (${role})`);
+    logEvent('info', p.name, 'spawn', { k: 'log.spawn.env-unsupported', p: { role } });
     return spawnAgent(base);
   }
 }
@@ -203,7 +205,7 @@ async function verifyPlacement(p, role, wsId, agentId, { tries = 6, gapMs = 500 
       }
       if (a && a.workspaceId && a.workspaceId !== wsId) {
         try { await killAgent(agentId); } catch { /* 정리 실패 — orphan으로 남음([⎇ 역할로 동기화] 가능) */ }
-        logEvent('error', p.name, 'spawn', `${role} 오배치 감지 — ${a.workspaceId}에 스폰됨 · 정리 후 실패 처리`);
+        logEvent('error', p.name, 'spawn', { k: 'log.spawn.misplaced', p: { role, wsId: a.workspaceId } });
         return false;
       }
     } else if (agentsOfWs(state, wsId).some((a) => roleOf(p, a) === role)) return true;
@@ -243,7 +245,7 @@ export async function spawnRole(name, role) {
       agentId = (res && (res.agent?.agentId || res.agentId || res.agent?.id || res.id)) || null;
     } catch (e) {
       failed.push(r);
-      logEvent('error', p.name, 'spawn', `${r} 스폰 실패 — ${e.message}`);
+      logEvent('error', p.name, 'spawn', { k: 'log.spawn.failed', p: { role: r, err: e.message } });
       invalidate();
       continue;
     }
@@ -251,7 +253,7 @@ export async function spawnRole(name, role) {
     if (await verifyPlacement(p, r, ws.id, agentId)) { spawned++; spawnedIds.push(r); }
     else {
       failed.push(r);
-      logEvent('error', p.name, 'spawn', `${r} 연결 확인 실패 — 대상 워크스페이스에서 실측되지 않음(활성화 버튼 유지)`);
+      logEvent('error', p.name, 'spawn', { k: 'log.spawn.verify-failed', p: { role: r } });
     }
     invalidate();
   }
@@ -260,8 +262,7 @@ export async function spawnRole(name, role) {
   p.wsId = ws.id;
   writeProject(p);
   logEvent('info', p.name, 'spawn',
-    `세션 스폰 ${spawned}${spawnedIds.length ? ` (${spawnedIds.join('·')})` : ''}`
-    + (reused ? ` · 재사용 ${reused}` : '') + (failed.length ? ` · 연결 실패 ${failed.join('·')}` : ''));
+    { k: 'log.spawn.summary', p: { spawned, ids: spawnedIds.join('·'), reused, failed: failed.join('·') } });
   return { ok: true, wsId: ws.id, spawned, reused, failed, focused };
 }
 
@@ -280,7 +281,7 @@ export async function killSession(name, agentId, expectedRole) {
   if (expectedRole && role !== expectedRole) throw err(409, 'session-changed');
   await killAgent(agentId);
   await refreshState(); // read-your-writes(①)
-  logEvent('info', p.name, 'kill', `세션 종료 — ${role} (개별 비활성화)`);
+  logEvent('info', p.name, 'kill', { k: 'log.kill.session', p: { role } });
   return { ok: true, killed: agentId, role };
 }
 
@@ -301,22 +302,22 @@ export async function deactivate(name) {
     pids: new Set(agents.map((a) => a.pid).filter(Boolean)),
   }]).catch(() => []);
   for (const r of rows) {
-    try { await killPid(r.pid); portsKilled++; logEvent('info', p.name, 'port', `:${r.port} ${r.proc}(pid ${r.pid}) 중지 — 비활성화에 따른 귀속 서버 정리`); }
-    catch (e) { logEvent('error', p.name, 'port', `:${r.port} ${r.proc}(pid ${r.pid}) 중지 실패 — ${e.message} (비활성화는 계속)`); }
+    try { await killPid(r.pid); portsKilled++; logEvent('info', p.name, 'port', { k: 'log.port.stopped-deactivate', p: { port: r.port, proc: r.proc, pid: r.pid } }); }
+    catch (e) { logEvent('error', p.name, 'port', { k: 'log.port.stop-failed-deactivate', p: { port: r.port, proc: r.proc, pid: r.pid, err: e.message } }); }
   }
   if (rows.length) invalidatePorts(); // 즉시 재실측 — 다음 폴링 포트맵에 반영
   let killed = 0;
   if (ws) {
     for (const a of agents) {
       try { await killAgent(a.agentId); killed++; }
-      catch (e) { logEvent('error', p.name, 'kill', `${a.label || a.agentId} 종료 실패 — ${e.message}`); }
+      catch (e) { logEvent('error', p.name, 'kill', { k: 'log.kill.session-failed', p: { sess: a.label || a.agentId, err: e.message } }); }
     }
     try { await closeWorkspace(ws.id); } catch { /* 이미 닫힘/실패 — 상태 전이는 계속 */ }
     await refreshState(); // read-your-writes(①)
   }
   p.status = 'idle'; p.wsId = null;
   writeProject(p);
-  logEvent('info', p.name, 'deactivate', `세션 ${killed}개 종료${portsKilled ? ` · 귀속 서버 ${portsKilled}개 중지` : ''} · 대기중 전환`);
+  logEvent('info', p.name, 'deactivate', { k: 'log.deactivate.done', p: { killed, portsKilled } });
   return { ok: true, killed, portsKilled };
 }
 
@@ -327,7 +328,7 @@ export function archive(name) {
   if (p.status === 'archived') return { ok: true, already: true };
   p.status = 'archived'; p.archivedAt = new Date().toISOString();
   writeProject(p);
-  logEvent('info', p.name, 'archive', '아카이브 처리');
+  logEvent('info', p.name, 'archive', { k: 'log.archive.done' });
   return { ok: true };
 }
 
@@ -337,6 +338,6 @@ export function reopen(name) {
   if (p.status !== 'archived') return { ok: true, already: true };
   p.status = 'idle'; p.archivedAt = null;
   writeProject(p);
-  logEvent('info', p.name, 'reopen', '재개 — 대기중 복귀');
+  logEvent('info', p.name, 'reopen', { k: 'log.reopen.done' });
   return { ok: true };
 }

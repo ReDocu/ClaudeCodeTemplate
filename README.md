@@ -1,3 +1,4 @@
+> **Language:** **한국어** · [English](README.en.md)
 # Claude Cockpit
 
 > 여러 Claude Code 세션을 **프로젝트별 · 역할별**로 한 대시보드에서 관찰·제어하는 로컬 관제 도구.

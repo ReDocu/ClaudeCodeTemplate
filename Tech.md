@@ -1,3 +1,5 @@
+> **Language:** **한국어** · [English](Tech.en.md)
+
 # Tech.md — ClaudeCockpit 기능명세서
 
 **대상**: ClaudeCockpit(리라이트 v1) 실동작 산출물 — `cockpit/`

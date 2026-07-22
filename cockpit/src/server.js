@@ -115,7 +115,7 @@ function reportScanErrors(errors) {
   const key = errors.map((e) => e.name).sort().join(',');
   if (key === _lastScanErr) return;
   _lastScanErr = key;
-  for (const e of errors) logEvent('error', e.name, 'scan', `project.json 파싱 실패 — ${e.message}`);
+  for (const e of errors) logEvent('error', e.name, 'scan', { k: 'log.scan.parse-failed', p: { err: e.message } });
 }
 
 function requireProject(name) {
@@ -278,11 +278,11 @@ const routes = {
     let portsKilled = 0;
     for (const p of actives) {
       try { const r = await deactivate(p.name); portsKilled += r.portsKilled || 0; deactivated.push(p.name); }
-      catch (e) { failed.push(p.name); logEvent('error', p.name, 'shutdown', `비활성화 실패 — ${e.message}`); }
+      catch (e) { failed.push(p.name); logEvent('error', p.name, 'shutdown', { k: 'log.shutdown.deactivate-failed', p: { err: e.message } }); }
     }
     logEvent('info', null, 'shutdown',
-      `전체 종료 — 프로젝트 ${deactivated.length}개 비활성화(대기중)${portsKilled ? ` · 귀속 서버 ${portsKilled}개 중지` : ''}${failed.length ? ` · 실패 ${failed.join('·')}` : ''}`
-      + `${ownsApp ? ` · ${MUX} 종료` : ` · ${MUX} 유지`} · 서버 종료`);
+      { k: ownsApp ? 'log.shutdown.summary-app-closed' : 'log.shutdown.summary-app-kept',
+        p: { deactivated: deactivated.length, portsKilled, failed: failed.join('·'), mux: MUX } });
     scheduleExit();
     return { ok: true, deactivated, failed, portsKilled };
   },
@@ -290,15 +290,16 @@ const routes = {
   'POST /create': async (b) => {
     const r = createProject({ name: b.name, roles: b.roles || [] });
     logEvent('info', r.project.name, 'create',
-      r.created ? `격리 스캐폴드 생성 · 역할 ${r.added.length}개 · 대기중 등록`
-        : `역할 병합 — 추가 ${r.added.length ? r.added.join('·') : '없음(멱등)'}`);
+      r.created ? { k: 'log.create.scaffold', p: { count: r.added.length } }
+        : r.added.length ? { k: 'log.create.merged', p: { added: r.added.join('·') } }
+          : { k: 'log.create.merged-none' });
     return { ok: true, created: r.created, added: r.added };
   },
   'POST /import': async (b) => {
     const r = importProject({ path: b.path, name: b.name });
     logEvent('info', r.project.name, 'import',
-      r.already ? '이미 등록됨(멱등)' : r.inPlace ? '제자리 등록 — 이동 없이 스캐폴드·선언 적용'
-        : `${b.path} → root/${r.project.name}/ops/ 이동${r.backup ? ` · 기존 ops 백업 ${basename(r.backup)}` : ''} · 대기중 등록`);
+      r.already ? { k: 'log.import.already' } : r.inPlace ? { k: 'log.import.in-place' }
+        : { k: 'log.import.moved', p: { path: b.path, name: r.project.name, backup: r.backup ? basename(r.backup) : '' } });
     return { ok: true, name: r.project.name, inPlace: r.inPlace, already: r.already, backup: r.backup ? basename(r.backup) : null };
   },
   'POST /create-git': async (b) => {
@@ -312,8 +313,8 @@ const routes = {
     mkdirSync(opsDir, { recursive: true });
     const g = await connectRemote(opsDir, url);    // ops에 clone(스켈레톤은 교체, 실내용은 백업 후) — clone 실패는 여기서 throw
     logEvent('info', r.project.name, 'create-git',
-      `git ${g.action === 'cloned' ? 'clone' : '원격 갱신'} → root/${r.project.name}/ops/`
-      + (g.backup ? ` · 기존 ops 백업 ${basename(g.backup)}` : '') + (r.created ? ' · 대기중 등록' : ' · 기존 프로젝트 재사용') + ` — ${url}`);
+      { k: `log.create-git.${g.action === 'cloned' ? 'cloned' : 'updated'}-${r.created ? 'new' : 'reused'}`,
+        p: { name: r.project.name, backup: g.backup ? basename(g.backup) : '', url } });
     return { ok: true, name: r.project.name, created: r.created, action: g.action, backup: g.backup ? basename(g.backup) : null, git: g.git };
   },
   'POST /roles': async (b) => {
@@ -324,7 +325,7 @@ const routes = {
     const ws = state.live ? matchWorkspace(state, p) : null;
     if (ws && agentsOfWs(state, ws.id).some((a) => roleOf(p, a) === b.role)) throw err(409, 'role-alive');
     const r = removeRole(b.name, b.role);
-    if (r.removed) logEvent('info', p.name, 'roles', `역할 제거 — ${b.role} (선언만, 폴더 보존)`);
+    if (r.removed) logEvent('info', p.name, 'roles', { k: 'log.roles.removed', p: { role: b.role } });
     return { ok: true, removed: r.removed };
   },
 
@@ -337,7 +338,7 @@ const routes = {
     invalidateProc();
     const proj = scanProjects().projects.find((p) => p.wsId === a.workspaceId);
     const nsL = parseLabel(a.label);
-    logEvent('info', proj?.name || null, 'claude', `${nsL ? nsL.role : (a.label || a.agentId)} 세션에 claude 기동 전송`);
+    logEvent('info', proj?.name || null, 'claude', { k: 'log.claude.sent', p: { sess: nsL ? nsL.role : (a.label || a.agentId) } });
     return { ok: true };
   },
   'POST /attach': async (b) => {
@@ -355,7 +356,7 @@ const routes = {
     if (!/^https?:\/\//i.test(url)) throw err(400, 'http-only');
     if (!canOpenWeb) throw err(501, 'open-web-unsupported');
     try { await openWeb(url); }
-    catch (e) { logEvent('error', null, 'open-web', `${MUX} 브라우저 패널 열기 실패 — ${e.message}`); throw err(502, 'open-web-failed'); }
+    catch (e) { logEvent('error', null, 'open-web', { k: 'log.open-web.failed', p: { mux: MUX, err: e.message } }); throw err(502, 'open-web-failed'); }
     return { ok: true };
   },
   // workspace git 추적 on/off (FS-21) — 대시보드 [↺ git 추적] 칩. config에 저장(서버 재시작 불필요).
@@ -364,7 +365,7 @@ const routes = {
     if (typeof b?.enabled !== 'boolean') throw err(400, 'enabled-required');
     if (!canOpenWeb) throw err(501, 'open-web-unsupported');
     const on = setFollow(b.enabled);
-    logEvent('info', null, 'follow', `workspace git 추적 ${on ? '켜짐' : '꺼짐'} — ${MUX} 브라우저 패널 자동 이동`);
+    logEvent('info', null, 'follow', { k: on ? 'log.follow.toggle-on' : 'log.follow.toggle-off', p: { mux: MUX } });
     return { ok: true, follow: on };
   },
   'POST /open': async (b) => {
@@ -385,8 +386,8 @@ const routes = {
   'POST /hook-install': () => new Promise((resolveP, rejectP) => {
     execFile(process.execPath, [HOOK_SCRIPT, 'install'], { timeout: 15_000, windowsHide: true }, (e, _stdout, stderr) => {
       invalidateHook(); // 성공/실패 무관 즉시 재실측 — 다음 /api/state 폴링에 배너 상태 반영
-      if (e) { logEvent('error', null, 'hook', `활동 배지 훅 설치 실패 — ${(stderr || e.message).trim()}`); return rejectP(err(500, 'hook-install-failed')); }
-      logEvent('info', null, 'hook', '활동 배지 훅 설치 — ~/.claude/settings.json 병합(백업 settings.json.cockpit-bak)');
+      if (e) { logEvent('error', null, 'hook', { k: 'log.hook.install-failed', p: { err: (stderr || e.message).trim() } }); return rejectP(err(500, 'hook-install-failed')); }
+      logEvent('info', null, 'hook', { k: 'log.hook.installed' });
       resolveP({ ok: true });
     });
   }),
@@ -408,7 +409,7 @@ const routes = {
     if (wsAgents.some((a) => a.agentId !== agentId && roleOf(p, a) === role)) throw err(409, 'role-filled');
     p.adopted = { ...adopted, [agentId]: role };
     writeProject(p);
-    logEvent('info', p.name, 'adopt', `세션 ${agentId} → 역할 ${role} 채택 (동기화)`);
+    logEvent('info', p.name, 'adopt', { k: 'log.adopt.done', p: { agentId, role } });
     return { ok: true, agentId, role };
   },
   'POST /git-remote': async (b) => {
@@ -418,7 +419,7 @@ const routes = {
     const opsDir = join(p._dir, 'ops');
     mkdirSync(opsDir, { recursive: true });
     const r = await connectRemote(opsDir, url); // ops에 clone(또는 기존 저장소면 원격 갱신) — 백업 후 진행
-    logEvent('info', p.name, 'git', `ops 원격 ${r.action === 'cloned' ? 'clone' : '갱신'}${r.backup ? ` · 기존 ops 백업 ${basename(r.backup)}` : ''} — ${url}`);
+    logEvent('info', p.name, 'git', { k: r.action === 'cloned' ? 'log.git.remote-cloned' : 'log.git.remote-updated', p: { backup: r.backup ? basename(r.backup) : '', url } });
     return { ok: true, action: r.action, backup: r.backup ? basename(r.backup) : null, git: r.git };
   },
   // 활성 포트 리스너 중지(FS-14 확장 — OFF). kill 경유 확인 필수(§9-3) + 낙관적 재검증(⑤):
@@ -435,9 +436,9 @@ const routes = {
     const row = getPorts(projPortInfo(state, projects)).find((r) => r.port === port && r.pid === pid);
     if (!row || !row.project) throw err(409, 'not-project-listener'); // 프로젝트 세션발 리스너만 허용
     try { await killPid(pid); }
-    catch (e) { logEvent('error', row.project, 'port', `:${port} ${row.proc}(pid ${pid}) 중지 실패 — ${e.message}`); throw err(502, 'kill-failed'); }
+    catch (e) { logEvent('error', row.project, 'port', { k: 'log.port.stop-failed', p: { port, proc: row.proc, pid, err: e.message } }); throw err(502, 'kill-failed'); }
     invalidatePorts(); // 즉시 재실측 — 다음 폴링에 목록 반영
-    logEvent('info', row.project, 'port', `:${port} ${row.proc}(pid ${pid}) 중지 — 프로세스 트리 종료`);
+    logEvent('info', row.project, 'port', { k: 'log.port.stopped', p: { port, proc: row.proc, pid } });
     return { ok: true };
   },
   // 서버 시작 명령 선언(FS-14 확장 — ON의 선행 선언). cockpit은 시작 명령을 모른다 → 프로젝트가 선언(project.json).
@@ -453,7 +454,7 @@ const routes = {
     } else if (b.action === 'clear') delete p.serve;
     else throw err(400, 'unknown-action');
     writeProject(p);
-    logEvent('info', p.name, 'serve', b.action === 'set' ? `서버 명령 선언 — [${p.serve.role}] ${p.serve.cmd}` : '서버 명령 해제');
+    logEvent('info', p.name, 'serve', b.action === 'set' ? { k: 'log.serve.declared', p: { role: p.serve.role, cmd: p.serve.cmd } } : { k: 'log.serve.cleared' });
     return { ok: true, serve: p.serve || null };
   },
   // 서버 시작(FS-14 확장 — ON) — 선언된 명령을 역할 pane 셸에 전송(POST /claude의 sendLine과 동형).
@@ -473,7 +474,7 @@ const routes = {
     if (alive !== false) throw err(409, alive === true ? 'pane-claude-on' : 'pane-state-unknown');
     await sendLine(sv.cmd, a.surfaceId);
     invalidatePorts(); // 리스너가 뜨면 다음 폴링에 포트맵 반영
-    logEvent('info', p.name, 'serve', `[${sv.role}] pane에 서버 시작 전송 — ${sv.cmd}`);
+    logEvent('info', p.name, 'serve', { k: 'log.serve.start-sent', p: { role: sv.role, cmd: sv.cmd } });
     return { ok: true };
   },
   'POST /links': async (b) => {
@@ -511,8 +512,8 @@ function ensureHookInstalled() {
   if (hookInstalled()) return; // 이미 현재 리포 경로로 설치됨 — 홈 설정 파일을 만지지 않는다
   execFile(process.execPath, [HOOK_SCRIPT, 'install'], { timeout: 15_000, windowsHide: true }, (e, _stdout, stderr) => {
     invalidateHook(); // 성공/실패 무관 즉시 재실측 — 다음 /api/state 폴링·배너에 반영
-    if (e) { logEvent('error', null, 'hook', `활동 훅 자동 설치 실패 — ${(stderr || e.message).trim()} (배너의 [훅 설치]로 수동 설치 가능)`); return; }
-    logEvent('info', null, 'hook', '활동 훅 자동 설치/수리 — ~/.claude/settings.json을 현재 리포 경로로 재등록(백업 settings.json.cockpit-bak)');
+    if (e) { logEvent('error', null, 'hook', { k: 'log.hook.autoinstall-failed', p: { err: (stderr || e.message).trim() } }); return; }
+    logEvent('info', null, 'hook', { k: 'log.hook.autoinstalled' });
     console.log('[cockpit] 활동 훅 자동 설치/수리 완료 — 세션 상태(진행중/입력대기)가 이 리포 경로로 기록됩니다(새로 시작하는 세션부터 반영).');
   });
 }
@@ -547,7 +548,7 @@ export async function serve({ port } = {}) {
       return send(200, result || { ok: true });
     } catch (e) {
       const status = e.status || 500;
-      if (status >= 500) logEvent('error', null, 'server', `${req.method} ${url.pathname} — ${e.message}`);
+      if (status >= 500) logEvent('error', null, 'server', { k: 'log.server.error', p: { method: req.method, path: url.pathname, err: e.message } });
       return send(status, { error: e.message || 'internal-error' });
     }
   });

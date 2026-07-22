@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ClaudeCockpit — Cheatsheet (1 page)</title>
+<style>
+  @page{ size:A4; margin:10mm }
+  :root{ --line:#d9dee6; --ink:#1a2230; --dim:#5b6675; --teal:#0e8f83; --tealbg:#e6f7f5;
+         --blue:#2f74c9; --bluebg:#e8f1fc; --amber:#b5791a; --amberbg:#fbf2e0; --red:#c8443a; --redbg:#fbeae8;
+         --mono:ui-monospace,"Cascadia Code",Consolas,monospace; --ui:system-ui,"Segoe UI","Malgun Gothic",sans-serif }
+  *{box-sizing:border-box} html,body{margin:0}
+  body{font-family:var(--ui);color:var(--ink);background:#fff;font-size:10px;line-height:1.42;padding:14px}
+  .sheet{max-width:1000px;margin:0 auto}
+  header{display:flex;align-items:baseline;gap:10px;border-bottom:2px solid var(--ink);padding-bottom:5px;margin-bottom:9px}
+  header h1{font-size:17px;margin:0;letter-spacing:.2px}
+  header .s{color:var(--dim);font-size:10px}
+  header .u{margin-left:auto;font-family:var(--mono);font-size:10px;color:var(--teal)}
+  .cols{column-count:2;column-gap:14px}
+  .box{break-inside:avoid;border:1px solid var(--line);border-radius:7px;padding:8px 10px;margin:0 0 8px}
+  .box h2{font-size:11px;margin:0 0 5px;color:var(--ink);display:flex;align-items:center;gap:6px}
+  .box h2 .b{display:inline-flex;width:16px;height:16px;border-radius:5px;background:var(--ink);color:#fff;font-size:10px;font-weight:700;align-items:center;justify-content:center}
+  .mono{font-family:var(--mono)}
+  code{font-family:var(--mono);background:#f2f4f7;border:1px solid var(--line);border-radius:4px;padding:0 4px;font-size:9.5px}
+  .flow{display:flex;align-items:center;gap:4px;flex-wrap:wrap;font-size:9.5px;margin:3px 0}
+  .step{border:1px solid var(--line);border-radius:5px;padding:2px 6px;background:#fafbfc}
+  .arr{color:var(--dim);font-weight:700}
+  .chip{display:inline-flex;align-items:center;gap:3px;border:1px solid;border-radius:20px;padding:0 7px;font-size:9px;font-weight:700;white-space:nowrap}
+  .teal{color:var(--teal);border-color:var(--teal);background:var(--tealbg)}
+  .blue{color:var(--blue);border-color:var(--blue);background:var(--bluebg)}
+  .amber{color:var(--amber);border-color:var(--amber);background:var(--amberbg)}
+  .red{color:var(--red);border-color:var(--red);background:var(--redbg)}
+  .gray{color:var(--dim);border-color:var(--line);background:#f4f6f8}
+  table{width:100%;border-collapse:collapse}
+  td{padding:2.5px 3px;border-top:1px solid var(--line);vertical-align:top}
+  tr:first-child td{border-top:0}
+  td.k{white-space:nowrap;width:1%;padding-right:8px}
+  ul{margin:3px 0;padding-left:15px} li{margin:1.5px 0}
+  b{color:var(--ink)}
+  .note{color:var(--dim)}
+  .foot{border-top:1px solid var(--line);margin-top:4px;padding-top:5px;color:var(--dim);font-size:9px;text-align:center;column-span:all}
+</style>
+</head>
+<body>
+<p style="text-align:center;font-size:12px"><a href="ClaudeCockpit-Cheatsheet.html">한국어</a> · <strong>English</strong></p>
+<div class="sheet">
+  <header>
+    <h1>ClaudeCockpit Cheatsheet</h1>
+    <span class="s">Manage multiple Claude Code instances on one screen · Local</span>
+    <span class="u">http://127.0.0.1:7420/</span>
+  </header>
+
+  <div class="cols">
+
+    <div class="box">
+      <h2><span class="b">1</span>Getting started</h2>
+      <ul>
+        <li>Double-click <b>ClaudeCockpit.exe</b> (if blocked, use <code>start.cmd</code>) → the dashboard opens in your browser</li>
+        <li>Automatic: start wmux → server → browser. Safe to press multiple times</li>
+        <li>The black console = the server. <b>Closing it does not kill sessions</b></li>
+      </ul>
+    </div>
+
+    <div class="box">
+      <h2><span class="b">2</span>Overall flow</h2>
+      <div class="flow">
+        <span class="step">＋ New project</span><span class="arr">→</span>
+        <span class="step">▶ Activate</span><span class="arr">→</span>
+        <span class="step teal" style="border-radius:5px">＋ Activate session</span><span class="arr">→</span>
+        <span class="step blue" style="border-radius:5px">▶ Run Claude</span>
+      </div>
+      <div class="note">Activating <b>only opens the room</b> — sessions (terminals) are opened separately per role.</div>
+    </div>
+
+    <div class="box">
+      <h2><span class="b">3</span>Session in 3 steps ★</h2>
+      <table>
+        <tr><td class="k"><span class="chip gray">○ Not connected</span></td><td>No session → press <span class="chip teal">＋ Activate session</span></td></tr>
+        <tr><td class="k"><span class="chip gray">? Checking</span></td><td>Checking connection (wait a moment)</td></tr>
+        <tr><td class="k"><span class="chip gray">❯ Ready</span></td><td><span class="chip teal">↗ Open session</span> <span class="chip blue">▶ Run Claude</span></td></tr>
+      </table>
+      <div class="note">All at once: <b>[＋ Activate all sessions]</b> below the card. Already-open ones are reused (no duplicates).</div>
+    </div>
+
+    <div class="box">
+      <h2><span class="b">4</span>Activity badge = what it's doing now</h2>
+      <table>
+        <tr><td class="k"><span class="chip teal">⏳ In progress</span></td><td>Working → <b>leave it be</b></td></tr>
+        <tr><td class="k"><span class="chip gray">⌛ Waiting</span></td><td>Awaiting instruction → <b>give it work</b></td></tr>
+        <tr><td class="k"><span class="chip amber">⚠ Awaiting input</span></td><td>Awaiting approval → <b>handle first</b></td></tr>
+      </table>
+      <div class="note">If not shown: Claude not running / before first prompt / hook not installed.<br>Install hook (once): <code>node cockpit/bin/activity-hook.mjs install</code></div>
+    </div>
+
+    <div class="box">
+      <h2><span class="b">5</span>Project state & turning off</h2>
+      <table>
+        <tr><td class="k"><span class="chip gray">⏸ Waiting</span></td><td>Not open → <b>▶ Activate</b> / ▪ Archive</td></tr>
+        <tr><td class="k"><span class="chip teal">● In progress</span></td><td>Open → activate sessions · run Claude</td></tr>
+        <tr><td class="k"><span class="chip gray">▪ Ended</span></td><td>Archived → <b>resume</b></td></tr>
+      </table>
+      <div class="note" style="margin-top:4px">Two ways to turn off (both confirm): <span class="chip red">Deactivate session</span> one · <span class="chip red">Deactivate</span> all. <b>No undo.</b></div>
+    </div>
+
+    <div class="box">
+      <h2><span class="b">6</span>Three ways to add a project</h2>
+      <table>
+        <tr><td class="k"><b>＋ New project</b></td><td>Create a new empty folder</td></tr>
+        <tr><td class="k"><b>Link existing project</b></td><td>Move an existing folder into <code>ops/</code> and register it</td></tr>
+        <tr><td class="k"><b>＋ git URL</b></td><td>Clone a repository into <code>ops/</code></td></tr>
+      </table>
+      <div class="note">Git repositories go <b>in the ops folder only</b>. The project root is a plain folder.</div>
+    </div>
+
+    <div class="box">
+      <h2><span class="b">7</span>Troubleshooting</h2>
+      <table>
+        <tr><td class="k"><span class="chip gray">▲ offline</span></td><td>Server down → <b>relaunch the exe</b></td></tr>
+        <tr><td class="k">Session won't open</td><td>Usually <b>wmux is off</b> → start it via the exe</td></tr>
+        <tr><td class="k">See the cause</td><td><code>node cockpit/bin/cockpit.js serve</code> → the <code>[wmux✗]</code> line in the console</td></tr>
+        <tr><td class="k">Port conflict</td><td><code>serve --port 8080</code></td></tr>
+        <tr><td class="k">Running old code</td><td>Close the console and relaunch the exe (if only the design changed, refresh)</td></tr>
+      </table>
+    </div>
+
+    <div class="box">
+      <h2><span class="b">8</span>Safety features</h2>
+      <ul>
+        <li><b>Local only</b> — 127.0.0.1 + token. No external access</li>
+        <li><b>No auto-shutdown</b> — turning off is always your button + confirmation</li>
+        <li><b>No duplicates</b> — open sessions are reused</li>
+        <li><b>Secret protection</b> — <code>.env</code> values are not shown</li>
+      </ul>
+    </div>
+
+    <div class="foot">Learn more: <b>Manual.md</b> (usage) · <b>Tech.md</b> (full features · API) · <b>ClaudeCockpit-Guide.html</b> (visual guide) — Print: Ctrl+P · to print colors too, enable "background graphics"</div>
+
+  </div>
+</div>
+</body>
+</html>
