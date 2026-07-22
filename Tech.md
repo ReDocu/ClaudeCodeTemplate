@@ -1,4 +1,3 @@
-> **Language:** **한국어** · [English](Tech.en.md)
 
 # Tech.md — ClaudeCockpit 기능명세서
 

@@ -1,4 +1,3 @@
-> **Language:** **한국어** · [English](cmux_manual.en.md)
 # cmux 매뉴얼
 
 > 출처: https://cmux.com/

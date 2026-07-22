@@ -1,4 +1,3 @@
-> **Language:** **한국어** · [English](Manual.en.md)
 
 # ClaudeCockpit 사용 설명서 (초보자용)
 
